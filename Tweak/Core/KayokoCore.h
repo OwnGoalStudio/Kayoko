@@ -21,6 +21,8 @@ OBJC_EXTERN BOOL kayokoPrefsSaveText;
 OBJC_EXTERN BOOL kayokoPrefsSaveImages;
 OBJC_EXTERN BOOL kayokoPrefsAutomaticallyPaste;
 OBJC_EXTERN BOOL kayokoPrefsDisablePasteTips;
+OBJC_EXTERN BOOL kayokoPrefsPlaySoundEffects;
+OBJC_EXTERN BOOL kayokoPrefsPlayHapticFeedback;
 
 OBJC_EXTERN void EnableKayokoDisablePasteTips(void);
 

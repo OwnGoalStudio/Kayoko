@@ -6,15 +6,19 @@
 //
 
 #import "KayokoCore.h"
+#include "rootless.h"
+
+#import <AudioToolbox/AudioToolbox.h>
 #import <substrate.h>
-#import "PasteboardManager.h"
-#import "Views/KayokoView.h"
-#import "PreferenceKeys.h"
+
 #import "NotificationKeys.h"
+#import "PasteboardManager.h"
+#import "PreferenceKeys.h"
+#import "Views/KayokoView.h"
 
-KayokoView* kayokoView = nil;
+KayokoView *kayokoView = nil;
 
-NSUserDefaults* kayokoPreferences = nil;
+NSUserDefaults *kayokoPreferences = nil;
 BOOL kayokoPrefsEnabled = NO;
 
 NSUInteger kayokoPrefsMaximumHistoryAmount = 0;
@@ -22,6 +26,8 @@ BOOL kayokoPrefsSaveText = NO;
 BOOL kayokoPrefsSaveImages = NO;
 BOOL kayokoPrefsAutomaticallyPaste = NO;
 BOOL kayokoPrefsDisablePasteTips = NO;
+BOOL kayokoPrefsPlaySoundEffects = NO;
+BOOL kayokoPrefsPlayHapticFeedback = NO;
 
 #pragma mark - UIStatusBarWindow class hooks
 
@@ -33,13 +39,14 @@ BOOL kayokoPrefsDisablePasteTips = NO;
  *
  * @param frame
  */
-static void (* orig_UIStatusBarWindow_initWithFrame)(UIStatusBarWindow* self, SEL _cmd, CGRect frame);
-static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow* self, SEL _cmd, CGRect frame) {
+static void (*orig_UIStatusBarWindow_initWithFrame)(UIStatusBarWindow *self, SEL _cmd, CGRect frame);
+static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SEL _cmd, CGRect frame) {
     orig_UIStatusBarWindow_initWithFrame(self, _cmd, frame);
 
     if (!kayokoView) {
         CGRect bounds = [[UIScreen mainScreen] bounds];
-        kayokoView = [[KayokoView alloc] initWithFrame:CGRectMake(0, bounds.size.height - kHeight, bounds.size.width, kHeight)];
+        kayokoView =
+            [[KayokoView alloc] initWithFrame:CGRectMake(0, bounds.size.height - kHeight, bounds.size.width, kHeight)];
         [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
         [self addSubview:kayokoView];
     }
@@ -50,9 +57,7 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow* self, SE
 /**
  * Receives the notification that the pasteboard changed from the daemon and pulls the new changes.
  */
-static void pasteboard_changed() {
-    [[PasteboardManager sharedInstance] pullPasteboardChanges];
-}
+static void pasteboard_changed() { [[PasteboardManager sharedInstance] pullPasteboardChanges]; }
 
 /**
  * Shows the history.
@@ -90,19 +95,25 @@ static void load_preferences() {
     kayokoPreferences = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
 
     [kayokoPreferences registerDefaults:@{
-        kPreferenceKeyEnabled: @(kPreferenceKeyEnabledDefaultValue),
-        kPreferenceKeyMaximumHistoryAmount: @(kPreferenceKeyMaximumHistoryAmountDefaultValue),
-        kPreferenceKeySaveText: @(kPreferenceKeySaveTextDefaultValue),
-        kPreferenceKeySaveImages: @(kPreferenceKeySaveImagesDefaultValue),
-        kPreferenceKeyAutomaticallyPaste: @(kPreferenceKeyAutomaticallyPasteDefaultValue)
+        kPreferenceKeyEnabled : @(kPreferenceKeyEnabledDefaultValue),
+        kPreferenceKeyMaximumHistoryAmount : @(kPreferenceKeyMaximumHistoryAmountDefaultValue),
+        kPreferenceKeySaveText : @(kPreferenceKeySaveTextDefaultValue),
+        kPreferenceKeySaveImages : @(kPreferenceKeySaveImagesDefaultValue),
+        kPreferenceKeyAutomaticallyPaste : @(kPreferenceKeyAutomaticallyPasteDefaultValue),
+        kPreferenceKeyDisablePasteTips : @(kPreferenceKeyDisablePasteTipsDefaultValue),
+        kPreferenceKeyPlaySoundEffects : @(kPreferenceKeyPlaySoundEffectsDefaultValue),
+        kPreferenceKeyPlayHapticFeedback : @(kPreferenceKeyPlayHapticFeedbackDefaultValue)
     }];
 
     kayokoPrefsEnabled = [[kayokoPreferences objectForKey:kPreferenceKeyEnabled] boolValue];
-    kayokoPrefsMaximumHistoryAmount = [[kayokoPreferences objectForKey:kPreferenceKeyMaximumHistoryAmount] unsignedIntegerValue];
+    kayokoPrefsMaximumHistoryAmount =
+        [[kayokoPreferences objectForKey:kPreferenceKeyMaximumHistoryAmount] unsignedIntegerValue];
     kayokoPrefsSaveText = [[kayokoPreferences objectForKey:kPreferenceKeySaveText] boolValue];
     kayokoPrefsSaveImages = [[kayokoPreferences objectForKey:kPreferenceKeySaveImages] boolValue];
     kayokoPrefsAutomaticallyPaste = [[kayokoPreferences objectForKey:kPreferenceKeyAutomaticallyPaste] boolValue];
     kayokoPrefsDisablePasteTips = [[kayokoPreferences objectForKey:kPreferenceKeyDisablePasteTips] boolValue];
+    kayokoPrefsPlaySoundEffects = [[kayokoPreferences objectForKey:kPreferenceKeyPlaySoundEffects] boolValue];
+    kayokoPrefsPlayHapticFeedback = [[kayokoPreferences objectForKey:kPreferenceKeyPlayHapticFeedback] boolValue];
 
     [[PasteboardManager sharedInstance] setMaximumHistoryAmount:kayokoPrefsMaximumHistoryAmount];
     [[PasteboardManager sharedInstance] setSaveText:kayokoPrefsSaveText];
@@ -110,6 +121,25 @@ static void load_preferences() {
     [[PasteboardManager sharedInstance] setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
 
     [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+}
+
+#pragma mark - Sound effects
+
+static void kayokoPaste() {
+    if (kayokoPrefsPlaySoundEffects) {
+        static dispatch_once_t onceToken;
+        static SystemSoundID soundID;
+        dispatch_once(&onceToken, ^{
+          AudioServicesCreateSystemSoundID(
+              (__bridge CFURLRef)[NSURL
+                  fileURLWithPath:ROOT_PATH_NS(@"/Library/PreferenceBundles/KayokoPreferences.bundle/Paste.aiff")],
+              &soundID);
+        });
+        AudioServicesPlaySystemSound(soundID);
+    }
+    if (kayokoPrefsPlayHapticFeedback) {
+        AudioServicesPlaySystemSound(1519);
+    }
 }
 
 #pragma mark - Constructor
@@ -131,20 +161,35 @@ __attribute((constructor)) static void initialize() {
             return;
         }
 
-        MSHookMessageEx(objc_getClass("UIStatusBarWindow"), @selector(initWithFrame:), (IMP)&override_UIStatusBarWindow_initWithFrame, (IMP *)&orig_UIStatusBarWindow_initWithFrame);
+        MSHookMessageEx(objc_getClass("UIStatusBarWindow"), @selector(initWithFrame:),
+                        (IMP)&override_UIStatusBarWindow_initWithFrame, (IMP *)&orig_UIStatusBarWindow_initWithFrame);
 
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)pasteboard_changed, (CFStringRef)kNotificationKeyObserverPasteboardChanged, NULL, (CFNotificationSuspensionBehavior)kNilOptions);
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)show, (CFStringRef)kNotificationKeyCoreShow, NULL, (CFNotificationSuspensionBehavior)kNilOptions);
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)hide, (CFStringRef)kNotificationKeyCoreHide, NULL, (CFNotificationSuspensionBehavior)kNilOptions);
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)reload, (CFStringRef)kNotificationKeyCoreReload, NULL, (CFNotificationSuspensionBehavior)kNilOptions);
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)load_preferences, (CFStringRef)kNotificationKeyPreferencesReload, NULL, (CFNotificationSuspensionBehavior)kNilOptions);
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
+                                        (CFNotificationCallback)pasteboard_changed,
+                                        (CFStringRef)kNotificationKeyObserverPasteboardChanged, NULL,
+                                        (CFNotificationSuspensionBehavior)kNilOptions);
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)show,
+                                        (CFStringRef)kNotificationKeyCoreShow, NULL,
+                                        (CFNotificationSuspensionBehavior)kNilOptions);
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)hide,
+                                        (CFStringRef)kNotificationKeyCoreHide, NULL,
+                                        (CFNotificationSuspensionBehavior)kNilOptions);
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
+                                        (CFNotificationCallback)reload, (CFStringRef)kNotificationKeyCoreReload, NULL,
+                                        (CFNotificationSuspensionBehavior)kNilOptions);
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)load_preferences,
+            (CFStringRef)kNotificationKeyPreferencesReload, NULL, (CFNotificationSuspensionBehavior)kNilOptions);
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
+                                        (CFNotificationCallback)kayokoPaste, (CFStringRef)kNotificationKeyHelperPaste,
+                                        NULL, (CFNotificationSuspensionBehavior)kNilOptions);
 
         return;
     }
 
-    NSArray* args = [[NSProcessInfo processInfo] arguments];
-    NSString* processName = [[NSProcessInfo processInfo] processName];
-    NSString* executablePath = [args firstObject];
+    NSArray *args = [[NSProcessInfo processInfo] arguments];
+    NSString *processName = [[NSProcessInfo processInfo] processName];
+    NSString *executablePath = [args firstObject];
     BOOL isDruid = [executablePath hasPrefix:@"/System/Library/"] && [processName isEqualToString:@"druid"];
     if (isDruid) {
         load_preferences();
@@ -154,7 +199,9 @@ __attribute((constructor)) static void initialize() {
         }
 
         EnableKayokoDisablePasteTips();
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)load_preferences, (CFStringRef)kNotificationKeyPreferencesReload, NULL, (CFNotificationSuspensionBehavior)kNilOptions);
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)load_preferences,
+            (CFStringRef)kNotificationKeyPreferencesReload, NULL, (CFNotificationSuspensionBehavior)kNilOptions);
 
         return;
     }

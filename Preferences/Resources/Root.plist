@@ -100,11 +100,44 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
+			<string>Appearance &amp; Sound Effects</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>codes.aurora.kayoko.preferences</string>
+			<key>key</key>
+			<string>PlaySoundEffects</string>
+			<key>label</key>
+			<string>Play Sound Effects</string>
+			<key>PostNotification</key>
+			<string>codes.aurora.kayoko.preferences.reload</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>codes.aurora.kayoko.preferences</string>
+			<key>key</key>
+			<string>PlayHapticFeedback</string>
+			<key>label</key>
+			<string>Play Haptic Feedback</string>
+			<key>PostNotification</key>
+			<string>codes.aurora.kayoko.preferences.reload</string>
+		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
 			<string>Behavior</string>
 			<key>footerText</key>
 			<string>The "Prediction Bar" method displays custom suggestions on the "More Keyboard Keyplane" (123).</string>
-			<key>isStaticText</key>
-			<true/>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -166,8 +199,6 @@
 			<string>PSGroupCell</string>
 			<key>footerText</key>
 			<string>Try out your changes by typing, copying and pasting text.</string>
-			<key>isStaticText</key>
-			<true/>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -208,8 +239,6 @@
 			<string>PSGroupCell</string>
 			<key>footerText</key>
 			<string>Thanks to you and everyone who has helped in any way.</string>
-			<key>isStaticText</key>
-			<true/>
 		</dict>
 		<dict>
  			<key>cell</key>
