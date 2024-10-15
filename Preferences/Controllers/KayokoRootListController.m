@@ -6,11 +6,14 @@
 //
 
 #import "KayokoRootListController.h"
+
+#import <Preferences/PSSpecifier.h>
+#import <UIKit/UIKit.h>
+#import <rootless.h>
+
 #import "../NotificationKeys.h"
 #import "../PreferenceKeys.h"
 #import "PasteboardManager.h"
-#import <Preferences/PSSpecifier.h>
-#import <rootless.h>
 
 @implementation KayokoRootListController
 
@@ -124,18 +127,39 @@
                                          (CFStringRef)kNotificationKeyPreferencesReload, nil, nil, YES);
 }
 
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.section == 5) {
-        PSSpecifier *specifier = [self specifierAtIndexPath:indexPath];
-        NSString *key = [specifier propertyForKey:@"cell"];
-        if ([key isEqualToString:@"PSButtonCell"]) {
-            UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
-            NSNumber *isDestructiveValue = [specifier propertyForKey:@"isDestructive"];
-            BOOL isDestructive = [isDestructiveValue boolValue];
-            cell.textLabel.textColor = isDestructive ? [UIColor systemRedColor] : [UIColor systemBlueColor];
-            cell.textLabel.highlightedTextColor = isDestructive ? [UIColor systemRedColor] : [UIColor systemBlueColor];
-            return cell;
+- (UISlider *_Nullable)findSliderInView:(UIView *)view {
+    if ([view isKindOfClass:[UISlider class]]) {
+        return (UISlider *)view;
+    }
+    for (UIView *subview in view.subviews) {
+        UISlider *slider = [self findSliderInView:subview];
+        if (slider) {
+            return slider;
         }
+    }
+    return nil;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    PSSpecifier *specifier = [self specifierAtIndexPath:indexPath];
+    NSString *key = [specifier propertyForKey:@"cell"];
+    if ([key isEqualToString:@"PSButtonCell"]) {
+        UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
+        NSNumber *isDestructiveValue = [specifier propertyForKey:@"isDestructive"];
+        BOOL isDestructive = [isDestructiveValue boolValue];
+        cell.textLabel.textColor = isDestructive ? [UIColor systemRedColor] : [UIColor systemBlueColor];
+        cell.textLabel.highlightedTextColor = isDestructive ? [UIColor systemRedColor] : [UIColor systemBlueColor];
+        return cell;
+    }
+    if ([key isEqualToString:@"PSSliderCell"]) {
+        UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
+        NSNumber *isContinuousValue = [specifier propertyForKey:@"isContinuous"];
+        BOOL isContinuous = [isContinuousValue boolValue];
+        UISlider *slider = [self findSliderInView:cell];
+        if (slider) {
+            slider.continuous = isContinuous;
+        }
+        return cell;
     }
     return [super tableView:tableView cellForRowAtIndexPath:indexPath];
 }

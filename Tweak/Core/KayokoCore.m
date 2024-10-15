@@ -6,9 +6,10 @@
 //
 
 #import "KayokoCore.h"
-#include "HBLog.h"
 
 #import <AudioToolbox/AudioToolbox.h>
+#import <CoreFoundation/CoreFoundation.h>
+#import <HBLog.h>
 #import <rootless.h>
 #import <substrate.h>
 
@@ -30,6 +31,8 @@ BOOL kayokoPrefsDisablePasteTips = NO;
 BOOL kayokoPrefsPlaySoundEffects = NO;
 BOOL kayokoPrefsPlayHapticFeedback = NO;
 
+CGFloat kayokoPrefsHeightInPoints = 420;
+
 #pragma mark - UIStatusBarWindow class hooks
 
 /**
@@ -46,9 +49,10 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
 
     if (!kayokoView) {
         CGRect bounds = [[UIScreen mainScreen] bounds];
-        kayokoView =
-            [[KayokoView alloc] initWithFrame:CGRectMake(0, bounds.size.height - kHeight, bounds.size.width, kHeight)];
+        kayokoView = [[KayokoView alloc] initWithFrame:CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints,
+                                                                  bounds.size.width, kayokoPrefsHeightInPoints)];
         [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+        [kayokoView setHidden:YES];
         [self addSubview:kayokoView];
     }
 }
@@ -103,7 +107,8 @@ static void load_preferences() {
         kPreferenceKeyAutomaticallyPaste : @(kPreferenceKeyAutomaticallyPasteDefaultValue),
         kPreferenceKeyDisablePasteTips : @(kPreferenceKeyDisablePasteTipsDefaultValue),
         kPreferenceKeyPlaySoundEffects : @(kPreferenceKeyPlaySoundEffectsDefaultValue),
-        kPreferenceKeyPlayHapticFeedback : @(kPreferenceKeyPlayHapticFeedbackDefaultValue)
+        kPreferenceKeyPlayHapticFeedback : @(kPreferenceKeyPlayHapticFeedbackDefaultValue),
+        kPreferenceKeyHeightInPoints : @(kPreferenceKeyHeightInPointsDefaultValue),
     }];
 
     kayokoPrefsEnabled = [[kayokoPreferences objectForKey:kPreferenceKeyEnabled] boolValue];
@@ -115,13 +120,20 @@ static void load_preferences() {
     kayokoPrefsDisablePasteTips = [[kayokoPreferences objectForKey:kPreferenceKeyDisablePasteTips] boolValue];
     kayokoPrefsPlaySoundEffects = [[kayokoPreferences objectForKey:kPreferenceKeyPlaySoundEffects] boolValue];
     kayokoPrefsPlayHapticFeedback = [[kayokoPreferences objectForKey:kPreferenceKeyPlayHapticFeedback] boolValue];
+    kayokoPrefsHeightInPoints = [[kayokoPreferences objectForKey:kPreferenceKeyHeightInPoints] doubleValue];
 
     [[PasteboardManager sharedInstance] setMaximumHistoryAmount:kayokoPrefsMaximumHistoryAmount];
     [[PasteboardManager sharedInstance] setSaveText:kayokoPrefsSaveText];
     [[PasteboardManager sharedInstance] setSaveImages:kayokoPrefsSaveImages];
     [[PasteboardManager sharedInstance] setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
 
-    [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+    if (kayokoView) {
+        [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+        CGRect bounds = [[UIScreen mainScreen] bounds];
+        CGRect newFrame =
+            CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints, bounds.size.width, kayokoPrefsHeightInPoints);
+        [kayokoView setFrame:newFrame];
+    }
 }
 
 #pragma mark - Sound effects

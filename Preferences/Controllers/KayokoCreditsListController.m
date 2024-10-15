@@ -5,7 +5,7 @@
 //  Created by Alexandra Aurora Göttlicher
 //
 
-#include "KayokoCreditsListController.h"
+#import "KayokoCreditsListController.h"
 
 @implementation KayokoCreditsListController
 @end

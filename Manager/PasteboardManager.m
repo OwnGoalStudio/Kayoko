@@ -225,7 +225,7 @@
     // Automatic paste should not occur for asynchronous operations.
     if ([self automaticallyPaste] && shouldAutoPaste) {
         CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                             (CFStringRef)kNotificationKeyHelperPaste, nil, nil, YES);
+                                             (CFStringRef)kNotificationKeyHelperPaste, nil, nil, NO);
     }
 }
 

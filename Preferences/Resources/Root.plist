@@ -100,41 +100,6 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>Appearance &amp; Sound Effects</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSSwitchCell</string>
-			<key>default</key>
-			<true/>
-			<key>defaults</key>
-			<string>codes.aurora.kayoko.preferences</string>
-			<key>key</key>
-			<string>PlaySoundEffects</string>
-			<key>label</key>
-			<string>Play Sound Effects</string>
-			<key>PostNotification</key>
-			<string>codes.aurora.kayoko.preferences.reload</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSSwitchCell</string>
-			<key>default</key>
-			<true/>
-			<key>defaults</key>
-			<string>codes.aurora.kayoko.preferences</string>
-			<key>key</key>
-			<string>PlayHapticFeedback</string>
-			<key>label</key>
-			<string>Play Haptic Feedback</string>
-			<key>PostNotification</key>
-			<string>codes.aurora.kayoko.preferences.reload</string>
-		</dict>
-
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>label</key>
 			<string>Behavior</string>
 			<key>footerText</key>
 			<string>The "Prediction Bar" method displays custom suggestions on the "More Keyboard Keyplane" (123).</string>
@@ -190,6 +155,69 @@
 			<string>DisablePasteTips</string>
 			<key>label</key>
 			<string>Disable Paste Tips</string>
+			<key>PostNotification</key>
+			<string>codes.aurora.kayoko.preferences.reload</string>
+		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Appearance &amp; Sound Effects</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSStaticTextCell</string>
+			<key>label</key>
+			<string>Height (Points)</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>default</key>
+			<real>420</real>
+			<key>defaults</key>
+			<string>codes.aurora.kayoko.preferences</string>
+			<key>key</key>
+			<string>HeightInPoints</string>
+			<key>min</key>
+			<real>200</real>
+			<key>max</key>
+			<real>600</real>
+			<key>showValue</key>
+			<true/>
+			<key>isContinuous</key>
+			<true/>
+			<key>isSegmented</key>
+			<false/>
+			<key>PostNotification</key>
+			<string>codes.aurora.kayoko.preferences.reload</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>codes.aurora.kayoko.preferences</string>
+			<key>key</key>
+			<string>PlaySoundEffects</string>
+			<key>label</key>
+			<string>Play Sound Effects</string>
+			<key>PostNotification</key>
+			<string>codes.aurora.kayoko.preferences.reload</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>codes.aurora.kayoko.preferences</string>
+			<key>key</key>
+			<string>PlayHapticFeedback</string>
+			<key>label</key>
+			<string>Play Haptic Feedback</string>
 			<key>PostNotification</key>
 			<string>codes.aurora.kayoko.preferences.reload</string>
 		</dict>

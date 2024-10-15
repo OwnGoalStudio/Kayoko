@@ -6,7 +6,6 @@
 //
 
 #import "SingleContactCell.h"
-#include <sys/qos.h>
 
 @implementation SingleContactCell
 
