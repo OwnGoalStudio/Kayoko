@@ -5,3 +5,5 @@ if [[ -e /Library/LaunchDaemons/codes.aurora.kayokod.plist ]]; then
 elif [[ -e /var/jb/Library/LaunchDaemons/codes.aurora.kayokod.plist ]]; then
     launchctl load -w /var/jb/Library/LaunchDaemons/codes.aurora.kayokod.plist > /dev/null 2>&1
 fi
+
+killall -9 druid pasted || true

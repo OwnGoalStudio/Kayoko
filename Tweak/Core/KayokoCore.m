@@ -210,8 +210,8 @@ __attribute((constructor)) static void initialize() {
     NSArray *args = [[NSProcessInfo processInfo] arguments];
     NSString *processName = [[NSProcessInfo processInfo] processName];
     NSString *executablePath = [args firstObject];
-    BOOL isDruid = [executablePath hasPrefix:@"/System/Library/"] && [processName isEqualToString:@"druid"];
-    if (isDruid) {
+    BOOL isDruidOrPasted = ([executablePath hasPrefix:@"/System/Library/"] || [executablePath hasPrefix:@"/usr/libexec/"]) && ([processName isEqualToString:@"druid"] || [processName isEqualToString:@"pasted"]);
+    if (isDruidOrPasted) {
         load_preferences();
 
         if (!kayokoPrefsEnabled) {

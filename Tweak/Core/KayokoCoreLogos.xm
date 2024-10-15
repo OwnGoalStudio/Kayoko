@@ -7,6 +7,12 @@
 #import "KayokoCore.h"
 #import "NotificationKeys.h"
 
+@interface PBCFUserNotificationPasteAnnouncer : NSObject
+- (void)authorizationDidCompleteWithPasteAllowed:(BOOL)arg1;
+- (void)requestAuthorizationForPaste:(id)arg1 replyHandler:(id)arg2;
+- (void)announcePaste:(id)arg1 replyHandler:(id)arg2;
+@end
+
 @interface SBUserNotificationAlert : NSObject
 - (void)_setActivated:(BOOL)activated;
 - (void)_sendResponseAndCleanUp:(BOOL)cleanup;
@@ -28,7 +34,45 @@
 
 %end
 
+%hook PBDruidRemotePasteAnnouncer
+
++ (void)announceDeniedPaste {
+    if (kayokoPrefsDisablePasteTips) return;
+    %orig;
+}
+
++ (void)announcePaste:(id)arg1 {
+    if (kayokoPrefsDisablePasteTips) return;
+    %orig;
+}
+
 %end
+
+%hook PBCFUserNotificationPasteAnnouncer
+
++ (void)announceDeniedPaste {
+    if (kayokoPrefsDisablePasteTips) return;
+    %orig;
+}
+
++ (void)announcePaste:(id)arg1 {
+    if (kayokoPrefsDisablePasteTips) return;
+    %orig;
+}
+
+- (void)requestAuthorizationForPaste:(id)arg1 replyHandler:(void(^)(BOOL))reply {
+    reply(YES);
+    [self authorizationDidCompleteWithPasteAllowed:YES];
+}
+
+- (void)announcePaste:(id)arg1 replyHandler:(void(^)(BOOL))reply {
+    reply(YES);
+    [self authorizationDidCompleteWithPasteAllowed:YES];
+}
+
+%end
+
+%end // DruidUI
 
 %group NoPasteAlerts16
 
@@ -51,7 +95,7 @@
 
 %end
 
-%end
+%end // NoPasteAlerts16
 
 void EnableKayokoDisablePasteTips(void) {
     %init(DruidUI);
