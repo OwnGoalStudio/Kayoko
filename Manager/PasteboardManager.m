@@ -219,6 +219,7 @@
 
     // The pasteboard updates with the given item, which triggers an update event.
     // Therefore we remove the given item to prevent duplicates.
+    [_pasteboard changeCount];
     [self removePasteboardItem:item fromHistoryWithKey:historyKey shouldRemoveImage:YES];
 
     // Automatic paste should not occur for asynchronous operations.

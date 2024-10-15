@@ -13,6 +13,7 @@ static NSString *const kPreferenceKeySaveText = @"SaveText";
 static NSString *const kPreferenceKeySaveImages = @"SaveImages";
 static NSString *const kPreferenceKeyActivationMethod = @"ActivationMethod";
 static NSString *const kPreferenceKeyAutomaticallyPaste = @"AutomaticallyPaste";
+static NSString *const kPreferenceKeyDisablePasteTips = @"DisablePasteTips";
 
 static NSUInteger const kActivationMethodPredictionBar = 0;
 static NSUInteger const kActivationMethodDictationKey = 1;

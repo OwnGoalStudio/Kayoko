@@ -20,8 +20,9 @@ OBJC_EXTERN NSUInteger kayokoPrefsMaximumHistoryAmount;
 OBJC_EXTERN BOOL kayokoPrefsSaveText;
 OBJC_EXTERN BOOL kayokoPrefsSaveImages;
 OBJC_EXTERN BOOL kayokoPrefsAutomaticallyPaste;
+OBJC_EXTERN BOOL kayokoPrefsDisablePasteTips;
 
-OBJC_EXTERN void EnableKayokoActivationGlobe(void);
+OBJC_EXTERN void EnableKayokoDisablePasteTips(void);
 
 @interface UIStatusBarWindow  : UIWindow
 @end

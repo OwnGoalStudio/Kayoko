@@ -1,6 +1,7 @@
 TWEAK_NAME := KayokoCore
 
 KayokoCore_FILES += KayokoCore.m
+KayokoCore_FILES += KayokoCoreLogos.xm
 KayokoCore_FILES += $(wildcard ../../Manager/*.m Views/*.m ../../Utils/*.m)
 KayokoCore_CFLAGS += -fobjc-arc
 KayokoCore_CFLAGS += -I../../Manager
