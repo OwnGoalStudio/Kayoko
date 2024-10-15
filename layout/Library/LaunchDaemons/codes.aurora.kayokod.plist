@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>Disabled</key>
-	<false />
+	<false/>
 	<key>RunAtLoad</key>
-	<true />
+	<true/>
 	<key>KeepAlive</key>
-	<true />
+	<true/>
 	<key>Label</key>
 	<string>codes.aurora.kayokod</string>
 	<key>Program</key>

@@ -33,6 +33,8 @@ BOOL kayokoPrefsPlayHapticFeedback = NO;
 
 CGFloat kayokoPrefsHeightInPoints = 420;
 
+static BOOL isInPasteProgress = NO;
+
 #pragma mark - UIStatusBarWindow class hooks
 
 /**
@@ -59,11 +61,19 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
 
 #pragma mark - Notification callbacks
 
+static void kayokoPasteWillStart() { isInPasteProgress = YES; }
+
 /**
  * Receives the notification that the pasteboard changed from the daemon and pulls the new changes.
  */
 static void kayokoCopy() {
     [[PasteboardManager sharedInstance] pullPasteboardChanges];
+    if (isInPasteProgress) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+          isInPasteProgress = NO;
+        });
+        return;
+    }
     if (kayokoPrefsPlaySoundEffects) {
         static dispatch_once_t onceToken;
         static SystemSoundID soundID;
@@ -196,25 +206,34 @@ __attribute((constructor)) static void initialize() {
         MSHookMessageEx(objc_getClass("UIStatusBarWindow"), @selector(initWithFrame:),
                         (IMP)&override_UIStatusBarWindow_initWithFrame, (IMP *)&orig_UIStatusBarWindow_initWithFrame);
 
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
-                                        (CFNotificationCallback)kayokoCopy,
-                                        (CFStringRef)kNotificationKeyObserverPasteboardChanged, NULL,
-                                        (CFNotificationSuspensionBehavior)kNilOptions);
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)show,
-                                        (CFStringRef)kNotificationKeyCoreShow, NULL,
-                                        (CFNotificationSuspensionBehavior)kNilOptions);
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)hide,
-                                        (CFStringRef)kNotificationKeyCoreHide, NULL,
-                                        (CFNotificationSuspensionBehavior)kNilOptions);
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
-                                        (CFNotificationCallback)reload, (CFStringRef)kNotificationKeyCoreReload, NULL,
-                                        (CFNotificationSuspensionBehavior)kNilOptions);
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoCopy,
+            (CFStringRef)kNotificationKeyObserverPasteboardChanged, NULL,
+            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)show,
+            (CFStringRef)kNotificationKeyCoreShow, NULL,
+            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)hide,
+            (CFStringRef)kNotificationKeyCoreHide, NULL,
+            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)reload,
+            (CFStringRef)kNotificationKeyCoreReload, NULL,
+            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)load_preferences,
-            (CFStringRef)kNotificationKeyPreferencesReload, NULL, (CFNotificationSuspensionBehavior)kNilOptions);
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
-                                        (CFNotificationCallback)kayokoPaste, (CFStringRef)kNotificationKeyHelperPaste,
-                                        NULL, (CFNotificationSuspensionBehavior)kNilOptions);
+            (CFStringRef)kNotificationKeyPreferencesReload, NULL,
+            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoPaste,
+            (CFStringRef)kNotificationKeyHelperPaste, NULL,
+            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoPasteWillStart,
+            (CFStringRef)kNotificationKeyPasteWillStart, NULL,
+            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
 
         return;
     }
@@ -235,7 +254,8 @@ __attribute((constructor)) static void initialize() {
         EnableKayokoDisablePasteTips();
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)load_preferences,
-            (CFStringRef)kNotificationKeyPreferencesReload, NULL, (CFNotificationSuspensionBehavior)kNilOptions);
+            (CFStringRef)kNotificationKeyPreferencesReload, NULL,
+            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
 
         return;
     }

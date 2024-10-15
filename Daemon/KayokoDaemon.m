@@ -18,8 +18,10 @@
     self = [super init];
     if (self) {
         notify_register_dispatch("com.apple.pasteboard.notify.changed", &(_token), dispatch_get_main_queue(), ^(int _) {
-          CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                               (CFStringRef)kNotificationKeyObserverPasteboardChanged, nil, nil, YES);
+          dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                                 (CFStringRef)kNotificationKeyObserverPasteboardChanged, nil, nil, YES);
+          });
         });
     }
     return self;

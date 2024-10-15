@@ -11,3 +11,4 @@ static NSString *const kNotificationKeyCoreHide = @"codes.aurora.kayoko.core.hid
 static NSString *const kNotificationKeyCoreReload = @"codes.aurora.kayoko.core.reload";
 static NSString *const kNotificationKeyHelperPaste = @"codes.aurora.kayoko.helper.paste";
 static NSString *const kNotificationKeyPreferencesReload = @"codes.aurora.kayoko.preferences.reload";
+static NSString *const kNotificationKeyPasteWillStart = @"codes.aurora.kayoko.paste.willstart";

@@ -10,6 +10,7 @@
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 #import "PreferenceKeys.h"
+#include <CoreFoundation/CFNotificationCenter.h>
 
 #import <Foundation/Foundation.h>
 #import <libSandy.h>
@@ -81,7 +82,9 @@ static TIAutocorrectionList *kayokoCreateAutocorrectionList() {
     NSMutableArray *candidates = [[NSMutableArray alloc] init];
     for (NSString *label in labels) {
         TIZephyrCandidate *candidate = [[objc_getClass("TIZephyrCandidate") alloc] init];
-        [candidate setLabel:[[PasteboardManager localizationBundle] localizedStringForKey:label value:nil table:@"Tweak"]];
+        [candidate setLabel:[[PasteboardManager localizationBundle] localizedStringForKey:label
+                                                                                    value:nil
+                                                                                    table:@"Tweak"]];
         [candidate setCandidate:[NSString stringWithFormat:@"{kayoko-%@}", label]];
         [candidate setFromBundleId:@"codes.aurora.kayoko"];
         [candidates addObject:candidate];
@@ -269,6 +272,9 @@ static void kayokoPaste() {
     if (!applicationIsInForeground) {
         return;
     }
+
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (CFStringRef)kNotificationKeyPasteWillStart, nil, nil, YES);
 
     UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
 
