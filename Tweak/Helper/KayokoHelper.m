@@ -6,6 +6,7 @@
 //
 
 #import "KayokoHelper.h"
+#include <Foundation/NSString.h>
 #import "NotificationKeys.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
@@ -79,7 +80,8 @@ static TIAutocorrectionList *kayokoCreateAutocorrectionList() {
     NSMutableArray *candidates = [[NSMutableArray alloc] init];
     for (NSString *label in labels) {
         TIZephyrCandidate *candidate = [[objc_getClass("TIZephyrCandidate") alloc] init];
-        [candidate setLabel:label];
+        [candidate setLabel:[[PasteboardManager localizationBundle] localizedStringForKey:label value:nil table:@"Tweak"]];
+        [candidate setCandidate:[NSString stringWithFormat:@"{kayoko-%@}", label]];
         [candidate setFromBundleId:@"codes.aurora.kayoko"];
         [candidates addObject:candidate];
     }
@@ -107,10 +109,10 @@ static void override_UIPredictionViewController_predictionView_didSelectCandidat
                                                                                   TIZephyrCandidate *candidate) {
     if ([candidate respondsToSelector:@selector(fromBundleId)] &&
         [[candidate fromBundleId] isEqualToString:@"codes.aurora.kayoko"]) {
-        if ([[candidate label] isEqualToString:@"History"]) {
+        if ([[candidate candidate] isEqualToString:@"{kayoko-History}"]) {
             CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                                  (CFStringRef)kNotificationKeyCoreShow, nil, nil, YES);
-        } else if ([[candidate label] isEqualToString:@"Copy"]) {
+        } else if ([[candidate candidate] isEqualToString:@"{kayoko-Copy}"]) {
             if (@available(iOS 15.0, *)) {
                 UIKBInputDelegateManager *delegateManager =
                     [[objc_getClass("UIKeyboardImpl") activeInstance] inputDelegateManager];
@@ -129,7 +131,7 @@ static void override_UIPredictionViewController_predictionView_didSelectCandidat
                     [[UIPasteboard generalPasteboard] setString:text];
                 }
             }
-        } else if ([[candidate label] isEqualToString:@"Paste"]) {
+        } else if ([[candidate candidate] isEqualToString:@"{kayoko-Paste}"]) {
             kayokoPaste();
         }
     } else {

@@ -32,6 +32,8 @@ OBJC_EXTERN void EnableKayokoActivationGlobe(void);
 @end
 
 @interface TIKeyboardCandidateSingle : TIKeyboardCandidate
+@property(nonatomic, copy) NSString *candidate;
+@property(nonatomic, copy) NSString *input;
 @end
 
 @interface TIZephyrCandidate : TIKeyboardCandidateSingle

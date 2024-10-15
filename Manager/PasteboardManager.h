@@ -23,6 +23,9 @@ static NSString *const kHistoryKeyFavorites = @"favorites";
 @property(nonatomic, assign) BOOL automaticallyPaste;
 
 + (instancetype)sharedInstance;
+- (instancetype)init NS_UNAVAILABLE;
+- (void)preparePasteboardQueue;
+
 + (NSString *)historyPath;
 + (NSString *)historyImagesPath;
 + (NSBundle *)localizationBundle;
@@ -35,6 +38,7 @@ static NSString *const kHistoryKeyFavorites = @"favorites";
 - (void)removePasteboardItem:(PasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage;
+
 - (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey;
 - (PasteboardItem *)getLatestHistoryItem;
 - (UIImage *)getImageForItem:(PasteboardItem *)item;

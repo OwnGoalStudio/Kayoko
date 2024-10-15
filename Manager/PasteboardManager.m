@@ -15,7 +15,9 @@
 
 #import <rootless.h>
 
-@implementation PasteboardManager
+@implementation PasteboardManager {
+    dispatch_queue_t _queue;
+}
 
 /**
  * Creates the shared instance.
@@ -23,14 +25,9 @@
 + (instancetype)sharedInstance {
     static PasteboardManager *sharedInstance;
     static dispatch_once_t onceToken;
-
     dispatch_once(&onceToken, ^{
-      sharedInstance = [PasteboardManager alloc];
-      sharedInstance->_pasteboard = [UIPasteboard generalPasteboard];
-      sharedInstance->_lastChangeCount = [sharedInstance->_pasteboard changeCount];
-      sharedInstance->_fileManager = [NSFileManager defaultManager];
+      sharedInstance = [[PasteboardManager alloc] init];
     });
-
     return sharedInstance;
 }
 
@@ -56,7 +53,8 @@
     static NSBundle *kLocalizationBundle = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      kLocalizationBundle = [NSBundle bundleWithPath:ROOT_PATH_NS(@"/Library/PreferenceBundles/KayokoPreferences.bundle")];
+      kLocalizationBundle =
+          [NSBundle bundleWithPath:ROOT_PATH_NS(@"/Library/PreferenceBundles/KayokoPreferences.bundle")];
     });
     return kLocalizationBundle;
 }
@@ -65,13 +63,29 @@
  * Creates the manager using the shared instance.
  */
 - (instancetype)init {
-    return [PasteboardManager sharedInstance];
+    self = [super init];
+    if (self) {
+        _pasteboard = [UIPasteboard generalPasteboard];
+        _lastChangeCount = [_pasteboard changeCount];
+        _fileManager = [NSFileManager defaultManager];
+    }
+    return self;
+}
+
+- (void)preparePasteboardQueue {
+    _queue = dispatch_queue_create("codes.aurora.kayoko.queue.pasteboard", DISPATCH_QUEUE_SERIAL);
+}
+
+- (void)pullPasteboardChanges {
+    dispatch_async(_queue, ^{
+      [self _reallyPullPasteboardChanges];
+    });
 }
 
 /**
  * Pulls new changes from the pasteboard.
  */
-- (void)pullPasteboardChanges {
+- (void)_reallyPullPasteboardChanges {
     // Return if the pasteboard is empty.
     if ([_pasteboard changeCount] == _lastChangeCount || (![_pasteboard hasStrings] && ![_pasteboard hasImages])) {
         return;
@@ -205,6 +219,14 @@
     [self setJsonFromDictionary:json];
 }
 
+- (void)updatePasteboardWithItem:(PasteboardItem *)item
+              fromHistoryWithKey:(NSString *)historyKey
+                 shouldAutoPaste:(BOOL)shouldAutoPaste {
+    dispatch_async(_queue, ^{
+      [self _reallyUpdatePasteboardWithItem:item fromHistoryWithKey:historyKey shouldAutoPaste:shouldAutoPaste];
+    });
+}
+
 /**
  * Updates the pasteboard with an item's content.
  *
@@ -212,9 +234,9 @@
  * @param historyKey The key for the history which the item is from.
  * @param shouldAutoPaste Whether the helper should automatically paste the new content.
  */
-- (void)updatePasteboardWithItem:(PasteboardItem *)item
-              fromHistoryWithKey:(NSString *)historyKey
-                 shouldAutoPaste:(BOOL)shouldAutoPaste {
+- (void)_reallyUpdatePasteboardWithItem:(PasteboardItem *)item
+                     fromHistoryWithKey:(NSString *)historyKey
+                        shouldAutoPaste:(BOOL)shouldAutoPaste {
     [_pasteboard setString:@""];
 
     if (![[item imageName] isEqualToString:@""]) {

@@ -62,7 +62,11 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
 /**
  * Receives the notification that the pasteboard changed from the daemon and pulls the new changes.
  */
-static void pasteboard_changed() { [[PasteboardManager sharedInstance] pullPasteboardChanges]; }
+static void pasteboard_changed() {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [[PasteboardManager sharedInstance] pullPasteboardChanges];
+    });
+}
 
 /**
  * Shows the history.
@@ -122,6 +126,7 @@ static void load_preferences() {
     kayokoPrefsPlayHapticFeedback = [[kayokoPreferences objectForKey:kPreferenceKeyPlayHapticFeedback] boolValue];
     kayokoPrefsHeightInPoints = [[kayokoPreferences objectForKey:kPreferenceKeyHeightInPoints] doubleValue];
 
+    [[PasteboardManager sharedInstance] preparePasteboardQueue];
     [[PasteboardManager sharedInstance] setMaximumHistoryAmount:kayokoPrefsMaximumHistoryAmount];
     [[PasteboardManager sharedInstance] setSaveText:kayokoPrefsSaveText];
     [[PasteboardManager sharedInstance] setSaveImages:kayokoPrefsSaveImages];
@@ -173,6 +178,8 @@ __attribute((constructor)) static void initialize() {
         if (!kayokoPrefsEnabled) {
             return;
         }
+
+        EnableKayokoDisablePasteTips();
 
         MSHookMessageEx(objc_getClass("UIStatusBarWindow"), @selector(initWithFrame:),
                         (IMP)&override_UIStatusBarWindow_initWithFrame, (IMP *)&orig_UIStatusBarWindow_initWithFrame);
