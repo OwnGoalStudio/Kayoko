@@ -1,5 +1,6 @@
-export ARCHS = arm64 arm64e
-export TARGET = iphone:clang:16.5:14.0
+export PACKAGE_VERSION := 2.1
+export ARCHS := arm64 arm64e
+export TARGET := iphone:clang:16.5:14.0
 
 INSTALL_TARGET_PROCESSES := SpringBoard Preferences druid pasted
 
