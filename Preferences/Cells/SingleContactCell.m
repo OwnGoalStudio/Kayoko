@@ -6,6 +6,7 @@
 //
 
 #import "SingleContactCell.h"
+#include <sys/qos.h>
 
 @implementation SingleContactCell
 
@@ -120,9 +121,23 @@
     }
     [self fetchAvatarUrlWithCompletion:^(NSURL *avatarUrl) {
       if (avatarUrl) {
-          dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            NSData *imageData = [NSData dataWithContentsOfURL:avatarUrl];
-            UIImage *avatar = [UIImage imageWithData:imageData];
+          dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+            NSString *cacheDir =
+                [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) objectAtIndex:0];
+            NSString *avatarPath = [cacheDir
+                stringByAppendingPathComponent:[NSString stringWithFormat:@"%@_%@.png", NSStringFromClass([self class]),
+                                                                          [self username]]];
+            UIImage *avatar = nil;
+            if (!avatar) {
+                avatar = [UIImage imageWithContentsOfFile:avatarPath];
+            }
+            if (!avatar) {
+                NSData *imageData = [NSData dataWithContentsOfURL:avatarUrl];
+                if (imageData) {
+                    [imageData writeToFile:avatarPath atomically:YES];
+                }
+                avatar = [UIImage imageWithData:imageData];
+            }
             dispatch_async(dispatch_get_main_queue(), ^{
               cachedAvatar = avatar;
               completion(avatar);
