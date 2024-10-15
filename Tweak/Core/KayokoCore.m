@@ -6,9 +6,10 @@
 //
 
 #import "KayokoCore.h"
-#include "rootless.h"
+#include "HBLog.h"
 
 #import <AudioToolbox/AudioToolbox.h>
+#import <rootless.h>
 #import <substrate.h>
 
 #import "NotificationKeys.h"
