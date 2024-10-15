@@ -52,6 +52,15 @@
     return kHistoryImagesPath;
 }
 
++ (NSBundle *)localizationBundle {
+    static NSBundle *kLocalizationBundle = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+      kLocalizationBundle = [NSBundle bundleWithPath:ROOT_PATH_NS(@"/Library/PreferenceBundles/KayokoPreferences.bundle")];
+    });
+    return kLocalizationBundle;
+}
+
 /**
  * Creates the manager using the shared instance.
  */

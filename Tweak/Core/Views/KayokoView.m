@@ -6,12 +6,12 @@
 //
 
 #import "KayokoView.h"
-#import <rootless.h>
-#import "KayokoHistoryTableView.h"
 #import "KayokoFavoritesTableView.h"
+#import "KayokoHistoryTableView.h"
 #import "KayokoPreviewView.h"
-#import "PasteboardManager.h"
 #import "PasteboardItem.h"
+#import "PasteboardManager.h"
+#import <rootless.h>
 
 @implementation KayokoView
 
@@ -54,10 +54,13 @@
             [[[self headerView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]]
         ]];
 
-        [self setPanGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePanGestureRecognizer:)]];
+        [self setPanGestureRecognizer:[[UIPanGestureRecognizer alloc]
+                                          initWithTarget:self
+                                                  action:@selector(handlePanGestureRecognizer:)]];
         [[self headerView] addGestureRecognizer:[self panGestureRecognizer]];
 
-        [self setTapGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(hidePreview)]];
+        [self setTapGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self
+                                                                              action:@selector(hidePreview)]];
         [[self headerView] addGestureRecognizer:[self tapGestureRecognizer]];
 
         [self setGrabber:[[_UIGrabber alloc] init]];
@@ -70,18 +73,27 @@
         ]];
 
         [self setFavoritesButton:[[UIButton alloc] init]];
-        [[self favoritesButton] addTarget:self action:@selector(handleFavoritesButtonPressed) forControlEvents:UIControlEventTouchUpInside];
-        [self updateStyleForHeaderButton:[self favoritesButton] withImageName:@"heart" andImageSize:kFavoritesButtonImageSize andTintColor:[UIColor labelColor]];
+        [[self favoritesButton] addTarget:self
+                                   action:@selector(handleFavoritesButtonPressed)
+                         forControlEvents:UIControlEventTouchUpInside];
+        [self updateStyleForHeaderButton:[self favoritesButton]
+                           withImageName:@"heart"
+                            andImageSize:kFavoritesButtonImageSize
+                            andTintColor:[UIColor labelColor]];
         [[self headerView] addSubview:[self favoritesButton]];
 
         [[self favoritesButton] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self favoritesButton] bottomAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor] constant:-2],
-            [[[self favoritesButton] leadingAnchor] constraintEqualToAnchor:[[self headerView] leadingAnchor] constant:24]
+            [[[self favoritesButton] bottomAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor]
+                                                                  constant:-2],
+            [[[self favoritesButton] leadingAnchor] constraintEqualToAnchor:[[self headerView] leadingAnchor]
+                                                                   constant:24]
         ]];
 
         [self setTitleLabel:[[UILabel alloc] init]];
-        [[self titleLabel] setText:@"History"];
+        [[self titleLabel] setText:[[PasteboardManager localizationBundle] localizedStringForKey:@"History"
+                                                                                           value:nil
+                                                                                           table:@"Tweak"]];
         [[self titleLabel] setFont:[UIFont systemFontOfSize:26 weight:UIFontWeightSemibold]];
         [[self titleLabel] setTextColor:[UIColor labelColor]];
         [[self headerView] addSubview:[self titleLabel]];
@@ -89,21 +101,31 @@
         [[self titleLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
             [[[self titleLabel] centerYAnchor] constraintEqualToAnchor:[[self favoritesButton] centerYAnchor]],
-            [[[self titleLabel] leadingAnchor] constraintEqualToAnchor:[[self favoritesButton] trailingAnchor] constant:12]
+            [[[self titleLabel] leadingAnchor] constraintEqualToAnchor:[[self favoritesButton] trailingAnchor]
+                                                              constant:12]
         ]];
 
         [self setClearButton:[[UIButton alloc] init]];
-        [[self clearButton] addTarget:self action:@selector(handleClearButtonPressed) forControlEvents:UIControlEventTouchUpInside];
-        [self updateStyleForHeaderButton:[self clearButton] withImageName:@"trash" andImageSize:kClearButtonImageSize andTintColor:[UIColor labelColor]];
+        [[self clearButton] addTarget:self
+                               action:@selector(handleClearButtonPressed)
+                     forControlEvents:UIControlEventTouchUpInside];
+        [self updateStyleForHeaderButton:[self clearButton]
+                           withImageName:@"trash"
+                            andImageSize:kClearButtonImageSize
+                            andTintColor:[UIColor labelColor]];
         [[self headerView] addSubview:[self clearButton]];
 
         [[self clearButton] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
             [[[self clearButton] centerYAnchor] constraintEqualToAnchor:[[self favoritesButton] centerYAnchor]],
-            [[[self clearButton] trailingAnchor] constraintEqualToAnchor:[[self headerView] trailingAnchor] constant:-24]
+            [[[self clearButton] trailingAnchor] constraintEqualToAnchor:[[self headerView] trailingAnchor]
+                                                                constant:-24]
         ]];
 
-        [self setHistoryTableView:[[KayokoHistoryTableView alloc] initWithName:@"History"]];
+        [self setHistoryTableView:[[KayokoHistoryTableView alloc] initWithName:[[PasteboardManager localizationBundle]
+                                                                                   localizedStringForKey:@"History"
+                                                                                                   value:nil
+                                                                                                   table:@"Tweak"]]];
         [self addSubview:[self historyTableView]];
 
         [[self historyTableView] setTranslatesAutoresizingMaskIntoConstraints:NO];
@@ -114,7 +136,11 @@
             [[[self historyTableView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
 
-        [self setFavoritesTableView:[[KayokoFavoritesTableView alloc] initWithName:@"Favorites"]];
+        [self
+            setFavoritesTableView:[[KayokoFavoritesTableView alloc] initWithName:[[PasteboardManager localizationBundle]
+                                                                                     localizedStringForKey:@"Favorites"
+                                                                                                     value:nil
+                                                                                                     table:@"Tweak"]]];
         [[self favoritesTableView] setHidden:YES];
         [self addSubview:[self favoritesTableView]];
 
@@ -128,7 +154,10 @@
             [[[self favoritesTableView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
 
-        [self setPreviewView:[[KayokoPreviewView alloc] initWithName:@"Preview"]];
+        [self setPreviewView:[[KayokoPreviewView alloc]
+                                 initWithName:[[PasteboardManager localizationBundle] localizedStringForKey:@"Preview"
+                                                                                                      value:nil
+                                                                                                      table:@"Tweak"]]];
         [[self previewView] setHidden:YES];
         [self addSubview:[self previewView]];
 
@@ -161,10 +190,16 @@
         }
 
         CGFloat alpha = fabs(translation.y / kMaxTranslation);
-        [UIView animateWithDuration:0.1 delay:0 usingSpringWithDamping:0.7 initialSpringVelocity:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
-            [self setTransform:CGAffineTransformMakeTranslation(0, translation.y)];
-            [self setAlpha:1 - alpha];
-        } completion:nil];
+        [UIView animateWithDuration:0.1
+                              delay:0
+             usingSpringWithDamping:0.7
+              initialSpringVelocity:0
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+                           [self setTransform:CGAffineTransformMakeTranslation(0, translation.y)];
+                           [self setAlpha:1 - alpha];
+                         }
+                         completion:nil];
 
         if (translation.y >= kMaxTranslation) {
             [self hide];
@@ -172,10 +207,16 @@
         }
     } else if ([recognizer state] == UIGestureRecognizerStateEnded) {
         if (translation.y < kMaxTranslation) {
-            [UIView animateWithDuration:0.4 delay:0 usingSpringWithDamping:1 initialSpringVelocity:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
-                [self setTransform:CGAffineTransformIdentity];
-                [self setAlpha:1];
-            } completion:nil];
+            [UIView animateWithDuration:0.4
+                                  delay:0
+                 usingSpringWithDamping:1
+                  initialSpringVelocity:0
+                                options:UIViewAnimationOptionCurveEaseOut
+                             animations:^{
+                               [self setTransform:CGAffineTransformIdentity];
+                               [self setAlpha:1];
+                             }
+                             completion:nil];
         }
     }
 }
@@ -187,9 +228,14 @@
  * @param imageName The name of the system image to use on the button.
  * @param color The color to use for the image.
  */
-- (void)updateStyleForHeaderButton:(UIButton *)button withImageName:(NSString *)imageName andImageSize:(NSUInteger)imageSize andTintColor:(UIColor *)color {
-    UIImageSymbolConfiguration* configuration = [UIImageSymbolConfiguration configurationWithPointSize:imageSize weight:UIImageSymbolWeightMedium];
-    [button setImage:[[UIImage systemImageNamed:imageName] imageWithConfiguration:configuration] forState:UIControlStateNormal];
+- (void)updateStyleForHeaderButton:(UIButton *)button
+                     withImageName:(NSString *)imageName
+                      andImageSize:(NSUInteger)imageSize
+                      andTintColor:(UIColor *)color {
+    UIImageSymbolConfiguration *configuration =
+        [UIImageSymbolConfiguration configurationWithPointSize:imageSize weight:UIImageSymbolWeightMedium];
+    [button setImage:[[UIImage systemImageNamed:imageName] imageWithConfiguration:configuration]
+            forState:UIControlStateNormal];
     [button setTintColor:color];
 }
 
@@ -208,19 +254,25 @@
     }
 
     if ([[self historyTableView] isHidden]) {
-        NSArray* items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyHistory];
+        NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyHistory];
         [[self historyTableView] reloadDataWithItems:items];
 
         [self showContentView:[self historyTableView] andHideContentView:[self favoritesTableView] reverse:YES];
 
-        [self updateStyleForHeaderButton:[self favoritesButton] withImageName:@"heart" andImageSize:kFavoritesButtonImageSize andTintColor:[UIColor labelColor]];
+        [self updateStyleForHeaderButton:[self favoritesButton]
+                           withImageName:@"heart"
+                            andImageSize:kFavoritesButtonImageSize
+                            andTintColor:[UIColor labelColor]];
     } else {
-        NSArray* items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyFavorites];
+        NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyFavorites];
         [[self favoritesTableView] reloadDataWithItems:items];
 
         [self showContentView:[self favoritesTableView] andHideContentView:[self historyTableView] reverse:NO];
 
-        [self updateStyleForHeaderButton:[self favoritesButton] withImageName:@"heart.fill" andImageSize:kFavoritesButtonImageSize andTintColor:[UIColor systemPinkColor]];
+        [self updateStyleForHeaderButton:[self favoritesButton]
+                           withImageName:@"heart.fill"
+                            andImageSize:kFavoritesButtonImageSize
+                            andTintColor:[UIColor systemPinkColor]];
     }
 
     [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
@@ -229,29 +281,51 @@
 - (void)handleClearButtonPressed {
     [self hide];
 
-    NSString* key = [[self historyTableView] isHidden] ? kHistoryKeyFavorites : kHistoryKeyHistory;
-    UIAlertController* clearAlert = [UIAlertController alertControllerWithTitle:@"Kayoko" message:[NSString stringWithFormat:@"This will clear your %@.", key] preferredStyle:UIAlertControllerStyleAlert];
+    NSString *key = [[self historyTableView] isHidden] ? kHistoryKeyFavorites : kHistoryKeyHistory;
+    UIAlertController *clearAlert = [UIAlertController
+        alertControllerWithTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"Kayoko"
+                                                                                         value:nil
+                                                                                         table:@"Tweak"]
+                         message:[NSString stringWithFormat:[[PasteboardManager localizationBundle]
+                                                                localizedStringForKey:@"This will clear your %@."
+                                                                                value:nil
+                                                                                table:@"Tweak"],
+                                                            [[PasteboardManager localizationBundle]
+                                                                localizedStringForKey:key
+                                                                                value:nil
+                                                                                table:@"Tweak"]]
+                  preferredStyle:UIAlertControllerStyleAlert];
 
-    UIAlertAction* yesAction = [UIAlertAction actionWithTitle:@"Yes" style:UIAlertActionStyleDestructive handler:^(UIAlertAction* action) {
-        NSArray* items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:key];
-        for (NSDictionary* dictionary in items) {
-            PasteboardItem* item = [PasteboardItem itemFromDictionary:dictionary];
-            [[PasteboardManager sharedInstance] removePasteboardItem:item fromHistoryWithKey:key shouldRemoveImage:YES];
-        }
+    UIAlertAction *yesAction = [UIAlertAction
+        actionWithTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"Yes" value:nil table:@"Tweak"]
+                  style:UIAlertActionStyleDestructive
+                handler:^(UIAlertAction *action) {
+                  NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:key];
+                  for (NSDictionary *dictionary in items) {
+                      PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
+                      [[PasteboardManager sharedInstance] removePasteboardItem:item
+                                                            fromHistoryWithKey:key
+                                                             shouldRemoveImage:YES];
+                  }
 
-        [self show];
-	}];
+                  [self show];
+                }];
 
-	UIAlertAction* noAction = [UIAlertAction actionWithTitle:@"No" style:UIAlertActionStyleCancel handler:^(UIAlertAction* action) {
-        [self show];
-    }];
+    UIAlertAction *noAction = [UIAlertAction
+        actionWithTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"No" value:nil table:@"Tweak"]
+                  style:UIAlertActionStyleCancel
+                handler:^(UIAlertAction *action) {
+                  [self show];
+                }];
 
-	[clearAlert addAction:yesAction];
-	[clearAlert addAction:noAction];
+    [clearAlert addAction:yesAction];
+    [clearAlert addAction:noAction];
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-	[[[[UIApplication sharedApplication] keyWindow] rootViewController] presentViewController:clearAlert animated:YES completion:nil];
+    [[[[UIApplication sharedApplication] keyWindow] rootViewController] presentViewController:clearAlert
+                                                                                     animated:YES
+                                                                                   completion:nil];
 #pragma clang diagnostic pop
 
     [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleHeavy];
@@ -267,7 +341,9 @@
         [[[self previewView] webView] loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[item content]]]];
         [[[self previewView] webView] setHidden:NO];
     } else if (![[item imageName] isEqualToString:@""]) {
-        NSData* imageData = [[NSFileManager defaultManager] contentsAtPath:[NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]]];
+        NSData *imageData = [[NSFileManager defaultManager]
+            contentsAtPath:[NSString
+                               stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]]];
         [[[self previewView] imageView] setImage:[UIImage imageWithData:imageData]];
         [[[self previewView] imageView] setHidden:NO];
     } else {
@@ -303,9 +379,13 @@
  * @param reverse Whether the animation should play reversed for a mirrored effect.
  */
 - (void)showContentView:(UIView *)viewToShow andHideContentView:(UIView *)viewToHide reverse:(BOOL)reverse {
-    [UIView transitionWithView:[self titleLabel] duration:0.1 options:UIViewAnimationOptionTransitionCrossDissolve animations:^{
-        [[self titleLabel] setText:[viewToShow valueForKey:@"_name"]];
-    } completion:nil];
+    [UIView transitionWithView:[self titleLabel]
+                      duration:0.1
+                       options:UIViewAnimationOptionTransitionCrossDissolve
+                    animations:^{
+                      [[self titleLabel] setText:[viewToShow valueForKey:@"_name"]];
+                    }
+                    completion:nil];
 
     CGFloat viewToShowTransform = reverse ? 10 : -10;
     [viewToShow setTransform:CGAffineTransformTranslate(viewToShow.transform, 0, viewToShowTransform)];
@@ -313,17 +393,23 @@
     [viewToShow setHidden:NO];
 
     _isAnimating = YES;
-    [UIView animateWithDuration:0.3 delay:0 usingSpringWithDamping:1 initialSpringVelocity:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
-        [viewToShow setTransform:CGAffineTransformIdentity];
-        [viewToShow setAlpha:1];
+    [UIView animateWithDuration:0.3
+        delay:0
+        usingSpringWithDamping:1
+        initialSpringVelocity:0
+        options:UIViewAnimationOptionCurveEaseOut
+        animations:^{
+          [viewToShow setTransform:CGAffineTransformIdentity];
+          [viewToShow setAlpha:1];
 
-        CGFloat viewToHideTransform = reverse ? -10 : 10;
-        [viewToHide setTransform:CGAffineTransformTranslate(viewToShow.transform, 0, viewToHideTransform)];
-        [viewToHide setAlpha:0];
-    } completion:^(BOOL finished) {
-        [viewToHide setHidden:YES];
-        _isAnimating = NO;
-    }];
+          CGFloat viewToHideTransform = reverse ? -10 : 10;
+          [viewToHide setTransform:CGAffineTransformTranslate(viewToShow.transform, 0, viewToHideTransform)];
+          [viewToHide setAlpha:0];
+        }
+        completion:^(BOOL finished) {
+          [viewToHide setHidden:YES];
+          _isAnimating = NO;
+        }];
 }
 
 /**
@@ -343,10 +429,10 @@
  */
 - (void)reload {
     if (![[self historyTableView] isHidden]) {
-        NSArray* items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyHistory];
+        NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyHistory];
         [[self historyTableView] reloadDataWithItems:items];
     } else {
-        NSArray* items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyFavorites];
+        NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyFavorites];
         [[self favoritesTableView] reloadDataWithItems:items];
     }
 }
@@ -369,12 +455,18 @@
     [self setHidden:NO];
 
     _isAnimating = YES;
-    [UIView animateWithDuration:0.3 delay:0 usingSpringWithDamping:1 initialSpringVelocity:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
-        [self setTransform:CGAffineTransformIdentity];
-        [self setAlpha:1];
-    } completion:^(BOOL finished) {
-        _isAnimating = NO;
-    }];
+    [UIView animateWithDuration:0.3
+        delay:0
+        usingSpringWithDamping:1
+        initialSpringVelocity:0
+        options:UIViewAnimationOptionCurveEaseOut
+        animations:^{
+          [self setTransform:CGAffineTransformIdentity];
+          [self setAlpha:1];
+        }
+        completion:^(BOOL finished) {
+          _isAnimating = NO;
+        }];
 }
 
 /**
@@ -386,12 +478,18 @@
     }
 
     _isAnimating = YES;
-    [UIView animateWithDuration:0.2 delay:0 usingSpringWithDamping:1 initialSpringVelocity:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
-        [self setAlpha:0];
-    } completion:^(BOOL finished) {
-        [self setHidden:YES];
-        _isAnimating = NO;
-    }];
+    [UIView animateWithDuration:0.2
+        delay:0
+        usingSpringWithDamping:1
+        initialSpringVelocity:0
+        options:UIViewAnimationOptionCurveEaseOut
+        animations:^{
+          [self setAlpha:0];
+        }
+        completion:^(BOOL finished) {
+          [self setHidden:YES];
+          _isAnimating = NO;
+        }];
 }
 
 @end
