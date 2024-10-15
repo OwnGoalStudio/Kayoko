@@ -24,8 +24,10 @@
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier specifier:specifier];
 
     if (self) {
-        [self setTitle:[specifier propertyForKey:@"label"]];
-        [self setSubtitle:[specifier propertyForKey:@"subtitle"]];
+        NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+
+        [self setTitle:[bundle localizedStringForKey:[specifier propertyForKey:@"label"] value:nil table:@"Root"]];
+        [self setSubtitle:[bundle localizedStringForKey:[specifier propertyForKey:@"subtitle"] value:nil table:@"Root"]];
         [self setUrl:[specifier propertyForKey:@"url"]];
 
         [self setIndicatorImageView:[[UIImageView alloc] init]];
