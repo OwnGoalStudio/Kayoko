@@ -65,14 +65,22 @@
 
 - (id)initWithImageName:(id)arg1 identifier:(id)arg2 {
     if ([arg1 isEqualToString:@"mic"]) {
-        arg1 = @"list.clipboard";
+        if (@available(iOS 16, *)) {
+            arg1 = @"list.clipboard";
+        } else {
+            arg1 = @"doc.on.clipboard";
+        }
     }
     return %orig;
 }
 
 - (void)setImageName:(NSString *)arg1 {
     if ([arg1 isEqualToString:@"mic"]) {
-        arg1 = @"list.clipboard";
+        if (@available(iOS 16, *)) {
+            arg1 = @"list.clipboard";
+        } else {
+            arg1 = @"doc.on.clipboard";
+        }
     }
     %orig;
 }
