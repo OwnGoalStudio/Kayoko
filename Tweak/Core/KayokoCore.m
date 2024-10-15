@@ -62,8 +62,22 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
 /**
  * Receives the notification that the pasteboard changed from the daemon and pulls the new changes.
  */
-static void pasteboard_changed() {
+static void kayokoCopy() {
     [[PasteboardManager sharedInstance] pullPasteboardChanges];
+    if (kayokoPrefsPlaySoundEffects) {
+        static dispatch_once_t onceToken;
+        static SystemSoundID soundID;
+        dispatch_once(&onceToken, ^{
+          AudioServicesCreateSystemSoundID(
+              (__bridge CFURLRef)[NSURL
+                  fileURLWithPath:ROOT_PATH_NS(@"/Library/PreferenceBundles/KayokoPreferences.bundle/Copy.aiff")],
+              &soundID);
+        });
+        AudioServicesPlaySystemSound(soundID);
+    }
+    if (kayokoPrefsPlayHapticFeedback) {
+        AudioServicesPlaySystemSound(1519);
+    }
 }
 
 /**
@@ -183,7 +197,7 @@ __attribute((constructor)) static void initialize() {
                         (IMP)&override_UIStatusBarWindow_initWithFrame, (IMP *)&orig_UIStatusBarWindow_initWithFrame);
 
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
-                                        (CFNotificationCallback)pasteboard_changed,
+                                        (CFNotificationCallback)kayokoCopy,
                                         (CFStringRef)kNotificationKeyObserverPasteboardChanged, NULL,
                                         (CFNotificationSuspensionBehavior)kNilOptions);
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)show,
@@ -208,7 +222,9 @@ __attribute((constructor)) static void initialize() {
     NSArray *args = [[NSProcessInfo processInfo] arguments];
     NSString *processName = [[NSProcessInfo processInfo] processName];
     NSString *executablePath = [args firstObject];
-    BOOL isDruidOrPasted = ([executablePath hasPrefix:@"/System/Library/"] || [executablePath hasPrefix:@"/usr/libexec/"]) && ([processName isEqualToString:@"druid"] || [processName isEqualToString:@"pasted"]);
+    BOOL isDruidOrPasted =
+        ([executablePath hasPrefix:@"/System/Library/"] || [executablePath hasPrefix:@"/usr/libexec/"]) &&
+        ([processName isEqualToString:@"druid"] || [processName isEqualToString:@"pasted"]);
     if (isDruidOrPasted) {
         load_preferences();
 
