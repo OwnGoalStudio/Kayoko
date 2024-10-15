@@ -6,7 +6,7 @@
 //
 
 #import "SingleContactCell.h"
-#include <Foundation/NSDictionary.h>
+#import <Foundation/NSDictionary.h>
 
 @implementation SingleContactCell
 

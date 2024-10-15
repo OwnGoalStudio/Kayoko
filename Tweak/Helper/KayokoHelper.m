@@ -10,8 +10,8 @@
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 #import "PreferenceKeys.h"
-#include <CoreFoundation/CFNotificationCenter.h>
 
+#import <CoreFoundation/CFNotificationCenter.h>
 #import <Foundation/Foundation.h>
 #import <libSandy.h>
 #import <substrate.h>
