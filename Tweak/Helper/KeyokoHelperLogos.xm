@@ -87,6 +87,28 @@
 
 %end
 
+%hook UIKeyboardDockItemButton
+
+- (CGRect)imageRectForContentRect:(CGRect)arg1 {
+    CGRect origRect = %orig;
+    if (@available(iOS 16, *)) {
+        if (ABS(origRect.size.width - origRect.size.height) > 1.0) {
+            CGSize newSize = CGSizeMake(origRect.size.width * 0.92, origRect.size.height * 0.92);
+            CGPoint newOrigin = CGPointMake(origRect.origin.x + (origRect.size.width - newSize.width) / 2, origRect.origin.y + (origRect.size.height - newSize.height) / 2);
+            return CGRectMake(newOrigin.x, newOrigin.y, newSize.width, newSize.height);
+        }
+    } else {
+        if (ABS(origRect.size.width - origRect.size.height) > 1.0) {
+            CGSize newSize = CGSizeMake(origRect.size.width * 0.86, origRect.size.height * 0.86);
+            CGPoint newOrigin = CGPointMake(origRect.origin.x + (origRect.size.width - newSize.width) / 2, origRect.origin.y + (origRect.size.height - newSize.height) / 2);
+            return CGRectMake(newOrigin.x, newOrigin.y, newSize.width, newSize.height);
+        }
+    }
+    return origRect;
+}
+
+%end
+
 %hook UISystemKeyboardDockController
 
 - (void)dictationItemButtonWasPressed:(id)arg1 withEvent:(id)arg2 isRunningButton:(BOOL)arg3 {
