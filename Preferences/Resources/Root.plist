@@ -19,6 +19,16 @@
 			<integer>58</integer>
 		</dict>
 		<dict>
+			<key>cellClass</key>
+			<string>SingleContactCell</string>
+			<key>displayName</key>
+			<string>82Flex</string>
+			<key>username</key>
+			<string>Lessica</string>
+			<key>height</key>
+			<integer>58</integer>
+		</dict>
+		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>default</key>
@@ -287,6 +297,31 @@
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Maintainer</string>
+			<key>footerText</key>
+			<string>Latest maintainer of Kayoko.</string>
+		</dict>
+		<dict>
+			<key>cellClass</key>
+			<string>LinkCell</string>
+			<key>label</key>
+			<string>Made with ♥ by OwnGoal Studio</string>
+			<key>subtitle</key>
+			<string>Please support our paid works, thank you!</string>
+			<key>url</key>
+			<string>https://havoc.app/search/82Flex</string>
+			<key>height</key>
+			<integer>54</integer>
+		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Original Author</string>
+			<key>footerText</key>
+			<string>Original author of Kayoko.</string>
 		</dict>
 		<dict>
 			<key>cellClass</key>

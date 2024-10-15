@@ -6,6 +6,7 @@
 //
 
 #import "SingleContactCell.h"
+#include <Foundation/NSDictionary.h>
 
 @implementation SingleContactCell
 
@@ -113,10 +114,13 @@
  * Fetches the user's avatar.
  */
 - (void)fetchAvatarWithCompletion:(void (^)(UIImage *avatar))completion {
-    static UIImage *cachedAvatar = nil;
-    if (cachedAvatar) {
-        completion(cachedAvatar);
+    static NSMutableDictionary<NSString *, UIImage *> *cachedAvatars = nil;
+    if (self.username && cachedAvatars[self.username]) {
+        completion(cachedAvatars[self.username]);
         return;
+    }
+    if (!cachedAvatars) {
+        cachedAvatars = [NSMutableDictionary dictionary];
     }
     [self fetchAvatarUrlWithCompletion:^(NSURL *avatarUrl) {
       if (avatarUrl) {
@@ -138,7 +142,9 @@
                 avatar = [UIImage imageWithData:imageData];
             }
             dispatch_async(dispatch_get_main_queue(), ^{
-              cachedAvatar = avatar;
+              if (self.username && avatar) {
+                  cachedAvatars[self.username] = avatar;
+              }
               completion(avatar);
             });
           });
