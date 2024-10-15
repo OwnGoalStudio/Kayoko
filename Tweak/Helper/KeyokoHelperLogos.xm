@@ -59,6 +59,42 @@
 
 %end // KayokoActivationGlobe
 
+%group KayokoActivationDictation
+
+%hook UIKeyboardDockItem
+
+- (id)initWithImageName:(id)arg1 identifier:(id)arg2 {
+    if ([arg1 isEqualToString:@"mic"]) {
+        arg1 = @"list.clipboard";
+    }
+    return %orig;
+}
+
+- (void)setImageName:(NSString *)arg1 {
+    if ([arg1 isEqualToString:@"mic"]) {
+        arg1 = @"list.clipboard";
+    }
+    %orig;
+}
+
+%end
+
+%hook UISystemKeyboardDockController
+
+- (void)dictationItemButtonWasPressed:(id)arg1 withEvent:(id)arg2 isRunningButton:(BOOL)arg3 {
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (CFStringRef)kNotificationKeyCoreShow, nil, nil, YES);
+}
+
+%end
+
+%end // KayokoActivationDictation
+
+
 void EnableKayokoActivationGlobe(void) {
     %init(KayokoActivationGlobe);
+}
+
+void EnableKayokoActivationDictation(void) {
+    %init(KayokoActivationDictation);
 }

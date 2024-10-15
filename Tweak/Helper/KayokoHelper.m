@@ -6,11 +6,12 @@
 //
 
 #import "KayokoHelper.h"
-#include <Foundation/NSString.h>
 #import "NotificationKeys.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 #import "PreferenceKeys.h"
+
+#import <Foundation/Foundation.h>
 #import <libSandy.h>
 #import <substrate.h>
 
@@ -379,6 +380,7 @@ __attribute((constructor)) static void initialize() {
                         (IMP)&override_UIPredictionViewController_predictionView_didSelectCandidate,
                         (IMP *)&orig_UIPredictionViewController_predictionView_didSelectCandidate);
     } else if (kayokoHelperPrefsActivationMethod == kActivationMethodDictationKey) {
+        EnableKayokoActivationDictation();
         MSHookMessageEx(objc_getClass("UISystemKeyboardDockController"),
                         @selector(dictationItemButtonWasPressed:withEvent:),
                         (IMP)&override_UISystemKeyboardDockController_dictationItemButtonWasPressed_withEvent, nil);

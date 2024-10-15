@@ -13,6 +13,7 @@ OBJC_EXTERN NSUInteger kayokoHelperPrefsActivationMethod;
 OBJC_EXTERN BOOL kayokoHelperPrefsAutomaticallyPaste;
 
 OBJC_EXTERN void EnableKayokoActivationGlobe(void);
+OBJC_EXTERN void EnableKayokoActivationDictation(void);
 
 @interface TIKeyboardCandidate : NSObject
 @end
