@@ -63,9 +63,7 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
  * Receives the notification that the pasteboard changed from the daemon and pulls the new changes.
  */
 static void pasteboard_changed() {
-    dispatch_async(dispatch_get_main_queue(), ^{
-      [[PasteboardManager sharedInstance] pullPasteboardChanges];
-    });
+    [[PasteboardManager sharedInstance] pullPasteboardChanges];
 }
 
 /**

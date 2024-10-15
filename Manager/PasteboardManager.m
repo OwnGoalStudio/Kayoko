@@ -73,13 +73,19 @@
 }
 
 - (void)preparePasteboardQueue {
-    _queue = dispatch_queue_create("codes.aurora.kayoko.queue.pasteboard", DISPATCH_QUEUE_SERIAL);
+    if (@available(iOS 16, *)) {
+        _queue = dispatch_queue_create("codes.aurora.kayoko.queue.pasteboard", DISPATCH_QUEUE_SERIAL);
+    }
 }
 
 - (void)pullPasteboardChanges {
-    dispatch_async(_queue, ^{
-      [self _reallyPullPasteboardChanges];
-    });
+    if (@available(iOS 16, *)) {
+        dispatch_async(_queue, ^{
+          [self _reallyPullPasteboardChanges];
+        });
+    } else {
+        [self _reallyPullPasteboardChanges];
+    }
 }
 
 /**
@@ -222,9 +228,13 @@
 - (void)updatePasteboardWithItem:(PasteboardItem *)item
               fromHistoryWithKey:(NSString *)historyKey
                  shouldAutoPaste:(BOOL)shouldAutoPaste {
-    dispatch_async(_queue, ^{
-      [self _reallyUpdatePasteboardWithItem:item fromHistoryWithKey:historyKey shouldAutoPaste:shouldAutoPaste];
-    });
+    if (@available(iOS 16, *)) {
+        dispatch_async(_queue, ^{
+          [self _reallyUpdatePasteboardWithItem:item fromHistoryWithKey:historyKey shouldAutoPaste:shouldAutoPaste];
+        });
+    } else {
+        [self _reallyUpdatePasteboardWithItem:item fromHistoryWithKey:historyKey shouldAutoPaste:shouldAutoPaste];
+    }
 }
 
 /**

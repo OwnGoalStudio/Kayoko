@@ -34,6 +34,10 @@
 
 %end
 
+%end // DruidUI
+
+%group Pasteboard
+
 %hook PBDruidRemotePasteAnnouncer
 
 + (void)announceDeniedPaste {
@@ -72,7 +76,7 @@
 
 %end
 
-%end // DruidUI
+%end // Pasteboard
 
 %group NoPasteAlerts16
 
@@ -100,6 +104,7 @@
 void EnableKayokoDisablePasteTips(void) {
     %init(DruidUI);
     if (@available(iOS 16, *)) {
+        %init(Pasteboard);
         %init(NoPasteAlerts16);
     }
 }
