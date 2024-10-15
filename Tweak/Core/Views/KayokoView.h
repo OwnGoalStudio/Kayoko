@@ -20,23 +20,23 @@ static NSUInteger const kClearButtonImageSize = 20;
 @end
 
 @interface KayokoView : UIView {
-    KayokoTableView* _previewSourceTableView;
+    KayokoTableView *_previewSourceTableView;
     BOOL _isAnimating;
 }
-@property(nonatomic)UIBlurEffect* blurEffect;
-@property(nonatomic)UIVisualEffectView* blurEffectView;
-@property(nonatomic)UIView* headerView;
-@property(nonatomic)UITapGestureRecognizer* tapGestureRecognizer;
-@property(nonatomic)_UIGrabber* grabber;
-@property(nonatomic)UILabel* titleLabel;
-@property(nonatomic)UIButton* clearButton;
-@property(nonatomic)UIButton* favoritesButton;
-@property(nonatomic)UIPanGestureRecognizer* panGestureRecognizer;
-@property(nonatomic)KayokoHistoryTableView* historyTableView;
-@property(nonatomic)KayokoFavoritesTableView* favoritesTableView;
-@property(nonatomic)KayokoPreviewView* previewView;
-@property(nonatomic)UIImpactFeedbackGenerator* feedbackGenerator;
-@property(nonatomic, assign)BOOL automaticallyPaste;
+@property(nonatomic, strong) UIBlurEffect *blurEffect;
+@property(nonatomic, strong) UIVisualEffectView *blurEffectView;
+@property(nonatomic, strong) UIView *headerView;
+@property(nonatomic, strong) UITapGestureRecognizer *tapGestureRecognizer;
+@property(nonatomic, strong) _UIGrabber *grabber;
+@property(nonatomic, strong) UILabel *titleLabel;
+@property(nonatomic, strong) UIButton *clearButton;
+@property(nonatomic, strong) UIButton *favoritesButton;
+@property(nonatomic, strong) UIPanGestureRecognizer *panGestureRecognizer;
+@property(nonatomic, strong) KayokoHistoryTableView *historyTableView;
+@property(nonatomic, strong) KayokoFavoritesTableView *favoritesTableView;
+@property(nonatomic, strong) KayokoPreviewView *previewView;
+@property(nonatomic, strong) UIImpactFeedbackGenerator *feedbackGenerator;
+@property(nonatomic, assign) BOOL automaticallyPaste;
 - (void)showPreviewWithItem:(PasteboardItem *)item;
 - (void)show;
 - (void)hide;

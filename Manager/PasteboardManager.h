@@ -9,32 +9,36 @@
 
 @class PasteboardItem;
 
-static NSString* const kHistoryKeyHistory = @"history";
-static NSString* const kHistoryKeyFavorites = @"favorites";
+static NSString *const kHistoryKeyHistory = @"history";
+static NSString *const kHistoryKeyFavorites = @"favorites";
 
 @interface PasteboardManager : NSObject {
-    UIPasteboard* _pasteboard;
+    UIPasteboard *_pasteboard;
     NSUInteger _lastChangeCount;
-    NSFileManager* _fileManager;
+    NSFileManager *_fileManager;
 }
-@property(nonatomic, assign)NSUInteger maximumHistoryAmount;
-@property(nonatomic, assign)BOOL saveText;
-@property(nonatomic, assign)BOOL saveImages;
-@property(nonatomic, assign)BOOL automaticallyPaste;
+@property(nonatomic, assign) NSUInteger maximumHistoryAmount;
+@property(nonatomic, assign) BOOL saveText;
+@property(nonatomic, assign) BOOL saveImages;
+@property(nonatomic, assign) BOOL automaticallyPaste;
 + (instancetype)sharedInstance;
 + (NSString *)historyPath;
 + (NSString *)historyImagesPath;
 - (void)pullPasteboardChanges;
 - (void)addPasteboardItem:(PasteboardItem *)item toHistoryWithKey:(NSString *)historyKey;
-- (void)updatePasteboardWithItem:(PasteboardItem *)item fromHistoryWithKey:(NSString *)historyKey shouldAutoPaste:(BOOL)shouldAutoPaste;
-- (void)removePasteboardItem:(PasteboardItem *)item fromHistoryWithKey:(NSString *)historyKey shouldRemoveImage:(BOOL)shouldRemoveImage;
+- (void)updatePasteboardWithItem:(PasteboardItem *)item
+              fromHistoryWithKey:(NSString *)historyKey
+                 shouldAutoPaste:(BOOL)shouldAutoPaste;
+- (void)removePasteboardItem:(PasteboardItem *)item
+          fromHistoryWithKey:(NSString *)historyKey
+           shouldRemoveImage:(BOOL)shouldRemoveImage;
 - (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey;
 - (PasteboardItem *)getLatestHistoryItem;
 - (UIImage *)getImageForItem:(PasteboardItem *)item;
 @end
 
 @interface SBApplication : NSObject
-@property(nonatomic, readonly)NSString* bundleIdentifier;
+@property(nonatomic, copy, readonly) NSString *bundleIdentifier;
 @end
 
 @interface UIApplication (Private)

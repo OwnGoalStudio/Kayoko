@@ -11,15 +11,17 @@
 
 static CGFloat const kHeight = 420;
 
-KayokoView* kayokoView;
+OBJC_EXTERN KayokoView* kayokoView;
 
-NSUserDefaults* preferences;
-BOOL pfEnabled;
+OBJC_EXTERN NSUserDefaults* kayokoPreferences;
+OBJC_EXTERN BOOL kayokoPrefsEnabled;
 
-NSUInteger pfMaximumHistoryAmount;
-BOOL pfSaveText;
-BOOL pfSaveImages;
-BOOL pfAutomaticallyPaste;
+OBJC_EXTERN NSUInteger kayokoPrefsMaximumHistoryAmount;
+OBJC_EXTERN BOOL kayokoPrefsSaveText;
+OBJC_EXTERN BOOL kayokoPrefsSaveImages;
+OBJC_EXTERN BOOL kayokoPrefsAutomaticallyPaste;
+
+OBJC_EXTERN void EnableKayokoActivationGlobe(void);
 
 @interface UIStatusBarWindow  : UIWindow
 @end

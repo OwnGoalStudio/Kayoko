@@ -5,16 +5,16 @@
 //  Created by Alexandra Aurora Göttlicher
 //
 
-#import <UIKit/UIKit.h>
 #import <Preferences/PSSpecifier.h>
+#import <UIKit/UIKit.h>
 
 @interface LinkCell : PSTableCell
-@property(nonatomic)UILabel* label;
-@property(nonatomic)UILabel* subtitleLabel;
-@property(nonatomic)UIImageView* indicatorImageView;
-@property(nonatomic)UIView* tapRecognizerView;
-@property(nonatomic)UITapGestureRecognizer* tap;
-@property(nonatomic)NSString* title;
-@property(nonatomic)NSString* subtitle;
-@property(nonatomic)NSString* url;
+@property(nonatomic, strong) UILabel *label;
+@property(nonatomic, strong) UILabel *subtitleLabel;
+@property(nonatomic, strong) UIImageView *indicatorImageView;
+@property(nonatomic, strong) UIView *tapRecognizerView;
+@property(nonatomic, strong) UITapGestureRecognizer *tap;
+@property(nonatomic, copy) NSString *title;
+@property(nonatomic, copy) NSString *subtitle;
+@property(nonatomic, copy) NSString *url;
 @end

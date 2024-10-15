@@ -14,6 +14,7 @@
 #import "PasteboardItem.h"
 
 @implementation KayokoView
+
 /**
  * Initializes the main view.
  *
@@ -392,4 +393,5 @@
         _isAnimating = NO;
     }];
 }
+
 @end

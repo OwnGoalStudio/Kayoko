@@ -7,23 +7,21 @@
 
 #import <UIKit/UIKit.h>
 
-BOOL shouldShowCustomSuggestions = NO;
-BOOL applicationIsInForeground = YES;
+OBJC_EXTERN NSUserDefaults *kayokoHelperPreferences;
+OBJC_EXTERN BOOL kayokoHelperPrefsEnabled;
+OBJC_EXTERN NSUInteger kayokoHelperPrefsActivationMethod;
+OBJC_EXTERN BOOL kayokoHelperPrefsAutomaticallyPaste;
 
-NSUserDefaults* preferences;
-BOOL pfEnabled;
-NSUInteger pfActivationMethod;
-BOOL pfAutomaticallyPaste;
+OBJC_EXTERN void EnableKayokoActivationGlobe(void);
 
 @interface TIKeyboardCandidate : NSObject
 @end
 
 @interface TIAutocorrectionList : NSObject
-+ (TIAutocorrectionList *)listWithAutocorrection:(TIKeyboardCandidate *)arg1 predictions:(NSArray *)predictions emojiList:(NSArray *)emojiList;
++ (TIAutocorrectionList *)listWithAutocorrection:(TIKeyboardCandidate *)arg1
+                                     predictions:(NSArray *)predictions
+                                       emojiList:(NSArray *)emojiList;
 @end
-
-static TIAutocorrectionList* createAutocorrectionList();
-static void paste();
 
 @interface UIKeyboardAutocorrectionController : NSObject
 - (void)setTextSuggestionList:(TIAutocorrectionList *)textSuggestionList;
@@ -37,8 +35,8 @@ static void paste();
 @end
 
 @interface TIZephyrCandidate : TIKeyboardCandidateSingle
-@property(nonatomic, copy)NSString* label;
-@property(nonatomic, copy)NSString* fromBundleId;
+@property(nonatomic, copy) NSString *label;
+@property(nonatomic, copy) NSString *fromBundleId;
 @end
 
 @interface UIPredictionViewController : UIViewController
@@ -60,14 +58,14 @@ static void paste();
 @end
 
 @interface UIKeyboardImpl : UIView
-@property(nonatomic, readonly)UIKeyboardAutocorrectionController* autocorrectionController;
-@property(nonatomic)UIKBInputDelegateManager* inputDelegateManager;
-@property(nonatomic, readonly)UIResponder <UITextInput>* inputDelegate;
+@property(nonatomic, strong, readonly) UIKeyboardAutocorrectionController *autocorrectionController;
+@property(nonatomic, strong) UIKBInputDelegateManager *inputDelegateManager;
+@property(nonatomic, strong, readonly) UIResponder<UITextInput> *inputDelegate;
 + (instancetype)activeInstance;
 - (void)insertText:(NSString *)text;
 @end
 
 @interface UIKBTree : NSObject
-@property(nonatomic)NSString* name;
-@property(nonatomic)NSMutableDictionary* properties;
+@property(nonatomic, copy) NSString *name;
+@property(nonatomic, strong) NSMutableDictionary *properties;
 @end

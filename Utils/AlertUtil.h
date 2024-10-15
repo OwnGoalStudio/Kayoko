@@ -8,5 +8,7 @@
 #import <Foundation/Foundation.h>
 
 @interface AlertUtil : NSObject
-+ (void)showAlertWithTitle:(NSString *)title andMessage:(NSString *)message withDismissButtonTitle:(NSString *)dismissButtonTitle;
++ (void)showAlertWithTitle:(NSString *)title
+                andMessage:(NSString *)message
+    withDismissButtonTitle:(NSString *)dismissButtonTitle;
 @end

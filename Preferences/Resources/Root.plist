@@ -22,7 +22,7 @@
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>default</key>
-			<true />
+			<true/>
 			<key>defaults</key>
 			<string>codes.aurora.kayoko.preferences</string>
 			<key>key</key>
@@ -59,9 +59,9 @@
 			<key>max</key>
 			<real>500</real>
 			<key>showValue</key>
-			<true />
+			<true/>
 			<key>isSegmented</key>
-			<true />
+			<true/>
 			<key>segmentCount</key>
 			<real>9</real>
 			<key>PostNotification</key>
@@ -71,7 +71,7 @@
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>default</key>
-			<true />
+			<true/>
 			<key>defaults</key>
 			<string>codes.aurora.kayoko.preferences</string>
 			<key>key</key>
@@ -85,7 +85,7 @@
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>default</key>
-			<true />
+			<true/>
 			<key>defaults</key>
 			<string>codes.aurora.kayoko.preferences</string>
 			<key>key</key>
@@ -104,7 +104,7 @@
 			<key>footerText</key>
 			<string>The "Prediction Bar" method displays custom suggestions on the "More Keyboard Keyplane" (123).</string>
 			<key>isStaticText</key>
-			<true />
+			<true/>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -116,25 +116,27 @@
 			<key>defaults</key>
 			<string>codes.aurora.kayoko.preferences</string>
 			<key>label</key>
-			<string>Activation Method:</string>
+			<string>Activation Method</string>
 			<key>key</key>
 			<string>ActivationMethod</string>
 			<key>validValues</key>
 			<array>
 				<integer>0</integer>
 				<integer>1</integer>
+				<integer>2</integer>
 			</array>
 			<key>validTitles</key>
 			<array>
 				<string>Prediction Bar</string>
 				<string>Dictation Key</string>
+				<string>Input Switcher</string>
 			</array>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>default</key>
-			<true />
+			<true/>
 			<key>defaults</key>
 			<string>codes.aurora.kayoko.preferences</string>
 			<key>key</key>
@@ -151,7 +153,7 @@
 			<key>footerText</key>
 			<string>Try out your changes by typing, copying and pasting text.</string>
 			<key>isStaticText</key>
-			<true />
+			<true/>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -173,6 +175,8 @@
 			<string>Respring</string>
 			<key>action</key>
 			<string>respring</string>
+			<key>isDestructive</key>
+			<true/>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -181,6 +185,8 @@
 			<string>Reset Preferences</string>
 			<key>action</key>
 			<string>resetPrompt</string>
+			<key>isDestructive</key>
+			<true/>
 		</dict>
 
 		<dict>
@@ -189,7 +195,7 @@
 			<key>footerText</key>
 			<string>Thanks to you and everyone who has helped in any way.</string>
 			<key>isStaticText</key>
-			<true />
+			<true/>
 		</dict>
 		<dict>
  			<key>cell</key>

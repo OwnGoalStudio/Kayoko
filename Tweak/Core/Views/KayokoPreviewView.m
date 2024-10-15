@@ -8,6 +8,7 @@
 #import "KayokoPreviewView.h"
 
 @implementation KayokoPreviewView
+
 /**
  * Initializes the preview view.
  */
@@ -77,4 +78,5 @@
     [[self webView] setHidden:YES];
     [[self webView] loadHTMLString:@"" baseURL:nil];
 }
+
 @end

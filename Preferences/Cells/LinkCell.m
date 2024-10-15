@@ -8,6 +8,7 @@
 #import "LinkCell.h"
 
 @implementation LinkCell
+
 /**
  * Initializes the link cell.
  *
@@ -17,7 +18,9 @@
  *
  * @return The cell.
  */
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier specifier:(PSSpecifier *)specifier {
+- (instancetype)initWithStyle:(UITableViewCellStyle)style
+              reuseIdentifier:(NSString *)reuseIdentifier
+                    specifier:(PSSpecifier *)specifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier specifier:specifier];
 
     if (self) {
@@ -48,7 +51,8 @@
         [NSLayoutConstraint activateConstraints:@[
             [[[self label] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor] constant:-10],
             [[[self label] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor] constant:16],
-            [[[self label] trailingAnchor] constraintEqualToAnchor:[[self indicatorImageView] leadingAnchor] constant:16]
+            [[[self label] trailingAnchor] constraintEqualToAnchor:[[self indicatorImageView] leadingAnchor]
+                                                          constant:16]
         ]];
 
         [self setSubtitleLabel:[[UILabel alloc] init]];
@@ -61,7 +65,8 @@
         [NSLayoutConstraint activateConstraints:@[
             [[[self subtitleLabel] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor] constant:10],
             [[[self subtitleLabel] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor] constant:16],
-            [[[self subtitleLabel] trailingAnchor] constraintEqualToAnchor:[[self indicatorImageView] leadingAnchor] constant:-16]
+            [[[self subtitleLabel] trailingAnchor] constraintEqualToAnchor:[[self indicatorImageView] leadingAnchor]
+                                                                  constant:-16]
         ]];
 
         [self setTapRecognizerView:[[UIView alloc] init]];
@@ -88,4 +93,5 @@
 - (void)openUrl {
     [[UIApplication sharedApplication] openURL:[NSURL URLWithString:[self url]] options:@{} completionHandler:nil];
 }
+
 @end

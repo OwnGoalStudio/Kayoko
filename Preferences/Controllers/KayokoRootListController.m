@@ -5,25 +5,26 @@
 //  Created by Alexandra Aurora Göttlicher
 //
 
-#include "KayokoRootListController.h"
-#import <rootless.h>
-#import <Preferences/PSSpecifier.h>
-#import "../../Manager/PasteboardManager.h"
-#import "../PreferenceKeys.h"
+#import "KayokoRootListController.h"
 #import "../NotificationKeys.h"
+#import "../PreferenceKeys.h"
+#import "PasteboardManager.h"
+#import <Preferences/PSSpecifier.h>
+#import <rootless.h>
 
 @implementation KayokoRootListController
+
 /**
  * Loads the root specifiers.
  *
  * @return The specifiers.
  */
 - (NSArray *)specifiers {
-	if (!_specifiers) {
-		_specifiers = [self loadSpecifiersFromPlistName:@"Root" target:self];
-	}
+    if (!_specifiers) {
+        _specifiers = [self loadSpecifiersFromPlistName:@"Root" target:self];
+    }
 
-	return _specifiers;
+    return _specifiers;
 }
 
 /**
@@ -37,10 +38,9 @@
 
     // Prompt to respring for options that require one to apply changes.
     if ([[specifier propertyForKey:@"key"] isEqualToString:kPreferenceKeyEnabled] ||
-		[[specifier propertyForKey:@"key"] isEqualToString:kPreferenceKeyActivationMethod] ||
-		[[specifier propertyForKey:@"key"] isEqualToString:kPreferenceKeyAutomaticallyPaste]
-	) {
-		[self promptToRespring];
+        [[specifier propertyForKey:@"key"] isEqualToString:kPreferenceKeyActivationMethod] ||
+        [[specifier propertyForKey:@"key"] isEqualToString:kPreferenceKeyAutomaticallyPaste]) {
+        [self promptToRespring];
     }
 }
 
@@ -58,58 +58,86 @@
  * Prompts the user to respring to apply changes.
  */
 - (void)promptToRespring {
-    UIAlertController* resetAlert = [UIAlertController alertControllerWithTitle:@"Kayoko" message:@"This option requires a respring to apply. Do you want to respring now?" preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *resetAlert = [UIAlertController
+        alertControllerWithTitle:@"Kayoko"
+                         message:@"This option requires a respring to apply. Do you want to respring now?"
+                  preferredStyle:UIAlertControllerStyleAlert];
 
-    UIAlertAction* yesAction = [UIAlertAction actionWithTitle:@"Yes" style:UIAlertActionStyleDestructive handler:^(UIAlertAction * action) {
-        [self respring];
-	}];
+    UIAlertAction *yesAction = [UIAlertAction actionWithTitle:@"Yes"
+                                                        style:UIAlertActionStyleDestructive
+                                                      handler:^(UIAlertAction *action) {
+                                                        [self respring];
+                                                      }];
 
-	UIAlertAction* noAction = [UIAlertAction actionWithTitle:@"No" style:UIAlertActionStyleCancel handler:nil];
+    UIAlertAction *noAction = [UIAlertAction actionWithTitle:@"No" style:UIAlertActionStyleCancel handler:nil];
 
-	[resetAlert addAction:yesAction];
-	[resetAlert addAction:noAction];
+    [resetAlert addAction:yesAction];
+    [resetAlert addAction:noAction];
 
-	[self presentViewController:resetAlert animated:YES completion:nil];
+    [self presentViewController:resetAlert animated:YES completion:nil];
 }
 
 /**
  * Resprings the device.
  */
 - (void)respring {
-	NSTask* task = [[NSTask alloc] init];
-	[task setLaunchPath:ROOT_PATH_NS(@"/usr/bin/killall")];
-	[task setArguments:@[@"backboardd"]];
-	[task launch];
+    NSTask *task = [[NSTask alloc] init];
+    [task setLaunchPath:ROOT_PATH_NS(@"/usr/bin/killall")];
+    [task setArguments:@[ @"backboardd" ]];
+    [task launch];
 }
 
 /**
  * Prompts the user to reset their preferences.
  */
 - (void)resetPrompt {
-    UIAlertController* resetAlert = [UIAlertController alertControllerWithTitle:@"Kayoko" message:@"Are you sure you want to reset your preferences?" preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *resetAlert =
+        [UIAlertController alertControllerWithTitle:@"Kayoko"
+                                            message:@"Are you sure you want to reset your preferences?"
+                                     preferredStyle:UIAlertControllerStyleAlert];
 
-    UIAlertAction* yesAction = [UIAlertAction actionWithTitle:@"Yes" style:UIAlertActionStyleDestructive handler:^(UIAlertAction * action) {
-        [self resetPreferences];
-	}];
+    UIAlertAction *yesAction = [UIAlertAction actionWithTitle:@"Yes"
+                                                        style:UIAlertActionStyleDestructive
+                                                      handler:^(UIAlertAction *action) {
+                                                        [self resetPreferences];
+                                                      }];
 
-	UIAlertAction* noAction = [UIAlertAction actionWithTitle:@"No" style:UIAlertActionStyleCancel handler:nil];
+    UIAlertAction *noAction = [UIAlertAction actionWithTitle:@"No" style:UIAlertActionStyleCancel handler:nil];
 
-	[resetAlert addAction:yesAction];
-	[resetAlert addAction:noAction];
+    [resetAlert addAction:yesAction];
+    [resetAlert addAction:noAction];
 
-	[self presentViewController:resetAlert animated:YES completion:nil];
+    [self presentViewController:resetAlert animated:YES completion:nil];
 }
 
 /**
  * Resets the preferences.
  */
 - (void)resetPreferences {
-	NSUserDefaults* userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
-	for (NSString* key in [userDefaults dictionaryRepresentation]) {
-		[userDefaults removeObjectForKey:key];
-	}
+    NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
+    for (NSString *key in [userDefaults dictionaryRepresentation]) {
+        [userDefaults removeObjectForKey:key];
+    }
 
-	[self reloadSpecifiers];
-	CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), (CFStringRef)kNotificationKeyPreferencesReload, nil, nil, YES);
+    [self reloadSpecifiers];
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (CFStringRef)kNotificationKeyPreferencesReload, nil, nil, YES);
 }
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.section == 4) {
+        PSSpecifier *specifier = [self specifierAtIndexPath:indexPath];
+        NSString *key = [specifier propertyForKey:@"cell"];
+        if ([key isEqualToString:@"PSButtonCell"]) {
+            UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
+            NSNumber *isDestructiveValue = [specifier propertyForKey:@"isDestructive"];
+            BOOL isDestructive = [isDestructiveValue boolValue];
+            cell.textLabel.textColor = isDestructive ? [UIColor systemRedColor] : [UIColor systemBlueColor];
+            cell.textLabel.highlightedTextColor = isDestructive ? [UIColor systemRedColor] : [UIColor systemBlueColor];
+            return cell;
+        }
+    }
+    return [super tableView:tableView cellForRowAtIndexPath:indexPath];
+}
+
 @end

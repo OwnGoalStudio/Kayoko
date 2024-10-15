@@ -12,6 +12,16 @@
 #import "PreferenceKeys.h"
 #import "NotificationKeys.h"
 
+KayokoView* kayokoView = nil;
+
+NSUserDefaults* kayokoPreferences = nil;
+BOOL kayokoPrefsEnabled = NO;
+
+NSUInteger kayokoPrefsMaximumHistoryAmount = 0;
+BOOL kayokoPrefsSaveText = NO;
+BOOL kayokoPrefsSaveImages = NO;
+BOOL kayokoPrefsAutomaticallyPaste = NO;
+
 #pragma mark - UIStatusBarWindow class hooks
 
 /**
@@ -29,7 +39,7 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow* self, SE
     if (!kayokoView) {
         CGRect bounds = [[UIScreen mainScreen] bounds];
         kayokoView = [[KayokoView alloc] initWithFrame:CGRectMake(0, bounds.size.height - kHeight, bounds.size.width, kHeight)];
-        [kayokoView setAutomaticallyPaste:pfAutomaticallyPaste];
+        [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
         [self addSubview:kayokoView];
     }
 }
@@ -76,9 +86,9 @@ static void reload() {
  * Loads the user's preferences.
  */
 static void load_preferences() {
-    preferences = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
+    kayokoPreferences = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
 
-    [preferences registerDefaults:@{
+    [kayokoPreferences registerDefaults:@{
         kPreferenceKeyEnabled: @(kPreferenceKeyEnabledDefaultValue),
         kPreferenceKeyMaximumHistoryAmount: @(kPreferenceKeyMaximumHistoryAmountDefaultValue),
         kPreferenceKeySaveText: @(kPreferenceKeySaveTextDefaultValue),
@@ -86,18 +96,18 @@ static void load_preferences() {
         kPreferenceKeyAutomaticallyPaste: @(kPreferenceKeyAutomaticallyPasteDefaultValue)
     }];
 
-    pfEnabled = [[preferences objectForKey:kPreferenceKeyEnabled] boolValue];
-    pfMaximumHistoryAmount = [[preferences objectForKey:kPreferenceKeyMaximumHistoryAmount] unsignedIntegerValue];
-    pfSaveText = [[preferences objectForKey:kPreferenceKeySaveText] boolValue];
-    pfSaveImages = [[preferences objectForKey:kPreferenceKeySaveImages] boolValue];
-    pfAutomaticallyPaste = [[preferences objectForKey:kPreferenceKeyAutomaticallyPaste] boolValue];
+    kayokoPrefsEnabled = [[kayokoPreferences objectForKey:kPreferenceKeyEnabled] boolValue];
+    kayokoPrefsMaximumHistoryAmount = [[kayokoPreferences objectForKey:kPreferenceKeyMaximumHistoryAmount] unsignedIntegerValue];
+    kayokoPrefsSaveText = [[kayokoPreferences objectForKey:kPreferenceKeySaveText] boolValue];
+    kayokoPrefsSaveImages = [[kayokoPreferences objectForKey:kPreferenceKeySaveImages] boolValue];
+    kayokoPrefsAutomaticallyPaste = [[kayokoPreferences objectForKey:kPreferenceKeyAutomaticallyPaste] boolValue];
 
-    [[PasteboardManager sharedInstance] setMaximumHistoryAmount:pfMaximumHistoryAmount];
-    [[PasteboardManager sharedInstance] setSaveText:pfSaveText];
-    [[PasteboardManager sharedInstance] setSaveImages:pfSaveImages];
-    [[PasteboardManager sharedInstance] setAutomaticallyPaste:pfAutomaticallyPaste];
+    [[PasteboardManager sharedInstance] setMaximumHistoryAmount:kayokoPrefsMaximumHistoryAmount];
+    [[PasteboardManager sharedInstance] setSaveText:kayokoPrefsSaveText];
+    [[PasteboardManager sharedInstance] setSaveImages:kayokoPrefsSaveImages];
+    [[PasteboardManager sharedInstance] setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
 
-    [kayokoView setAutomaticallyPaste:pfAutomaticallyPaste];
+    [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
 }
 
 #pragma mark - Constructor
@@ -112,7 +122,7 @@ static void load_preferences() {
 __attribute((constructor)) static void initialize() {
     load_preferences();
 
-    if (!pfEnabled) {
+    if (!kayokoPrefsEnabled) {
         return;
     }
 

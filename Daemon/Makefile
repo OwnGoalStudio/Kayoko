@@ -1,6 +1,8 @@
 TOOL_NAME := kayokod
 
 kayokod_FILES += KayokoDaemon.m
+kayokod_CFLAGS += -fobjc-arc
+kayokod_CFLAGS += -I../Preferences
 kayokod_INSTALL_PATH += /usr/libexec
 kayokod_CODESIGN_FLAGS += -Sentitlements.plist
 

@@ -8,6 +8,7 @@
 #import "SingleContactCell.h"
 
 @implementation SingleContactCell
+
 /**
  * Initializes the single contact cell.
  *
@@ -17,8 +18,10 @@
  *
  * @return The cell.
  */
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier specifier:(PSSpecifier *)specifier {
-	self = [super initWithStyle:style reuseIdentifier:reuseIdentifier specifier:specifier];
+- (instancetype)initWithStyle:(UITableViewCellStyle)style
+              reuseIdentifier:(NSString *)reuseIdentifier
+                    specifier:(PSSpecifier *)specifier {
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier specifier:specifier];
 
     if (self) {
         [self setDisplayName:[specifier propertyForKey:@"displayName"]];
@@ -26,10 +29,14 @@
 
         [self setAvatarImageView:[[UIImageView alloc] init]];
 
-        [self fetchAvatarWithCompletion:^(UIImage* avatar) {
-            [UIView transitionWithView:[self avatarImageView] duration:0.2 options:UIViewAnimationOptionTransitionCrossDissolve animations:^{
-                [[self avatarImageView] setImage:avatar];
-            } completion:nil];
+        [self fetchAvatarWithCompletion:^(UIImage *avatar) {
+          [UIView transitionWithView:[self avatarImageView]
+                            duration:0.2
+                             options:UIViewAnimationOptionTransitionCrossDissolve
+                          animations:^{
+                            [[self avatarImageView] setImage:avatar];
+                          }
+                          completion:nil];
         }];
 
         [[self avatarImageView] setContentMode:UIViewContentModeScaleAspectFill];
@@ -56,7 +63,8 @@
         [[self displayNameLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
             [[[self displayNameLabel] topAnchor] constraintEqualToAnchor:[[self avatarImageView] topAnchor] constant:4],
-            [[[self displayNameLabel] leadingAnchor] constraintEqualToAnchor:[[self avatarImageView] trailingAnchor] constant:8],
+            [[[self displayNameLabel] leadingAnchor] constraintEqualToAnchor:[[self avatarImageView] trailingAnchor]
+                                                                    constant:8],
             [[[self displayNameLabel] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor] constant:-16]
         ]];
 
@@ -68,9 +76,11 @@
 
         [[self usernameLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self usernameLabel] leadingAnchor] constraintEqualToAnchor:[[self avatarImageView] trailingAnchor] constant:8],
+            [[[self usernameLabel] leadingAnchor] constraintEqualToAnchor:[[self avatarImageView] trailingAnchor]
+                                                                 constant:8],
             [[[self usernameLabel] trailingAnchor] constraintEqualToAnchor:[[self displayNameLabel] trailingAnchor]],
-            [[[self usernameLabel] bottomAnchor] constraintEqualToAnchor:[[self avatarImageView] bottomAnchor] constant:-4]
+            [[[self usernameLabel] bottomAnchor] constraintEqualToAnchor:[[self avatarImageView] bottomAnchor]
+                                                                constant:-4]
         ]];
 
         [self setTapRecognizerView:[[UIView alloc] init]];
@@ -88,44 +98,39 @@
         [[self tapRecognizerView] addGestureRecognizer:[self tap]];
     }
 
-	return self;
+    return self;
 }
 
 /**
  * Fetches the url for the user's avatar.
  */
-- (void)fetchAvatarUrlWithCompletion:(void (^)(NSURL* avatarUrl))completion {
-    NSURL* url = [NSURL URLWithString:[NSString stringWithFormat:@"https://api.akarii.cafe/v1/user/%@", [self username]]];
-
-    NSURLSessionDataTask* task = [[NSURLSession sharedSession] dataTaskWithURL:url completionHandler:^(NSData* _Nullable data, NSURLResponse* _Nullable response, NSError* _Nullable error) {
-        @try {
-            NSDictionary* json = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-            NSURL* avatarUrl = [NSURL URLWithString:json[@"avatar_url"]];
-            completion(avatarUrl);
-        } @catch (NSException* exception) {
-            completion(nil);
-        }
-    }];
-
-    [task resume];
+- (void)fetchAvatarUrlWithCompletion:(void (^)(NSURL *avatarUrl))completion {
+    NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"https://github.com/%@.png", [self username]]];
+    completion(url);
 }
 
 /**
  * Fetches the user's avatar.
  */
-- (void)fetchAvatarWithCompletion:(void (^)(UIImage* avatar))completion {
-    [self fetchAvatarUrlWithCompletion:^(NSURL* avatarUrl) {
-        if (avatarUrl) {
-            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                NSData* imageData = [NSData dataWithContentsOfURL:avatarUrl];
-                UIImage* avatar = [UIImage imageWithData:imageData];
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    completion(avatar);
-                });
+- (void)fetchAvatarWithCompletion:(void (^)(UIImage *avatar))completion {
+    static UIImage *cachedAvatar = nil;
+    if (cachedAvatar) {
+        completion(cachedAvatar);
+        return;
+    }
+    [self fetchAvatarUrlWithCompletion:^(NSURL *avatarUrl) {
+      if (avatarUrl) {
+          dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            NSData *imageData = [NSData dataWithContentsOfURL:avatarUrl];
+            UIImage *avatar = [UIImage imageWithData:imageData];
+            dispatch_async(dispatch_get_main_queue(), ^{
+              cachedAvatar = avatar;
+              completion(avatar);
             });
-        } else {
-            completion(nil);
-        }
+          });
+      } else {
+          completion(nil);
+      }
     }];
 }
 
@@ -133,7 +138,8 @@
  * Opens the user's profile.
  */
 - (void)openUserProfile {
-    NSURL* url = [NSURL URLWithString:[NSString stringWithFormat:@"https://akarii.cafe/user/%@", [self username]]];
+    NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"https://github.com/%@", [self username]]];
     [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
 }
+
 @end

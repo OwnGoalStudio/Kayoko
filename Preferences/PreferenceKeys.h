@@ -5,17 +5,18 @@
 //  Created by Alexandra Aurora Göttlicher
 //
 
-static NSString* const kPreferencesIdentifier = @"codes.aurora.kayoko.preferences";
+static NSString *const kPreferencesIdentifier = @"codes.aurora.kayoko.preferences";
 
-static NSString* const kPreferenceKeyEnabled = @"Enabled";
-static NSString* const kPreferenceKeyMaximumHistoryAmount = @"MaximumHistoryAmount";
-static NSString* const kPreferenceKeySaveText = @"SaveText";
-static NSString* const kPreferenceKeySaveImages = @"SaveImages";
-static NSString* const kPreferenceKeyActivationMethod = @"ActivationMethod";
-static NSString* const kPreferenceKeyAutomaticallyPaste = @"AutomaticallyPaste";
+static NSString *const kPreferenceKeyEnabled = @"Enabled";
+static NSString *const kPreferenceKeyMaximumHistoryAmount = @"MaximumHistoryAmount";
+static NSString *const kPreferenceKeySaveText = @"SaveText";
+static NSString *const kPreferenceKeySaveImages = @"SaveImages";
+static NSString *const kPreferenceKeyActivationMethod = @"ActivationMethod";
+static NSString *const kPreferenceKeyAutomaticallyPaste = @"AutomaticallyPaste";
 
 static NSUInteger const kActivationMethodPredictionBar = 0;
 static NSUInteger const kActivationMethodDictationKey = 1;
+static NSUInteger const kActivationMethodInputSwitcher = 2;
 
 static BOOL const kPreferenceKeyEnabledDefaultValue = YES;
 static NSUInteger const kPreferenceKeyMaximumHistoryAmountDefaultValue = 200;

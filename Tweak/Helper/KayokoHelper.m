@@ -13,6 +13,18 @@
 #import "NotificationKeys.h"
 #import "PreferenceKeys.h"
 
+NSUserDefaults* kayokoHelperPreferences = nil;
+
+BOOL kayokoHelperPrefsEnabled = NO;
+NSUInteger kayokoHelperPrefsActivationMethod = 0;
+BOOL kayokoHelperPrefsAutomaticallyPaste = NO;
+
+static BOOL shouldShowCustomSuggestions = NO;
+static BOOL applicationIsInForeground = YES;
+
+static TIAutocorrectionList* kayokoCreateAutocorrectionList(void);
+static void kayokoPaste(void);
+
 #pragma mark - UIKeyboardAutocorrectionController class hooks
 
 /**
@@ -25,7 +37,7 @@
 static void (* orig_UIKeyboardAutocorrectionController_setTextSuggestionList)(UIKeyboardAutocorrectionController* self, SEL _cmd, TIAutocorrectionList* textSuggestionList);
 static void override_UIKeyboardAutocorrectionController_setTextSuggestionList(UIKeyboardAutocorrectionController* self, SEL _cmd, TIAutocorrectionList* textSuggestionList) {
     if (shouldShowCustomSuggestions) {
-        orig_UIKeyboardAutocorrectionController_setTextSuggestionList(self, _cmd, createAutocorrectionList());
+        orig_UIKeyboardAutocorrectionController_setTextSuggestionList(self, _cmd, kayokoCreateAutocorrectionList());
     } else {
         orig_UIKeyboardAutocorrectionController_setTextSuggestionList(self, _cmd, textSuggestionList);
     }
@@ -41,7 +53,7 @@ static void override_UIKeyboardAutocorrectionController_setTextSuggestionList(UI
 static void (* orig_UIKeyboardAutocorrectionController_setAutocorrectionList)(UIKeyboardAutocorrectionController* self, SEL _cmd, TIAutocorrectionList* autoCorrectionList);
 static void override_UIKeyboardAutocorrectionController_setAutocorrectionList(UIKeyboardAutocorrectionController* self, SEL _cmd, TIAutocorrectionList* autoCorrectionList) {
     if (shouldShowCustomSuggestions) {
-        orig_UIKeyboardAutocorrectionController_setAutocorrectionList(self, _cmd, createAutocorrectionList());
+        orig_UIKeyboardAutocorrectionController_setAutocorrectionList(self, _cmd, kayokoCreateAutocorrectionList());
     } else {
         orig_UIKeyboardAutocorrectionController_setAutocorrectionList(self, _cmd, autoCorrectionList);
     }
@@ -54,7 +66,7 @@ static void override_UIKeyboardAutocorrectionController_setAutocorrectionList(UI
  *
  * @return The list of custom items.
  */
-static TIAutocorrectionList* createAutocorrectionList() {
+static TIAutocorrectionList* kayokoCreateAutocorrectionList() {
     NSArray* labels = @[@"History", @"Copy", @"Paste"];
     NSMutableArray* candidates = [[NSMutableArray alloc] init];
     for (NSString* label in labels) {
@@ -72,7 +84,7 @@ static TIAutocorrectionList* createAutocorrectionList() {
 /**
  * Handles the selection of a prediction bar item.
  *
- * @see createAutocorrectionList to learn how the items are identified.
+ * @see kayokoCreateAutocorrectionList to learn how the items are identified.
  *
  * @param predictionView The prediction bar on which the item was selected.
  * @param candidate The item that was selected.
@@ -101,7 +113,7 @@ static void override_UIPredictionViewController_predictionView_didSelectCandidat
                 }
             }
         } else if ([[candidate label] isEqualToString:@"Paste"]) {
-            paste();
+            kayokoPaste();
         }
     } else {
         orig_UIPredictionViewController_predictionView_didSelectCandidate(self, _cmd, predictionView, candidate);
@@ -227,7 +239,7 @@ static void override_UISystemKeyboardDockController_dictationItemButtonWasPresse
 /**
  * Pastes the last copied item from the history.
  */
-static void paste() {
+static void kayokoPaste() {
     if (!applicationIsInForeground) {
         return;
     }
@@ -258,18 +270,18 @@ static void paste() {
  * Loads the user's preferences.
  */
 static void load_preferences() {
-    preferences = [[NSUserDefaults alloc] initWithSuiteName:[NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", kPreferencesIdentifier]];
+    kayokoHelperPreferences = [[NSUserDefaults alloc] initWithSuiteName:[NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", kPreferencesIdentifier]];
     libSandy_applyProfile("Kayoko");
 
-    [preferences registerDefaults:@{
+    [kayokoHelperPreferences registerDefaults:@{
         kPreferenceKeyEnabled: @(kPreferenceKeyEnabledDefaultValue),
         kPreferenceKeyActivationMethod: @(kPreferenceKeyActivationMethodDefaultValue),
         kPreferenceKeyAutomaticallyPaste: @(kPreferenceKeyAutomaticallyPasteDefaultValue)
     }];
 
-    pfEnabled = [[preferences objectForKey:kPreferenceKeyEnabled] boolValue];
-    pfActivationMethod = [[preferences objectForKey:kPreferenceKeyActivationMethod] unsignedIntegerValue];
-    pfAutomaticallyPaste = [[preferences objectForKey:kPreferenceKeyAutomaticallyPaste] boolValue];
+    kayokoHelperPrefsEnabled = [[kayokoHelperPreferences objectForKey:kPreferenceKeyEnabled] boolValue];
+    kayokoHelperPrefsActivationMethod = [[kayokoHelperPreferences objectForKey:kPreferenceKeyActivationMethod] unsignedIntegerValue];
+    kayokoHelperPrefsAutomaticallyPaste = [[kayokoHelperPreferences objectForKey:kPreferenceKeyAutomaticallyPaste] boolValue];
 }
 
 #pragma mark - Constructor
@@ -284,7 +296,7 @@ static void load_preferences() {
 __attribute((constructor)) static void initialize() {
     load_preferences();
 
-    if (!pfEnabled) {
+    if (!kayokoHelperPrefsEnabled) {
         return;
     }
 
@@ -319,7 +331,7 @@ __attribute((constructor)) static void initialize() {
         return;
     }
 
-    if (pfActivationMethod == kActivationMethodPredictionBar) {
+    if (kayokoHelperPrefsActivationMethod == kActivationMethodPredictionBar) {
         if (@available(iOS 15.0, *)) {
             MSHookMessageEx(objc_getClass("UIKeyboardAutocorrectionController"), @selector(setAutocorrectionList:), (IMP)&override_UIKeyboardAutocorrectionController_setAutocorrectionList, (IMP *)&orig_UIKeyboardAutocorrectionController_setAutocorrectionList);
         } else {
@@ -328,17 +340,19 @@ __attribute((constructor)) static void initialize() {
         MSHookMessageEx(objc_getClass("UIPredictionViewController"), @selector(isVisibleForInputDelegate:inputViews:), (IMP)&override_UIPredictionViewController_isVisibleForInputDelegate_inputViews, (IMP *)nil);
         MSHookMessageEx(objc_getClass("UIKeyboardLayoutStar"), @selector(setKeyplaneName:), (IMP)&override_UIKeyboardLayoutStar_setKeyplaneName, (IMP *)&orig_UIKeyboardLayoutStar_setKeyplaneName);
         MSHookMessageEx(objc_getClass("UIPredictionViewController"), @selector(predictionView:didSelectCandidate:), (IMP)&override_UIPredictionViewController_predictionView_didSelectCandidate, (IMP *)&orig_UIPredictionViewController_predictionView_didSelectCandidate);
-    } else if (pfActivationMethod == kActivationMethodDictationKey) {
+    } else if (kayokoHelperPrefsActivationMethod == kActivationMethodDictationKey) {
         MSHookMessageEx(objc_getClass("UISystemKeyboardDockController"), @selector(dictationItemButtonWasPressed:withEvent:), (IMP)&override_UISystemKeyboardDockController_dictationItemButtonWasPressed_withEvent, nil);
         MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(shouldShowDictationKey), (IMP)&override_UIKeyboardImpl_shouldShowDictationKey, nil);
         MSHookMessageEx(objc_getClass("UIKeyboardLayoutStar"), @selector(keyHitTest:), (IMP)&override_UIKeyboardLayoutStar_keyHitTest, (IMP *)&orig_UIKeyboardLayoutStar_keyHitTest);
+    } else if (kayokoHelperPrefsActivationMethod == kActivationMethodInputSwitcher) {
+        EnableKayokoActivationGlobe();
     }
 
     MSHookMessageEx(objc_getClass("UIKeyboardLayoutStar"), @selector(didMoveToWindow), (IMP)&override_UIKeyboardLayoutStar_didMoveToWindow, (IMP *)&orig_UIKeyboardLayoutStar_didMoveToWindow);
     MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(applicationDidBecomeActive:), (IMP)&override_UIKeyboardImpl_applicationDidBecomeActive, (IMP *)&orig_UIKeyboardImpl_applicationDidBecomeActive);
     MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(applicationWillResignActive:), (IMP)&override_UIKeyboardImpl_applicationWillResignActive, (IMP *)&orig_UIKeyboardImpl_applicationWillResignActive);
 
-    if (pfAutomaticallyPaste) {
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)paste, (CFStringRef)kNotificationKeyHelperPaste, NULL, (CFNotificationSuspensionBehavior)kNilOptions);
+    if (kayokoHelperPrefsAutomaticallyPaste) {
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoPaste, (CFStringRef)kNotificationKeyHelperPaste, NULL, (CFNotificationSuspensionBehavior)kNilOptions);
     }
 }

@@ -6,47 +6,48 @@
 //
 
 #import "PasteboardManager.h"
-#import "PasteboardItem.h"
-#import "StringUtil.h"
-#import "ImageUtil.h"
 #import "AlertUtil.h"
+#import "ImageUtil.h"
 #import "NotificationKeys.h"
+#import "PasteboardItem.h"
 #import "PreferenceKeys.h"
+#import "StringUtil.h"
 
 #import <rootless.h>
 
 @implementation PasteboardManager
+
 /**
  * Creates the shared instance.
  */
 + (instancetype)sharedInstance {
-    static PasteboardManager* sharedInstance;
+    static PasteboardManager *sharedInstance;
     static dispatch_once_t onceToken;
 
     dispatch_once(&onceToken, ^{
-        sharedInstance = [PasteboardManager alloc];
-        sharedInstance->_pasteboard = [UIPasteboard generalPasteboard];
-        sharedInstance->_lastChangeCount = [sharedInstance->_pasteboard changeCount];
-        sharedInstance->_fileManager = [NSFileManager defaultManager];
+      sharedInstance = [PasteboardManager alloc];
+      sharedInstance->_pasteboard = [UIPasteboard generalPasteboard];
+      sharedInstance->_lastChangeCount = [sharedInstance->_pasteboard changeCount];
+      sharedInstance->_fileManager = [NSFileManager defaultManager];
     });
 
     return sharedInstance;
 }
 
 + (NSString *)historyPath {
-    static NSString* kHistoryPath = nil;
+    static NSString *kHistoryPath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        kHistoryPath = ROOT_PATH_NS(@"/var/mobile/Library/codes.aurora.kayoko/history.json");
+      kHistoryPath = ROOT_PATH_NS(@"/var/mobile/Library/codes.aurora.kayoko/history.json");
     });
     return kHistoryPath;
 }
 
 + (NSString *)historyImagesPath {
-    static NSString* kHistoryImagesPath = nil;
+    static NSString *kHistoryImagesPath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        kHistoryImagesPath = ROOT_PATH_NS(@"/var/mobile/Library/codes.aurora.kayoko/images/");
+      kHistoryImagesPath = ROOT_PATH_NS(@"/var/mobile/Library/codes.aurora.kayoko/images/");
     });
     return kHistoryImagesPath;
 }
@@ -73,12 +74,17 @@
         // Don't pull strings if the pasteboard contains images.
         // For example: When copying an image from the web we only want the image, without the string.
         if (!([_pasteboard hasStrings] && [_pasteboard hasImages])) {
-            for (NSString* string in [_pasteboard strings]) {
+            for (NSString *string in [_pasteboard strings]) {
                 @autoreleasepool {
-                    // The core only runs on the SpringBoard process, thus we can't use mainbundle to get the process' bundle identifier.
-                    // However, we can get it by using UIApplication/SpringBoard front-most-application.
-                    SBApplication* frontMostApplication = [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
-                    PasteboardItem* item = [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier] andContent:string withImageNamed:nil];
+                    // The core only runs on the SpringBoard process, thus we can't use mainbundle to get the process'
+                    // bundle identifier. However, we can get it by using UIApplication/SpringBoard
+                    // front-most-application.
+                    SBApplication *frontMostApplication =
+                        [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
+                    PasteboardItem *item =
+                        [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
+                                                              andContent:string
+                                                          withImageNamed:nil];
                     [self addPasteboardItem:item toHistoryWithKey:kHistoryKeyHistory];
                 }
             }
@@ -86,24 +92,31 @@
     }
 
     if ([self saveImages]) {
-        for (UIImage* image in [_pasteboard images]) {
+        for (UIImage *image in [_pasteboard images]) {
             @autoreleasepool {
-                NSString* imageName = [StringUtil getRandomStringWithLength:32];
+                NSString *imageName = [StringUtil getRandomStringWithLength:32];
 
                 // Only save as PNG if the image has an alpha channel to save storage space.
                 if ([ImageUtil imageHasAlpha:image]) {
                     imageName = [imageName stringByAppendingString:@".png"];
-                    NSString* filePath = [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], imageName];
-                    [UIImagePNGRepresentation([ImageUtil getRotatedImageFromImage:image]) writeToFile:filePath atomically:YES];
+                    NSString *filePath =
+                        [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], imageName];
+                    [UIImagePNGRepresentation([ImageUtil getRotatedImageFromImage:image]) writeToFile:filePath
+                                                                                           atomically:YES];
                 } else {
                     imageName = [imageName stringByAppendingString:@".jpg"];
-                    NSString* filePath = [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], imageName];
+                    NSString *filePath =
+                        [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], imageName];
                     [UIImageJPEGRepresentation(image, 1) writeToFile:filePath atomically:YES];
                 }
 
                 // See the above loop.
-                SBApplication* frontMostApplication = [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
-                PasteboardItem* item = [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier] andContent:imageName withImageNamed:imageName];
+                SBApplication *frontMostApplication =
+                    [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
+                PasteboardItem *item =
+                    [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
+                                                          andContent:imageName
+                                                      withImageNamed:imageName];
                 [self addPasteboardItem:item toHistoryWithKey:kHistoryKeyHistory];
             }
         }
@@ -126,15 +139,16 @@
     // Remove duplicates.
     [self removePasteboardItem:item fromHistoryWithKey:historyKey shouldRemoveImage:NO];
 
-    NSMutableDictionary* json = [self getJson];
-    NSMutableArray* history = [self getItemsFromHistoryWithKey:historyKey];
+    NSMutableDictionary *json = [self getJson];
+    NSMutableArray *history = [self getItemsFromHistoryWithKey:historyKey];
 
     [history insertObject:@{
-        kItemKeyBundleIdentifier: [item bundleIdentifier] ?: @"com.apple.springboard",
-        kItemKeyContent: [item content] ?: @"",
-        kItemKeyImageName: [item imageName] ?: @"",
-        kItemKeyHasLink: @([item hasLink])
-    } atIndex:0];
+        kItemKeyBundleIdentifier : [item bundleIdentifier] ?: @"com.apple.springboard",
+        kItemKeyContent : [item content] ?: @"",
+        kItemKeyImageName : [item imageName] ?: @"",
+        kItemKeyHasLink : @([item hasLink])
+    }
+                  atIndex:0];
 
     // Truncate the history corresponding the set limit.
     while ([history count] > [self maximumHistoryAmount]) {
@@ -153,19 +167,22 @@
  * @param historyKey The key for the history from which to remove from.
  * @param shouldRemoveImage Whether to remove the item's corresponding image or not.
  */
-- (void)removePasteboardItem:(PasteboardItem *)item fromHistoryWithKey:(NSString *)historyKey shouldRemoveImage:(BOOL)shouldRemoveImage {
-    NSMutableDictionary* json = [self getJson];
-    NSMutableArray* history = json[historyKey];
+- (void)removePasteboardItem:(PasteboardItem *)item
+          fromHistoryWithKey:(NSString *)historyKey
+           shouldRemoveImage:(BOOL)shouldRemoveImage {
+    NSMutableDictionary *json = [self getJson];
+    NSMutableArray *history = json[historyKey];
 
-    for (NSDictionary* dictionary in history) {
+    for (NSDictionary *dictionary in history) {
         @autoreleasepool {
-            PasteboardItem* historyItem = [PasteboardItem itemFromDictionary:dictionary];
+            PasteboardItem *historyItem = [PasteboardItem itemFromDictionary:dictionary];
 
             if ([[historyItem content] isEqualToString:[item content]]) {
                 [history removeObject:dictionary];
 
                 if (![[item imageName] isEqualToString:@""] && shouldRemoveImage) {
-                    NSString* filePath = [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
+                    NSString *filePath =
+                        [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
                     [_fileManager removeItemAtPath:filePath error:nil];
                 }
 
@@ -186,12 +203,15 @@
  * @param historyKey The key for the history which the item is from.
  * @param shouldAutoPaste Whether the helper should automatically paste the new content.
  */
-- (void)updatePasteboardWithItem:(PasteboardItem *)item fromHistoryWithKey:(NSString *)historyKey shouldAutoPaste:(BOOL)shouldAutoPaste {
+- (void)updatePasteboardWithItem:(PasteboardItem *)item
+              fromHistoryWithKey:(NSString *)historyKey
+                 shouldAutoPaste:(BOOL)shouldAutoPaste {
     [_pasteboard setString:@""];
 
     if (![[item imageName] isEqualToString:@""]) {
-        NSString* filePath = [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
-        UIImage* image = [UIImage imageWithContentsOfFile:filePath];
+        NSString *filePath =
+            [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
+        UIImage *image = [UIImage imageWithContentsOfFile:filePath];
         [_pasteboard setImage:image];
     } else {
         [_pasteboard setString:[item content]];
@@ -203,7 +223,8 @@
 
     // Automatic paste should not occur for asynchronous operations.
     if ([self automaticallyPaste] && shouldAutoPaste) {
-        CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), (CFStringRef)kNotificationKeyHelperPaste, nil, nil, YES);
+        CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                             (CFStringRef)kNotificationKeyHelperPaste, nil, nil, YES);
     }
 }
 
@@ -215,7 +236,7 @@
  * @return The history's items.
  */
 - (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey {
-    NSDictionary* json = [self getJson];
+    NSDictionary *json = [self getJson];
     return json[historyKey] ?: [[NSMutableArray alloc] init];
 }
 
@@ -225,7 +246,7 @@
  * @return The item.
  */
 - (PasteboardItem *)getLatestHistoryItem {
-    NSArray* history = [self getItemsFromHistoryWithKey:kHistoryKeyHistory];
+    NSArray *history = [self getItemsFromHistoryWithKey:kHistoryKeyHistory];
     return [PasteboardItem itemFromDictionary:[history firstObject] ?: nil];
 }
 
@@ -237,7 +258,8 @@
  * @return The image.
  */
 - (UIImage *)getImageForItem:(PasteboardItem *)item {
-    NSData* imageData = [_fileManager contentsAtPath:[NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]]];
+    NSData *imageData = [_fileManager
+        contentsAtPath:[NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]]];
     return [UIImage imageWithData:imageData];
 }
 
@@ -249,8 +271,10 @@
 - (NSMutableDictionary *)getJson {
     [self ensureResourcesExist];
 
-    NSData* jsonData = [NSData dataWithContentsOfFile:[PasteboardManager historyPath]];
-    NSMutableDictionary* json = [NSJSONSerialization JSONObjectWithData:jsonData options:NSJSONReadingMutableContainers error:nil];
+    NSData *jsonData = [NSData dataWithContentsOfFile:[PasteboardManager historyPath]];
+    NSMutableDictionary *json = [NSJSONSerialization JSONObjectWithData:jsonData
+                                                                options:NSJSONReadingMutableContainers
+                                                                  error:nil];
 
     return json;
 }
@@ -261,11 +285,12 @@
  * @param dictionary The dictionary from which to save the contents from.
  */
 - (void)setJsonFromDictionary:(NSMutableDictionary *)dictionary {
-    NSData* jsonData = [NSJSONSerialization dataWithJSONObject:dictionary options:NSJSONWritingPrettyPrinted error:nil];
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dictionary options:NSJSONWritingPrettyPrinted error:nil];
     [jsonData writeToFile:[PasteboardManager historyPath] atomically:YES];
 
     // Tell the core to reload the history view.
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), (CFStringRef)kNotificationKeyCoreReload, nil, nil, YES);
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (CFStringRef)kNotificationKeyCoreReload, nil, nil, YES);
 }
 
 /**
@@ -274,12 +299,18 @@
 - (void)ensureResourcesExist {
     BOOL isDirectory;
     if (![_fileManager fileExistsAtPath:[PasteboardManager historyImagesPath] isDirectory:&isDirectory]) {
-        [_fileManager createDirectoryAtPath:[PasteboardManager historyImagesPath] withIntermediateDirectories:YES attributes:nil error:nil];
+        [_fileManager createDirectoryAtPath:[PasteboardManager historyImagesPath]
+                withIntermediateDirectories:YES
+                                 attributes:nil
+                                      error:nil];
     }
 
     if (![_fileManager fileExistsAtPath:[PasteboardManager historyPath]]) {
-        NSData* jsonData = [NSJSONSerialization dataWithJSONObject:[[NSMutableDictionary alloc] init] options:NSJSONWritingPrettyPrinted error:nil];
+        NSData *jsonData = [NSJSONSerialization dataWithJSONObject:[[NSMutableDictionary alloc] init]
+                                                           options:NSJSONWritingPrettyPrinted
+                                                             error:nil];
         [jsonData writeToFile:[PasteboardManager historyPath] options:NSDataWritingAtomic error:nil];
     }
 }
+
 @end

@@ -6,12 +6,13 @@
 //
 
 #import "KayokoTableViewCell.h"
-#import <substrate.h>
-#import "PasteboardManager.h"
-#import "PasteboardItem.h"
 #import "ImageUtil.h"
+#import "PasteboardItem.h"
+#import "PasteboardManager.h"
+#import <substrate.h>
 
 @implementation KayokoTableViewCell
+
 /**
  * Initializes the table view cell.
  *
@@ -19,7 +20,9 @@
  * @param item
  * @param reuseIdentifier
  */
-- (instancetype)initWithStyle:(UITableViewCellStyle)style andItem:(PasteboardItem *)item reuseIdentifier:(NSString *)reuseIdentifier {
+- (instancetype)initWithStyle:(UITableViewCellStyle)style
+                      andItem:(PasteboardItem *)item
+              reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
 
     if (self) {
@@ -27,10 +30,14 @@
 
         [self setIconImageView:[[UIImageView alloc] init]];
 
-        UIImage* icon = [UIImage _applicationIconImageForBundleIdentifier:[item bundleIdentifier] format:2 scale:[[UIScreen mainScreen] scale]];
+        UIImage *icon = [UIImage _applicationIconImageForBundleIdentifier:[item bundleIdentifier]
+                                                                   format:2
+                                                                    scale:[[UIScreen mainScreen] scale]];
         // Use the default app icon if no icon exists for the item's bundle identifier.
         if (!icon) {
-            icon = [UIImage _applicationIconImageForBundleIdentifier:@"com.apple.WebSheet" format:2 scale:[[UIScreen mainScreen] scale]];
+            icon = [UIImage _applicationIconImageForBundleIdentifier:@"com.apple.WebSheet"
+                                                              format:2
+                                                               scale:[[UIScreen mainScreen] scale]];
         }
         [[self iconImageView] setImage:icon];
 
@@ -50,9 +57,11 @@
         if (![[item imageName] isEqualToString:@""]) {
             [self setContentImageView:[[UIImageView alloc] init]];
 
-            UIImage* originalImage = [[PasteboardManager sharedInstance] getImageForItem:item];
+            UIImage *originalImage = [[PasteboardManager sharedInstance] getImageForItem:item];
             // Save memory by scaling the image down in the history view.
-            UIImage* scaledImage = [ImageUtil getImageWithImage:originalImage scaledToSize:CGSizeMake(originalImage.size.width / 4, originalImage.size.height / 4)];
+            UIImage *scaledImage =
+                [ImageUtil getImageWithImage:originalImage
+                                scaledToSize:CGSizeMake(originalImage.size.width / 4, originalImage.size.height / 4)];
             [[self contentImageView] setImage:scaledImage];
 
             [[self contentImageView] setContentMode:UIViewContentModeScaleAspectFill];
@@ -70,7 +79,9 @@
         }
 
         [self setHeaderLabel:[[UILabel alloc] init]];
-        NSString* displayName = [[[objc_getClass("SBApplicationController") sharedInstance] applicationWithBundleIdentifier:[item bundleIdentifier]] displayName] ?: @"SpringBoard";
+        NSString *displayName = [[[objc_getClass("SBApplicationController") sharedInstance]
+                                    applicationWithBundleIdentifier:[item bundleIdentifier]] displayName]
+                                    ?: @"SpringBoard";
         [[self headerLabel] setText:displayName];
         [[self headerLabel] setFont:[UIFont systemFontOfSize:16 weight:UIFontWeightMedium]];
         [[self headerLabel] setTextColor:[UIColor labelColor]];
@@ -79,17 +90,18 @@
         [[self headerLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
             [[[self headerLabel] topAnchor] constraintEqualToAnchor:[[self iconImageView] topAnchor] constant:1],
-            [[[self headerLabel] leadingAnchor] constraintEqualToAnchor:[[self iconImageView] trailingAnchor] constant:16]
+            [[[self headerLabel] leadingAnchor] constraintEqualToAnchor:[[self iconImageView] trailingAnchor]
+                                                               constant:16]
         ]];
 
         if ([self contentImageView]) {
-            [NSLayoutConstraint activateConstraints:@[
-                [[[self headerLabel] trailingAnchor] constraintEqualToAnchor:[[self contentImageView] leadingAnchor] constant:-16]
-            ]];
+            [NSLayoutConstraint activateConstraints:@[ [[[self headerLabel] trailingAnchor]
+                                                        constraintEqualToAnchor:[[self contentImageView] leadingAnchor]
+                                                                       constant:-16] ]];
         } else {
-            [NSLayoutConstraint activateConstraints:@[
-                [[[self headerLabel] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor] constant:-24]
-            ]];
+            [NSLayoutConstraint activateConstraints:@[ [[[self headerLabel] trailingAnchor]
+                                                        constraintEqualToAnchor:[self trailingAnchor]
+                                                                       constant:-24] ]];
         }
 
         [self setContentLabel:[[UILabel alloc] init]];
@@ -101,7 +113,8 @@
 
         [[self contentLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self contentLabel] bottomAnchor] constraintEqualToAnchor:[[self iconImageView] bottomAnchor] constant:-1],
+            [[[self contentLabel] bottomAnchor] constraintEqualToAnchor:[[self iconImageView] bottomAnchor]
+                                                               constant:-1],
             [[[self contentLabel] leadingAnchor] constraintEqualToAnchor:[[self headerLabel] leadingAnchor]],
             [[[self contentLabel] trailingAnchor] constraintEqualToAnchor:[[self headerLabel] trailingAnchor]]
         ]];
@@ -109,4 +122,5 @@
 
     return self;
 }
+
 @end

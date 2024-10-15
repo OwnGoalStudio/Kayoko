@@ -8,6 +8,7 @@
 #import "StringUtil.h"
 
 @implementation StringUtil
+
 /**
  * Generates a random string of a specified length.
  *
@@ -16,13 +17,14 @@
  * @return The random string.
  */
 + (NSString *)getRandomStringWithLength:(NSUInteger)length {
-    NSString* characters = @"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    NSMutableString* string = [NSMutableString stringWithCapacity:length];
+    NSString *characters = @"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    NSMutableString *string = [NSMutableString stringWithCapacity:length];
 
     for (NSUInteger i = 0; i < length; i++) {
-        [string appendFormat: @"%c", [characters characterAtIndex: arc4random_uniform([characters length])]];
+        [string appendFormat:@"%c", [characters characterAtIndex:arc4random_uniform([characters length])]];
     }
 
     return string;
 }
+
 @end

@@ -5,15 +5,15 @@
 //  Created by Alexandra Aurora Göttlicher
 //
 
-#import <UIKit/UIKit.h>
 #import <Preferences/PSSpecifier.h>
+#import <UIKit/UIKit.h>
 
 @interface SingleContactCell : PSTableCell
-@property(nonatomic)UIImageView* avatarImageView;
-@property(nonatomic)UILabel* displayNameLabel;
-@property(nonatomic)UILabel* usernameLabel;
-@property(nonatomic)UIView* tapRecognizerView;
-@property(nonatomic)UITapGestureRecognizer* tap;
-@property(nonatomic)NSString* displayName;
-@property(nonatomic)NSString* username;
+@property(nonatomic, strong) UIImageView *avatarImageView;
+@property(nonatomic, strong) UILabel *displayNameLabel;
+@property(nonatomic, strong) UILabel *usernameLabel;
+@property(nonatomic, strong) UIView *tapRecognizerView;
+@property(nonatomic, strong) UITapGestureRecognizer *tap;
+@property(nonatomic, copy) NSString *displayName;
+@property(nonatomic, copy) NSString *username;
 @end
