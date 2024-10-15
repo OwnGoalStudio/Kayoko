@@ -6,8 +6,6 @@
 //
 
 #import <UIKit/UIKit.h>
-#import "../../../Manager/PasteboardManager.h"
-#import "../../../Manager/PasteboardItem.h"
 
 @interface KayokoTableView : UITableView <UITableViewDelegate, UITableViewDataSource>
 @property(nonatomic)NSString* name;

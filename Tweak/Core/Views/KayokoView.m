@@ -10,8 +10,8 @@
 #import "KayokoHistoryTableView.h"
 #import "KayokoFavoritesTableView.h"
 #import "KayokoPreviewView.h"
-#import "../../../Manager/PasteboardManager.h"
-#import "../../../Manager/PasteboardItem.h"
+#import "PasteboardManager.h"
+#import "PasteboardItem.h"
 
 @implementation KayokoView
 /**
@@ -248,7 +248,10 @@
 	[clearAlert addAction:yesAction];
 	[clearAlert addAction:noAction];
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 	[[[[UIApplication sharedApplication] keyWindow] rootViewController] presentViewController:clearAlert animated:YES completion:nil];
+#pragma clang diagnostic pop
 
     [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleHeavy];
 }
@@ -263,7 +266,7 @@
         [[[self previewView] webView] loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[item content]]]];
         [[[self previewView] webView] setHidden:NO];
     } else if (![[item imageName] isEqualToString:@""]) {
-        NSData* imageData = [[NSFileManager defaultManager] contentsAtPath:[NSString stringWithFormat:@"%@/%@", kHistoryImagesPath, [item imageName]]];
+        NSData* imageData = [[NSFileManager defaultManager] contentsAtPath:[NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]]];
         [[[self previewView] imageView] setImage:[UIImage imageWithData:imageData]];
         [[[self previewView] imageView] setHidden:NO];
     } else {

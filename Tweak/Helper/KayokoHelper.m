@@ -8,10 +8,10 @@
 #import "KayokoHelper.h"
 #import <substrate.h>
 #import <libSandy.h>
-#import "../../Manager/PasteboardManager.h"
-#import "../../Manager/PasteboardItem.h"
-#import "../../Preferences/NotificationKeys.h"
-#import "../../Preferences/PreferenceKeys.h"
+#import "PasteboardManager.h"
+#import "PasteboardItem.h"
+#import "NotificationKeys.h"
+#import "PreferenceKeys.h"
 
 #pragma mark - UIKeyboardAutocorrectionController class hooks
 

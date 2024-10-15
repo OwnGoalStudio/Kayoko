@@ -6,4 +6,4 @@ Description: Clipboard manager for iOS.
 Maintainer: Alexandra Aurora Göttlicher
 Author: Alexandra Aurora Göttlicher
 Section: Tweaks
-Depends: firmware (>= 14.0), firmware (<< 16), mobilesubstrate, preferenceloader, com.opa334.libsandy
+Depends: firmware (>= 14.0), mobilesubstrate, preferenceloader, com.opa334.libsandy

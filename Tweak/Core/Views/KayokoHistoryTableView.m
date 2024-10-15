@@ -6,6 +6,8 @@
 //
 
 #import "KayokoHistoryTableView.h"
+#import "PasteboardItem.h"
+#import "PasteboardManager.h"
 
 @implementation KayokoHistoryTableView
 /**

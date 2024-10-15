@@ -7,9 +7,9 @@
 
 #import "KayokoTableViewCell.h"
 #import <substrate.h>
-#import "../../../Manager/PasteboardManager.h"
-#import "../../../Manager/PasteboardItem.h"
-#import "../../../Utils/ImageUtil.h"
+#import "PasteboardManager.h"
+#import "PasteboardItem.h"
+#import "ImageUtil.h"
 
 @implementation KayokoTableViewCell
 /**

@@ -7,11 +7,13 @@
 
 #import "PasteboardManager.h"
 #import "PasteboardItem.h"
-#import "../Utils/StringUtil.h"
-#import "../Utils/ImageUtil.h"
-#import "../Utils/AlertUtil.h"
-#import "../Preferences/NotificationKeys.h"
-#import "../Preferences/PreferenceKeys.h"
+#import "StringUtil.h"
+#import "ImageUtil.h"
+#import "AlertUtil.h"
+#import "NotificationKeys.h"
+#import "PreferenceKeys.h"
+
+#import <rootless.h>
 
 @implementation PasteboardManager
 /**
@@ -29,6 +31,24 @@
     });
 
     return sharedInstance;
+}
+
++ (NSString *)historyPath {
+    static NSString* kHistoryPath = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        kHistoryPath = ROOT_PATH_NS(@"/var/mobile/Library/codes.aurora.kayoko/history.json");
+    });
+    return kHistoryPath;
+}
+
++ (NSString *)historyImagesPath {
+    static NSString* kHistoryImagesPath = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        kHistoryImagesPath = ROOT_PATH_NS(@"/var/mobile/Library/codes.aurora.kayoko/images/");
+    });
+    return kHistoryImagesPath;
 }
 
 /**
@@ -73,11 +93,11 @@
                 // Only save as PNG if the image has an alpha channel to save storage space.
                 if ([ImageUtil imageHasAlpha:image]) {
                     imageName = [imageName stringByAppendingString:@".png"];
-                    NSString* filePath = [NSString stringWithFormat:@"%@/%@", kHistoryImagesPath, imageName];
+                    NSString* filePath = [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], imageName];
                     [UIImagePNGRepresentation([ImageUtil getRotatedImageFromImage:image]) writeToFile:filePath atomically:YES];
                 } else {
                     imageName = [imageName stringByAppendingString:@".jpg"];
-                    NSString* filePath = [NSString stringWithFormat:@"%@/%@", kHistoryImagesPath, imageName];
+                    NSString* filePath = [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], imageName];
                     [UIImageJPEGRepresentation(image, 1) writeToFile:filePath atomically:YES];
                 }
 
@@ -145,7 +165,7 @@
                 [history removeObject:dictionary];
 
                 if (![[item imageName] isEqualToString:@""] && shouldRemoveImage) {
-                    NSString* filePath = [NSString stringWithFormat:@"%@/%@", kHistoryImagesPath, [item imageName]];
+                    NSString* filePath = [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
                     [_fileManager removeItemAtPath:filePath error:nil];
                 }
 
@@ -170,7 +190,7 @@
     [_pasteboard setString:@""];
 
     if (![[item imageName] isEqualToString:@""]) {
-        NSString* filePath = [NSString stringWithFormat:@"%@/%@", kHistoryImagesPath, [item imageName]];
+        NSString* filePath = [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
         UIImage* image = [UIImage imageWithContentsOfFile:filePath];
         [_pasteboard setImage:image];
     } else {
@@ -217,7 +237,7 @@
  * @return The image.
  */
 - (UIImage *)getImageForItem:(PasteboardItem *)item {
-    NSData* imageData = [_fileManager contentsAtPath:[NSString stringWithFormat:@"%@/%@", kHistoryImagesPath, [item imageName]]];
+    NSData* imageData = [_fileManager contentsAtPath:[NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]]];
     return [UIImage imageWithData:imageData];
 }
 
@@ -229,7 +249,7 @@
 - (NSMutableDictionary *)getJson {
     [self ensureResourcesExist];
 
-    NSData* jsonData = [NSData dataWithContentsOfFile:kHistoryPath];
+    NSData* jsonData = [NSData dataWithContentsOfFile:[PasteboardManager historyPath]];
     NSMutableDictionary* json = [NSJSONSerialization JSONObjectWithData:jsonData options:NSJSONReadingMutableContainers error:nil];
 
     return json;
@@ -242,7 +262,7 @@
  */
 - (void)setJsonFromDictionary:(NSMutableDictionary *)dictionary {
     NSData* jsonData = [NSJSONSerialization dataWithJSONObject:dictionary options:NSJSONWritingPrettyPrinted error:nil];
-    [jsonData writeToFile:kHistoryPath atomically:YES];
+    [jsonData writeToFile:[PasteboardManager historyPath] atomically:YES];
 
     // Tell the core to reload the history view.
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), (CFStringRef)kNotificationKeyCoreReload, nil, nil, YES);
@@ -253,13 +273,13 @@
  */
 - (void)ensureResourcesExist {
     BOOL isDirectory;
-    if (![_fileManager fileExistsAtPath:kHistoryImagesPath isDirectory:&isDirectory]) {
-        [_fileManager createDirectoryAtPath:kHistoryImagesPath withIntermediateDirectories:YES attributes:nil error:nil];
+    if (![_fileManager fileExistsAtPath:[PasteboardManager historyImagesPath] isDirectory:&isDirectory]) {
+        [_fileManager createDirectoryAtPath:[PasteboardManager historyImagesPath] withIntermediateDirectories:YES attributes:nil error:nil];
     }
 
-    if (![_fileManager fileExistsAtPath:kHistoryPath]) {
+    if (![_fileManager fileExistsAtPath:[PasteboardManager historyPath]]) {
         NSData* jsonData = [NSJSONSerialization dataWithJSONObject:[[NSMutableDictionary alloc] init] options:NSJSONWritingPrettyPrinted error:nil];
-        [jsonData writeToFile:kHistoryPath options:NSDataWritingAtomic error:nil];
+        [jsonData writeToFile:[PasteboardManager historyPath] options:NSDataWritingAtomic error:nil];
     }
 }
 @end

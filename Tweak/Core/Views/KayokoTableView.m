@@ -7,8 +7,8 @@
 
 #import "KayokoTableView.h"
 #import "KayokoTableViewCell.h"
-#import "../../../Manager/PasteboardManager.h"
-#import "../../../Manager/PasteboardItem.h"
+#import "PasteboardManager.h"
+#import "PasteboardItem.h"
 
 @implementation KayokoTableView
 /**

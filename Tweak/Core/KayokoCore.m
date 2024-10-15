@@ -7,10 +7,10 @@
 
 #import "KayokoCore.h"
 #import <substrate.h>
-#import "../../Manager/PasteboardManager.h"
+#import "PasteboardManager.h"
 #import "Views/KayokoView.h"
-#import "../../Preferences/PreferenceKeys.h"
-#import "../../Preferences/NotificationKeys.h"
+#import "PreferenceKeys.h"
+#import "NotificationKeys.h"
 
 #pragma mark - UIStatusBarWindow class hooks
 

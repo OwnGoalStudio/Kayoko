@@ -1,9 +1,12 @@
-GO_EASY_ON_ME = 1
+TWEAK_NAME := KayokoCore
 
-TWEAK_NAME = KayokoCore
-KayokoCore_FILES = KayokoCore.m $(wildcard ../../Manager/*.m Views/*.m ../../Utils/*.m)
-KayokoCore_CFLAGS = -fobjc-arc -DTHEOS_LEAN_AND_MEAN
-KayokoCore_FRAMEWORKS = UIKit
+KayokoCore_FILES += KayokoCore.m
+KayokoCore_FILES += $(wildcard ../../Manager/*.m Views/*.m ../../Utils/*.m)
+KayokoCore_CFLAGS += -fobjc-arc
+KayokoCore_CFLAGS += -I../../Manager
+KayokoCore_CFLAGS += -I../../Preferences
+KayokoCore_CFLAGS += -I../../Utils
+KayokoCore_FRAMEWORKS += UIKit
 
 include $(THEOS)/makefiles/common.mk
 include $(THEOS_MAKE_PATH)/aggregate.mk
