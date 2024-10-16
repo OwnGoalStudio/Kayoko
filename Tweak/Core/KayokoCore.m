@@ -35,6 +35,20 @@ CGFloat kayokoPrefsHeightInPoints = 420;
 
 static BOOL isInPasteProgress = NO;
 
+@interface UIStatusBarStyleRequest : NSObject
+@property(nonatomic, assign, readonly) long long style;
+@end
+
+@interface SBStatusBarManager : NSObject
++ (instancetype)sharedInstance;
+- (UIStatusBarStyleRequest *)frontmostStatusBarStyleRequest;
+@end
+
+@interface SBWindowSceneStatusBarManager : NSObject
++ (instancetype)windowSceneStatusBarManagerForEmbeddedDisplay;
+- (UIStatusBarStyleRequest *)frontmostStatusBarStyleRequest;
+@end
+
 #pragma mark - UIStatusBarWindow class hooks
 
 /**
@@ -95,6 +109,40 @@ static void kayokoCopy() {
  */
 static void show() {
     if ([kayokoView isHidden]) {
+
+        [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleUnspecified];
+
+        /* iOS 15 */
+        SBStatusBarManager *statusBarManager = [objc_getClass("SBStatusBarManager") sharedInstance];
+        if (statusBarManager) {
+            UIStatusBarStyleRequest *styleRequest = [statusBarManager frontmostStatusBarStyleRequest];
+            if (styleRequest) {
+                long long style = [styleRequest style];
+                BOOL isKindOfDark = style == 1;
+                if (isKindOfDark) {
+                    [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleDark];
+                } else {
+                    [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleLight];
+                }
+            }
+        }
+
+        /* iOS 16 */
+        SBWindowSceneStatusBarManager *windowSceneStatusBarManager =
+            [objc_getClass("SBWindowSceneStatusBarManager") windowSceneStatusBarManagerForEmbeddedDisplay];
+        if (windowSceneStatusBarManager) {
+            UIStatusBarStyleRequest *styleRequest = [windowSceneStatusBarManager frontmostStatusBarStyleRequest];
+            if (styleRequest) {
+                long long style = [styleRequest style];
+                BOOL isKindOfDark = style == 1;
+                if (isKindOfDark) {
+                    [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleDark];
+                } else {
+                    [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleLight];
+                }
+            }
+        }
+
         [kayokoView show];
     }
 }

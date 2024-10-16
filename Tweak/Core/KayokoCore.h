@@ -5,14 +5,13 @@
 //  Created by Alexandra Aurora Göttlicher
 //
 
-#import <CoreFoundation/CoreFoundation.h>
 #import <UIKit/UIKit.h>
 
 @class KayokoView;
 
-OBJC_EXTERN KayokoView* kayokoView;
+OBJC_EXTERN KayokoView *kayokoView;
 
-OBJC_EXTERN NSUserDefaults* kayokoPreferences;
+OBJC_EXTERN NSUserDefaults *kayokoPreferences;
 OBJC_EXTERN BOOL kayokoPrefsEnabled;
 
 OBJC_EXTERN NSUInteger kayokoPrefsMaximumHistoryAmount;
@@ -26,5 +25,5 @@ OBJC_EXTERN CGFloat kayokoPrefsHeightInPoints;
 
 OBJC_EXTERN void EnableKayokoDisablePasteTips(void);
 
-@interface UIStatusBarWindow  : UIWindow
+@interface UIStatusBarWindow : UIWindow
 @end
