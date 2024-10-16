@@ -8,7 +8,6 @@
 #import "KayokoCore.h"
 
 #import <AudioToolbox/AudioToolbox.h>
-#import <CoreFoundation/CoreFoundation.h>
 #import <HBLog.h>
 #import <rootless.h>
 #import <substrate.h>
@@ -22,6 +21,7 @@ KayokoView *kayokoView = nil;
 
 NSUserDefaults *kayokoPreferences = nil;
 BOOL kayokoPrefsEnabled = NO;
+NSUInteger kayokoHelperPrefsActivationMethod = 0;
 
 NSUInteger kayokoPrefsMaximumHistoryAmount = 0;
 BOOL kayokoPrefsSaveText = NO;
@@ -144,6 +144,9 @@ static void show() {
         }
 
         [kayokoView show];
+        if (kayokoPrefsPlayHapticFeedback && kayokoHelperPrefsActivationMethod == kActivationMethodDictationKey) {
+            AudioServicesPlaySystemSound(1519);
+        }
     }
 }
 
@@ -175,6 +178,7 @@ static void load_preferences() {
 
     [kayokoPreferences registerDefaults:@{
         kPreferenceKeyEnabled : @(kPreferenceKeyEnabledDefaultValue),
+        kPreferenceKeyActivationMethod : @(kPreferenceKeyActivationMethodDefaultValue),
         kPreferenceKeyMaximumHistoryAmount : @(kPreferenceKeyMaximumHistoryAmountDefaultValue),
         kPreferenceKeySaveText : @(kPreferenceKeySaveTextDefaultValue),
         kPreferenceKeySaveImages : @(kPreferenceKeySaveImagesDefaultValue),
@@ -186,6 +190,8 @@ static void load_preferences() {
     }];
 
     kayokoPrefsEnabled = [[kayokoPreferences objectForKey:kPreferenceKeyEnabled] boolValue];
+    kayokoHelperPrefsActivationMethod =
+        [[kayokoPreferences objectForKey:kPreferenceKeyActivationMethod] unsignedIntegerValue];
     kayokoPrefsMaximumHistoryAmount =
         [[kayokoPreferences objectForKey:kPreferenceKeyMaximumHistoryAmount] unsignedIntegerValue];
     kayokoPrefsSaveText = [[kayokoPreferences objectForKey:kPreferenceKeySaveText] boolValue];
