@@ -1,6 +1,7 @@
 # Kayoko (iOS 16)
 
-Feature rich clipboard manager for iOS.
+Feature rich clipboard manager for iOS.  
+For iPhone running iOS 15/16 with Dopamine jailbreak.
 
 ## Preview
 
@@ -8,12 +9,8 @@ Feature rich clipboard manager for iOS.
 
 ## Installation
 
-1. Download the latest `deb` from the [releases](https://github.com/Lessica/Kayoko/releases)
-2. Install the `deb` using your preferred method
-
-## Compatibility
-
-iPhone running iOS 15/16 with Dopamine jailbreak.
+1. Download the latest `deb` from the [releases](https://github.com/Lessica/Kayoko/releases).
+2. Install the `deb` using your preferred method.
 
 ## License
 
