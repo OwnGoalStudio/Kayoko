@@ -1,4 +1,4 @@
-# Kayoko
+# Kayoko (iOS 16)
 
 Clipboard manager for iOS.
 
@@ -13,7 +13,7 @@ Clipboard manager for iOS.
 
 ## Compatibility
 
-iPhone, iPad (partially) and iPod touch running iOS/iPadOS 14-16.
+iPhone running iOS 15/16 with Dopamine jailbreak.
 
 ## Compiling
 
@@ -22,4 +22,4 @@ iPhone, iPad (partially) and iPod touch running iOS/iPadOS 14-16.
 
 ## License
 
-[GPL-3.0](https://github.com/AlexandraAurora/Kayoko/blob/main/COPYING)
+[GPL-3.0](https://github.com/Lessica/Kayoko/blob/main/COPYING)
