@@ -1,6 +1,6 @@
 # Kayoko (iOS 16)
 
-Clipboard manager for iOS.
+Feature rich clipboard manager for iOS.
 
 ## Preview
 
@@ -15,11 +15,6 @@ Clipboard manager for iOS.
 
 iPhone running iOS 15/16 with Dopamine jailbreak.
 
-## Compiling
-
-  - [Theos](https://theos.dev/) is required to compile the project
-  - Edit the root `Makefile` to use your Theos SDK
-
 ## License
 
-[GPL-3.0](https://github.com/Lessica/Kayoko/blob/main/COPYING)
+[GPLv3](https://github.com/Lessica/Kayoko/blob/main/COPYING)
