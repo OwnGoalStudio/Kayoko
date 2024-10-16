@@ -30,9 +30,17 @@
 
         [self setIconImageView:[[UIImageView alloc] init]];
 
-        UIImage *icon = [UIImage _applicationIconImageForBundleIdentifier:[item bundleIdentifier]
-                                                                   format:2
-                                                                    scale:[[UIScreen mainScreen] scale]];
+        UIImage *icon = nil;
+        if ([[item bundleIdentifier] isEqualToString:@"com.apple.springboard"]) {
+            BOOL isPad = [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad;
+            icon = [UIImage imageNamed:isPad ? @"HLS_iPad_Universal" : @"HLS_iPhone_Universal"
+                                     inBundle:[PasteboardManager localizationBundle]
+                compatibleWithTraitCollection:nil];
+        } else {
+            icon = [UIImage _applicationIconImageForBundleIdentifier:[item bundleIdentifier]
+                                                              format:2
+                                                               scale:[[UIScreen mainScreen] scale]];
+        }
         // Use the default app icon if no icon exists for the item's bundle identifier.
         if (!icon) {
             icon = [UIImage _applicationIconImageForBundleIdentifier:@"com.apple.WebSheet"
@@ -81,7 +89,9 @@
         [self setHeaderLabel:[[UILabel alloc] init]];
         NSString *displayName = [[[objc_getClass("SBApplicationController") sharedInstance]
                                     applicationWithBundleIdentifier:[item bundleIdentifier]] displayName]
-                                    ?: @"SpringBoard";
+                                    ?: [[PasteboardManager localizationBundle] localizedStringForKey:@"SpringBoard"
+                                                                                               value:nil
+                                                                                               table:@"Tweak"];
         [[self headerLabel] setText:displayName];
         [[self headerLabel] setFont:[UIFont systemFontOfSize:16 weight:UIFontWeightMedium]];
         [[self headerLabel] setTextColor:[UIColor labelColor]];

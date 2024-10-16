@@ -15,6 +15,7 @@
 
 static NSUInteger const kFavoritesButtonImageSize = 24;
 static NSUInteger const kClearButtonImageSize = 20;
+static NSUInteger const kBackButtonImageSize = 20;
 
 @interface _UIGrabber : UIControl
 @end
@@ -30,6 +31,7 @@ static NSUInteger const kClearButtonImageSize = 20;
 @property(nonatomic, strong) _UIGrabber *grabber;
 @property(nonatomic, strong) UILabel *titleLabel;
 @property(nonatomic, strong) UIButton *clearButton;
+@property(nonatomic, strong) UIButton *backButton;
 @property(nonatomic, strong) UIButton *favoritesButton;
 @property(nonatomic, strong) UIPanGestureRecognizer *panGestureRecognizer;
 @property(nonatomic, strong) KayokoHistoryTableView *historyTableView;

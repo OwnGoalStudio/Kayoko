@@ -114,12 +114,28 @@
                             andImageSize:kClearButtonImageSize
                             andTintColor:[UIColor labelColor]];
         [[self headerView] addSubview:[self clearButton]];
+        [[self clearButton] setHidden:NO];
 
         [[self clearButton] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
             [[[self clearButton] centerYAnchor] constraintEqualToAnchor:[[self favoritesButton] centerYAnchor]],
             [[[self clearButton] trailingAnchor] constraintEqualToAnchor:[[self headerView] trailingAnchor]
                                                                 constant:-24]
+        ]];
+
+        [self setBackButton:[[UIButton alloc] init]];
+        [[self backButton] addTarget:self action:@selector(hidePreview) forControlEvents:UIControlEventTouchUpInside];
+        [self updateStyleForHeaderButton:[self backButton]
+                           withImageName:@"arrowshape.turn.up.backward"
+                            andImageSize:kBackButtonImageSize
+                            andTintColor:[UIColor labelColor]];
+        [[self headerView] addSubview:[self backButton]];
+        [[self backButton] setHidden:YES];
+
+        [[self backButton] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [NSLayoutConstraint activateConstraints:@[
+            [[[self backButton] centerYAnchor] constraintEqualToAnchor:[[self favoritesButton] centerYAnchor]],
+            [[[self backButton] trailingAnchor] constraintEqualToAnchor:[[self headerView] trailingAnchor] constant:-24]
         ]];
 
         [self setHistoryTableView:[[KayokoHistoryTableView alloc] initWithName:[[PasteboardManager localizationBundle]
@@ -354,6 +370,9 @@
     _previewSourceTableView = [[self historyTableView] isHidden] ? [self favoritesTableView] : [self historyTableView];
     [self showContentView:[self previewView] andHideContentView:_previewSourceTableView reverse:NO];
 
+    [[self clearButton] setHidden:YES];
+    [[self backButton] setHidden:NO];
+
     [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
 }
 
@@ -366,6 +385,10 @@
     }
 
     [self showContentView:_previewSourceTableView andHideContentView:[self previewView] reverse:YES];
+
+    [[self clearButton] setHidden:NO];
+    [[self backButton] setHidden:YES];
+
     [[self previewView] reset];
 }
 
