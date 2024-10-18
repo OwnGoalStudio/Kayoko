@@ -441,6 +441,9 @@
  * @param style The feedback type/strength to use.
  */
 - (void)triggerHapticFeedbackWithStyle:(UIImpactFeedbackStyle)style {
+    if (!self.shouldPlayFeedback) {
+        return;
+    }
     [self setFeedbackGenerator:[[UIImpactFeedbackGenerator alloc] initWithStyle:style]];
     [[self feedbackGenerator] prepare];
     [[self feedbackGenerator] impactOccurred];

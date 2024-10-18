@@ -39,6 +39,7 @@ static NSUInteger const kBackButtonImageSize = 20;
 @property(nonatomic, strong) KayokoPreviewView *previewView;
 @property(nonatomic, strong) UIImpactFeedbackGenerator *feedbackGenerator;
 @property(nonatomic, assign) BOOL automaticallyPaste;
+@property(nonatomic, assign) BOOL shouldPlayFeedback;
 - (void)showPreviewWithItem:(PasteboardItem *)item;
 - (void)show;
 - (void)hide;

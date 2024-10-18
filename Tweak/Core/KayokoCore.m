@@ -210,6 +210,7 @@ static void load_preferences() {
 
     if (kayokoView) {
         [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+        [kayokoView setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
         CGRect bounds = [[UIScreen mainScreen] bounds];
         CGRect newFrame =
             CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints, bounds.size.width, kayokoPrefsHeightInPoints);
