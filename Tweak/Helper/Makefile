@@ -3,11 +3,17 @@ TWEAK_NAME := KayokoHelper
 KayokoHelper_FILES += KayokoHelper.m
 KayokoHelper_FILES += KeyokoHelperLogos.xm
 KayokoHelper_FILES += $(wildcard ../../Manager/*.m ../../Utils/*.m)
+
+ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
+KayokoHelper_FILES += ../../libroot/dyn.c
+endif
+
 KayokoHelper_CFLAGS += -fobjc-arc
 KayokoHelper_CFLAGS += -I../../Headers
 KayokoHelper_CFLAGS += -I../../Preferences
 KayokoHelper_CFLAGS += -I../../Manager
 KayokoHelper_CFLAGS += -I../../Utils
+
 KayokoHelper_LDFLAGS += -L../../Libraries
 KayokoHelper_FRAMEWORKS += UIKit
 KayokoHelper_LIBRARIES += sandy
