@@ -13,7 +13,7 @@
 #import "PreferenceKeys.h"
 #import "StringUtil.h"
 
-#import <rootless.h>
+#import <libroot.h>
 
 @implementation PasteboardManager {
     dispatch_queue_t _queue;
@@ -35,7 +35,7 @@
     static NSString *kHistoryPath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      kHistoryPath = ROOT_PATH_NS(@"/var/mobile/Library/codes.aurora.kayoko/history.json");
+      kHistoryPath = JBROOT_PATH_NSSTRING(@"/var/mobile/Library/codes.aurora.kayoko/history.json");
     });
     return kHistoryPath;
 }
@@ -44,7 +44,7 @@
     static NSString *kHistoryImagesPath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      kHistoryImagesPath = ROOT_PATH_NS(@"/var/mobile/Library/codes.aurora.kayoko/images/");
+      kHistoryImagesPath = JBROOT_PATH_NSSTRING(@"/var/mobile/Library/codes.aurora.kayoko/images/");
     });
     return kHistoryImagesPath;
 }
@@ -54,7 +54,7 @@
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
       kLocalizationBundle =
-          [NSBundle bundleWithPath:ROOT_PATH_NS(@"/Library/PreferenceBundles/KayokoPreferences.bundle")];
+          [NSBundle bundleWithPath:JBROOT_PATH_NSSTRING(@"/Library/PreferenceBundles/KayokoPreferences.bundle")];
     });
     return kLocalizationBundle;
 }

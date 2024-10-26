@@ -9,7 +9,8 @@
 
 #import <AudioToolbox/AudioToolbox.h>
 #import <HBLog.h>
-#import <rootless.h>
+
+#import <libroot.h>
 #import <substrate.h>
 
 #import "NotificationKeys.h"
@@ -93,8 +94,9 @@ static void kayokoCopy() {
         static SystemSoundID soundID;
         dispatch_once(&onceToken, ^{
           AudioServicesCreateSystemSoundID(
-              (__bridge CFURLRef)[NSURL
-                  fileURLWithPath:ROOT_PATH_NS(@"/Library/PreferenceBundles/KayokoPreferences.bundle/Copy.aiff")],
+              (__bridge CFURLRef)
+                  [NSURL fileURLWithPath:JBROOT_PATH_NSSTRING(
+                                             @"/Library/PreferenceBundles/KayokoPreferences.bundle/Copy.aiff")],
               &soundID);
         });
         AudioServicesPlaySystemSound(soundID);
@@ -226,8 +228,9 @@ static void kayokoPaste() {
         static SystemSoundID soundID;
         dispatch_once(&onceToken, ^{
           AudioServicesCreateSystemSoundID(
-              (__bridge CFURLRef)[NSURL
-                  fileURLWithPath:ROOT_PATH_NS(@"/Library/PreferenceBundles/KayokoPreferences.bundle/Paste.aiff")],
+              (__bridge CFURLRef)
+                  [NSURL fileURLWithPath:JBROOT_PATH_NSSTRING(
+                                             @"/Library/PreferenceBundles/KayokoPreferences.bundle/Paste.aiff")],
               &soundID);
         });
         AudioServicesPlaySystemSound(soundID);

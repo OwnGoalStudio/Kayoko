@@ -9,7 +9,8 @@
 
 #import <Preferences/PSSpecifier.h>
 #import <UIKit/UIKit.h>
-#import <rootless.h>
+
+#import <libroot.h>
 
 #import "../NotificationKeys.h"
 #import "../PreferenceKeys.h"
@@ -65,16 +66,25 @@
 
     UIAlertController *resetAlert = [UIAlertController
         alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
-                         message:[bundle localizedStringForKey:@"This option requires a respring to apply. Do you want to respring now?" value:nil table:@"Root"]
+                         message:[bundle localizedStringForKey:
+                                             @"This option requires a respring to apply. Do you want to respring now?"
+                                                         value:nil
+                                                         table:@"Root"]
                   preferredStyle:UIAlertControllerStyleAlert];
 
-    UIAlertAction *yesAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Yes" value:nil table:@"Root"]
+    UIAlertAction *yesAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Yes"
+                                                                                      value:nil
+                                                                                      table:@"Root"]
                                                         style:UIAlertActionStyleDestructive
                                                       handler:^(UIAlertAction *action) {
                                                         [self respring];
                                                       }];
 
-    UIAlertAction *noAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"No" value:nil table:@"Root"] style:UIAlertActionStyleCancel handler:nil];
+    UIAlertAction *noAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"No"
+                                                                                     value:nil
+                                                                                     table:@"Root"]
+                                                       style:UIAlertActionStyleCancel
+                                                     handler:nil];
 
     [resetAlert addAction:yesAction];
     [resetAlert addAction:noAction];
@@ -87,7 +97,7 @@
  */
 - (void)respring {
     NSTask *task = [[NSTask alloc] init];
-    [task setLaunchPath:ROOT_PATH_NS(@"/usr/bin/killall")];
+    [task setLaunchPath:JBROOT_PATH_NSSTRING(@"/usr/bin/killall")];
     [task setArguments:@[ @"backboardd" ]];
     [task launch];
 }
@@ -98,18 +108,26 @@
 - (void)resetPrompt {
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
 
-    UIAlertController *resetAlert =
-        [UIAlertController alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
-                                            message:[bundle localizedStringForKey:@"Are you sure you want to reset your preferences?" value:nil table:@"Root"]
-                                     preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *resetAlert = [UIAlertController
+        alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
+                         message:[bundle localizedStringForKey:@"Are you sure you want to reset your preferences?"
+                                                         value:nil
+                                                         table:@"Root"]
+                  preferredStyle:UIAlertControllerStyleAlert];
 
-    UIAlertAction *yesAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Yes" value:nil table:@"Root"]
+    UIAlertAction *yesAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Yes"
+                                                                                      value:nil
+                                                                                      table:@"Root"]
                                                         style:UIAlertActionStyleDestructive
                                                       handler:^(UIAlertAction *action) {
                                                         [self resetPreferences];
                                                       }];
 
-    UIAlertAction *noAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"No" value:nil table:@"Root"] style:UIAlertActionStyleCancel handler:nil];
+    UIAlertAction *noAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"No"
+                                                                                     value:nil
+                                                                                     table:@"Root"]
+                                                       style:UIAlertActionStyleCancel
+                                                     handler:nil];
 
     [resetAlert addAction:yesAction];
     [resetAlert addAction:noAction];
