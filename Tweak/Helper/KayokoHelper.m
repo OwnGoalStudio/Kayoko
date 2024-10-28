@@ -305,7 +305,12 @@ static void load_preferences() {
     kayokoHelperPreferences = [[NSUserDefaults alloc]
         initWithSuiteName:[NSString
                               stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", kPreferencesIdentifier]];
+
+#if THEOS_PACKAGE_SCHEME_ROOTHIDE
+    libSandy_applyProfile("Kayoko_RootHide");
+#else
     libSandy_applyProfile("Kayoko");
+#endif
 
     [kayokoHelperPreferences registerDefaults:@{
         kPreferenceKeyEnabled : @(kPreferenceKeyEnabledDefaultValue),

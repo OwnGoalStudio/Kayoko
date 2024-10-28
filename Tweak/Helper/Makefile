@@ -14,7 +14,16 @@ KayokoHelper_CFLAGS += -I../../Preferences
 KayokoHelper_CFLAGS += -I../../Manager
 KayokoHelper_CFLAGS += -I../../Utils
 
+ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
+KayokoHelper_LDFLAGS += -L../../Libraries/_roothide
+else
+ifeq ($(THEOS_PACKAGE_SCHEME),rootless)
+KayokoHelper_LDFLAGS += -L../../Libraries/_rootless
+else
 KayokoHelper_LDFLAGS += -L../../Libraries
+endif
+endif
+
 KayokoHelper_FRAMEWORKS += UIKit
 KayokoHelper_LIBRARIES += sandy
 
