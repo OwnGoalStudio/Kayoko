@@ -9,8 +9,9 @@
 
 #import <AudioToolbox/AudioToolbox.h>
 #import <CoreFoundation/CoreFoundation.h>
-#import <HBLog.h>
+#import <QuartzCore/QuartzCore.h>
 
+#import <HBLog.h>
 #import <libroot.h>
 #import <substrate.h>
 
@@ -18,6 +19,8 @@
 #import "PasteboardManager.h"
 #import "PreferenceKeys.h"
 #import "Views/KayokoView.h"
+
+#define kMinimumFeedbackInterval 0.6
 
 KayokoView *kayokoView = nil;
 
@@ -36,6 +39,9 @@ BOOL kayokoPrefsPlayHapticFeedback = NO;
 CGFloat kayokoPrefsHeightInPoints = 420;
 
 static BOOL isInPasteProgress = NO;
+
+static NSTimeInterval lastPasteFeedbackOccurred = 0;
+static NSTimeInterval lastCopyFeedbackOccurred = 0;
 
 @interface UIStatusBarStyleRequest : NSObject
 @property(nonatomic, assign, readonly) long long style;
@@ -90,6 +96,11 @@ static void _kayokoCopy() {
         });
         return;
     }
+    NSTimeInterval now = CACurrentMediaTime();
+    if (fabs(now - lastCopyFeedbackOccurred) < kMinimumFeedbackInterval) {
+        return;
+    }
+    lastCopyFeedbackOccurred = now;
     if (kayokoPrefsPlaySoundEffects) {
         static dispatch_once_t onceToken;
         static SystemSoundID soundID;
@@ -109,7 +120,7 @@ static void _kayokoCopy() {
 
 static void kayokoCopy() {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        _kayokoCopy();
+      _kayokoCopy();
     });
 }
 
@@ -230,6 +241,11 @@ static void load_preferences() {
 #pragma mark - Sound effects
 
 static void kayokoPaste() {
+    NSTimeInterval now = CACurrentMediaTime();
+    if (fabs(now - lastPasteFeedbackOccurred) < kMinimumFeedbackInterval) {
+        return;
+    }
+    lastPasteFeedbackOccurred = now;
     if (kayokoPrefsPlaySoundEffects) {
         static dispatch_once_t onceToken;
         static SystemSoundID soundID;
