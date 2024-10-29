@@ -1,7 +1,0 @@
-#!/bin/bash
-
-if [[ -e /Library/LaunchDaemons/codes.aurora.kayokod.plist ]]; then
-    launchctl unload /Library/LaunchDaemons/codes.aurora.kayokod.plist > /dev/null 2>&1
-elif [[ -e /var/jb/Library/LaunchDaemons/codes.aurora.kayokod.plist ]]; then
-    launchctl unload /var/jb/Library/LaunchDaemons/codes.aurora.kayokod.plist > /dev/null 2>&1
-fi

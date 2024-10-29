@@ -6,6 +6,7 @@
 //
 
 #import "KayokoCore.h"
+#include <CoreFoundation/CoreFoundation.h>
 
 #import <AudioToolbox/AudioToolbox.h>
 #import <HBLog.h>
@@ -81,7 +82,7 @@ static void kayokoPasteWillStart() { isInPasteProgress = YES; }
 /**
  * Receives the notification that the pasteboard changed from the daemon and pulls the new changes.
  */
-static void kayokoCopy() {
+static void _kayokoCopy() {
     [[PasteboardManager sharedInstance] pullPasteboardChanges];
     if (isInPasteProgress) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -104,6 +105,12 @@ static void kayokoCopy() {
     if (kayokoPrefsPlayHapticFeedback) {
         AudioServicesPlaySystemSound(1519);
     }
+}
+
+static void kayokoCopy() {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        _kayokoCopy();
+    });
 }
 
 /**
@@ -266,7 +273,7 @@ __attribute((constructor)) static void initialize() {
 
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoCopy,
-            (CFStringRef)kNotificationKeyObserverPasteboardChanged, NULL,
+            CFSTR("com.apple.pasteboard.notify.changed"), NULL,
             (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)show,
