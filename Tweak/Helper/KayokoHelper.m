@@ -6,7 +6,6 @@
 //
 
 #import "KayokoHelper.h"
-#include <Foundation/NSDictionary.h>
 #import "NotificationKeys.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"

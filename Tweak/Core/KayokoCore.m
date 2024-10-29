@@ -6,9 +6,9 @@
 //
 
 #import "KayokoCore.h"
-#include <CoreFoundation/CoreFoundation.h>
 
 #import <AudioToolbox/AudioToolbox.h>
+#import <CoreFoundation/CoreFoundation.h>
 #import <HBLog.h>
 
 #import <libroot.h>
