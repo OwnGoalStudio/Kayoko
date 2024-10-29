@@ -6,6 +6,7 @@
 //
 
 #import "KayokoHelper.h"
+#include <Foundation/NSDictionary.h>
 #import "NotificationKeys.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
@@ -296,6 +297,24 @@ static void kayokoPaste() {
     [[UIApplication sharedApplication] sendAction:@selector(paste:) to:nil from:nil forEvent:nil];
 }
 
+@interface KayokoKeyboardObserver : NSObject
+@end
+
+@implementation KayokoKeyboardObserver
+
+- (void)keyboardWillHide:(NSNotification *)notification {
+    NSDictionary *userInfo = [notification userInfo];
+    BOOL isLocalKeyboard = [userInfo[UIKeyboardIsLocalUserInfoKey] boolValue];
+    if (!isLocalKeyboard) {
+        return;
+    }
+
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (CFStringRef)kNotificationKeyCoreHide, nil, nil, YES);
+}
+
+@end
+
 #pragma mark - Preferences
 
 /**
@@ -418,4 +437,12 @@ __attribute((constructor)) static void initialize() {
                                         (CFNotificationCallback)kayokoPaste, (CFStringRef)kNotificationKeyHelperPaste,
                                         NULL, (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDrop);
     }
+
+    static KayokoKeyboardObserver *observer;
+    observer = [[KayokoKeyboardObserver alloc] init];
+
+    [[NSNotificationCenter defaultCenter] addObserver:observer
+                                             selector:@selector(keyboardWillHide:)
+                                                 name:UIKeyboardWillHideNotification
+                                               object:nil];
 }

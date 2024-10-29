@@ -481,7 +481,7 @@
     [self setHidden:NO];
 
     _isAnimating = YES;
-    [UIView animateWithDuration:0.3
+    [UIView animateWithDuration:0.33
         delay:0
         usingSpringWithDamping:1
         initialSpringVelocity:0
@@ -504,7 +504,7 @@
     }
 
     _isAnimating = YES;
-    [UIView animateWithDuration:0.2
+    [UIView animateWithDuration:0.33
         delay:0
         usingSpringWithDamping:1
         initialSpringVelocity:0
