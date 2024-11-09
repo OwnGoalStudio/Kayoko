@@ -63,6 +63,10 @@
                                                                               action:@selector(hidePreview)]];
         [[self headerView] addGestureRecognizer:[self tapGestureRecognizer]];
 
+        // Add gesture to dismiss view when tapping outside the floating window
+        UITapGestureRecognizer *tapOutsideGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTapOutside:)];
+        [self addGestureRecognizer:tapOutsideGesture];
+
         [self setGrabber:[[_UIGrabber alloc] init]];
         [[self headerView] addSubview:[self grabber]];
 
@@ -345,6 +349,13 @@
 #pragma clang diagnostic pop
 
     [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleHeavy];
+}
+
+- (void)handleTapOutside:(UITapGestureRecognizer *)gesture {
+    CGPoint touchPoint = [gesture locationInView:self];
+    if (!CGRectContainsPoint(self.frame, touchPoint)) {
+        [self hide];
+    }
 }
 
 /**
