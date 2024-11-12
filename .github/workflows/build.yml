@@ -30,6 +30,7 @@ jobs:
     - name: Setup Theos
       run: |
         bash -c "$(curl -fsSL https://raw.githubusercontent.com/OwnGoalStudio/theos/ci/auth-token/bin/install-theos)"
+        $THEOS/bin/install-sdk iPhoneOS16.5 || true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -40,6 +41,7 @@ jobs:
     - name: Setup Theos (RootHide)
       run: |
         bash -c "$(curl -fsSL https://raw.githubusercontent.com/OwnGoalStudio/theos-roothide/ci/auth-token/bin/install-theos)"
+        $THEOS/bin/install-sdk iPhoneOS16.5 || true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
