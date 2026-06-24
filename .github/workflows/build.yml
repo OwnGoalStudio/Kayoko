@@ -61,6 +61,13 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Install Theos dependencies
+      run: |
+        brew install ldid xz
+        echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+        command -v ldid
+        command -v xz
+
     - name: Build Package
       run: |
         source "${{ matrix.env_script }}"
