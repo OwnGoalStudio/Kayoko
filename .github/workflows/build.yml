@@ -50,7 +50,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: roothide/theos
-        ref: legacy-roothide
+        ref: d4826f4e54127cfe1de88103b69b92107591c05b
         path: theos
         submodules: recursive
 
