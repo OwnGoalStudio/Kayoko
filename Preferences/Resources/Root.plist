@@ -105,6 +105,20 @@
 			<key>PostNotification</key>
 			<string>codes.aurora.kayoko.preferences.reload</string>
 		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<false/>
+			<key>defaults</key>
+			<string>codes.aurora.kayoko.preferences</string>
+			<key>key</key>
+			<string>SwipeToSelectWords</string>
+			<key>label</key>
+			<string>Swipe to Select Words</string>
+			<key>PostNotification</key>
+			<string>codes.aurora.kayoko.preferences.reload</string>
+		</dict>
 
 		<dict>
 			<key>cell</key>
@@ -212,11 +226,38 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>Appearance</string>
+			<string>Preview</string>
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSStaticTextCell</string>
+			<string>PSSegmentCell</string>
+			<key>default</key>
+			<integer>1</integer>
+			<key>defaults</key>
+			<string>codes.aurora.kayoko.preferences</string>
+			<key>key</key>
+			<string>PreviewLineCount</string>
+			<key>label</key>
+			<string>Preview Lines</string>
+			<key>validValues</key>
+			<array>
+				<integer>1</integer>
+				<integer>2</integer>
+				<integer>3</integer>
+			</array>
+			<key>validTitles</key>
+			<array>
+				<string>Single Line</string>
+				<string>Double Line</string>
+				<string>Triple Line</string>
+			</array>
+			<key>PostNotification</key>
+			<string>codes.aurora.kayoko.preferences.reload</string>
+		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
 			<key>label</key>
 			<string>Height (Points)</string>
 		</dict>
@@ -260,7 +301,7 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>Tools</string>
+			<string></string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -268,7 +309,7 @@
 			<key>label</key>
 			<string>Respring</string>
 			<key>action</key>
-			<string>respring</string>
+			<string>respringPrompt</string>
 			<key>isDestructive</key>
 			<true/>
 		</dict>
@@ -335,7 +376,7 @@
 			<key>subtitle</key>
 			<string>Find it on my GitHub.</string>
 			<key>url</key>
-			<string>https://github.com/kaethchen/Kayoko</string>
+			<string>https://github.com/OwnGoalStudio/Kayoko</string>
 			<key>height</key>
 			<integer>54</integer>
 		</dict>

@@ -16,7 +16,10 @@
 #import "../PreferenceKeys.h"
 #import "PasteboardManager.h"
 
-@implementation KayokoRootListController
+@implementation KayokoRootListController {
+    ActivationMethod _lastActivationMethod;
+    BOOL _hasActivationMethodSnapshot;
+}
 
 /**
  * Loads the root specifiers.
@@ -29,6 +32,28 @@
     }
 
     return _specifiers;
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+
+    ActivationMethod currentActivationMethod = [self currentActivationMethod];
+    if (!_hasActivationMethodSnapshot) {
+        _lastActivationMethod = currentActivationMethod;
+        _hasActivationMethodSnapshot = YES;
+        return;
+    }
+
+    if (currentActivationMethod != _lastActivationMethod) {
+        _lastActivationMethod = currentActivationMethod;
+        [self promptToRespring];
+    }
+}
+
+- (ActivationMethod)currentActivationMethod {
+    NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
+    ActivationMethod activationMethod = [userDefaults integerForKey:kPreferenceKeyActivationMethod];
+    return activationMethod == 0 ? kPreferenceKeyActivationMethodDefaultValue : activationMethod;
 }
 
 /**
@@ -44,6 +69,10 @@
     if ([[specifier propertyForKey:@"key"] isEqualToString:kPreferenceKeyEnabled] ||
         [[specifier propertyForKey:@"key"] isEqualToString:kPreferenceKeyActivationMethod] ||
         [[specifier propertyForKey:@"key"] isEqualToString:kPreferenceKeyAutomaticallyPaste]) {
+        if ([[specifier propertyForKey:@"key"] isEqualToString:kPreferenceKeyActivationMethod]) {
+            _lastActivationMethod = [self currentActivationMethod];
+            _hasActivationMethodSnapshot = YES;
+        }
         [self promptToRespring];
     }
 }
@@ -67,29 +96,63 @@
     UIAlertController *resetAlert = [UIAlertController
         alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
                          message:[bundle localizedStringForKey:
-                                             @"This option requires a respring to apply. Do you want to respring now?"
+                                             @"This option requires restarting SpringBoard to apply. Do you want to restart now?"
                                                          value:nil
                                                          table:@"Root"]
                   preferredStyle:UIAlertControllerStyleAlert];
 
-    UIAlertAction *yesAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Yes"
-                                                                                      value:nil
-                                                                                      table:@"Root"]
-                                                        style:UIAlertActionStyleDestructive
-                                                      handler:^(UIAlertAction *action) {
-                                                        [self respring];
-                                                      }];
+    UIAlertAction *respringAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Respring Now"
+                                                                                          value:nil
+                                                                                          table:@"Root"]
+                                                            style:UIAlertActionStyleDestructive
+                                                          handler:^(UIAlertAction *action) {
+                                                            [self respring];
+                                                          }];
 
-    UIAlertAction *noAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"No"
-                                                                                     value:nil
-                                                                                     table:@"Root"]
-                                                       style:UIAlertActionStyleCancel
-                                                     handler:nil];
+    UIAlertAction *notNowAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Not Now"
+                                                                                        value:nil
+                                                                                        table:@"Root"]
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
 
-    [resetAlert addAction:yesAction];
-    [resetAlert addAction:noAction];
+    [resetAlert addAction:respringAction];
+    [resetAlert addAction:notNowAction];
 
     [self presentViewController:resetAlert animated:YES completion:nil];
+}
+
+/**
+ * Prompts the user before manually respringing.
+ */
+- (void)respringPrompt {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+
+    UIAlertController *respringAlert = [UIAlertController
+        alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
+                         message:[bundle localizedStringForKey:
+                                             @"Respringing will restart SpringBoard and close all apps. Unsaved work may be lost."
+                                                         value:nil
+                                                         table:@"Root"]
+                  preferredStyle:UIAlertControllerStyleAlert];
+
+    UIAlertAction *respringAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Respring Now"
+                                                                                          value:nil
+                                                                                          table:@"Root"]
+                                                            style:UIAlertActionStyleDestructive
+                                                          handler:^(UIAlertAction *action) {
+                                                            [self respring];
+                                                          }];
+
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
+                                                                                        value:nil
+                                                                                        table:@"Root"]
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
+
+    [respringAlert addAction:respringAction];
+    [respringAlert addAction:cancelAction];
+
+    [self presentViewController:respringAlert animated:YES completion:nil];
 }
 
 /**
@@ -115,22 +178,22 @@
                                                          table:@"Root"]
                   preferredStyle:UIAlertControllerStyleAlert];
 
-    UIAlertAction *yesAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Yes"
-                                                                                      value:nil
-                                                                                      table:@"Root"]
-                                                        style:UIAlertActionStyleDestructive
-                                                      handler:^(UIAlertAction *action) {
-                                                        [self resetPreferences];
-                                                      }];
+    UIAlertAction *resetAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Reset"
+                                                                                       value:nil
+                                                                                       table:@"Root"]
+                                                         style:UIAlertActionStyleDestructive
+                                                       handler:^(UIAlertAction *action) {
+                                                         [self resetPreferences];
+                                                       }];
 
-    UIAlertAction *noAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"No"
-                                                                                     value:nil
-                                                                                     table:@"Root"]
-                                                       style:UIAlertActionStyleCancel
-                                                     handler:nil];
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
+                                                                                        value:nil
+                                                                                        table:@"Root"]
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
 
-    [resetAlert addAction:yesAction];
-    [resetAlert addAction:noAction];
+    [resetAlert addAction:resetAction];
+    [resetAlert addAction:cancelAction];
 
     [self presentViewController:resetAlert animated:YES completion:nil];
 }
@@ -190,11 +253,7 @@
             NSBundle *bundle = [NSBundle bundleForClass:[self class]];
             
             // Get the current activation methods
-            NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
-            ActivationMethod currentOptions = [userDefaults integerForKey:kPreferenceKeyActivationMethod];
-            if (currentOptions == 0) {
-                currentOptions = kPreferenceKeyActivationMethodDefaultValue;
-            }
+            ActivationMethod currentOptions = [self currentActivationMethod];
             
             // Get valid values and titles
             NSArray *validValues = [specifier propertyForKey:@"validValues"];

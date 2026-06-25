@@ -10,6 +10,10 @@
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 
+static CGFloat const kKayokoTableViewBaseRowHeight = 65;
+static CGFloat const kKayokoTableViewAdditionalPreviewLineHeight = 18;
+static NSUInteger const kKayokoTableViewMaximumPreviewLineCount = 3;
+
 @implementation KayokoTableView
 
 /**
@@ -22,13 +26,22 @@
 
     if (self) {
         [self setName:name];
+        [self setHistoryKey:kHistoryKeyHistory];
         [self setDelegate:self];
         [self setDataSource:self];
         [self setBackgroundColor:[UIColor clearColor]];
-        [self setRowHeight:65];
+        [self setPreviewLineCount:1];
     }
 
     return self;
+}
+
+- (void)setPreviewLineCount:(NSUInteger)previewLineCount {
+    NSUInteger lineCount = MIN(MAX(previewLineCount, 1), kKayokoTableViewMaximumPreviewLineCount);
+    _previewLineCount = lineCount;
+    [self setRowHeight:kKayokoTableViewBaseRowHeight +
+                       (lineCount - 1) * kKayokoTableViewAdditionalPreviewLineHeight];
+    [self reloadData];
 }
 
 /**
@@ -53,6 +66,7 @@
 
     KayokoTableViewCell *cell = [[KayokoTableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
                                                                    andItem:item
+                                                       andPreviewLineCount:[self previewLineCount]
                                                            reuseIdentifier:@"KayokoTableViewCell"];
 
     // Add long press gesture recognizer to preview the cell's content.
@@ -77,9 +91,10 @@
 
     NSDictionary *dictionary = [self items][[indexPath row]];
     PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
-    [[PasteboardManager sharedInstance] updatePasteboardWithItem:item
-                                              fromHistoryWithKey:kHistoryKeyHistory
-                                                 shouldAutoPaste:YES];
+    [[PasteboardManager sharedInstance] performDirectPasteWithPasteboardItem:item
+                                                                  historyItem:item
+                                                           fromHistoryWithKey:[self historyKey]
+                                                              shouldAutoPaste:YES];
 
     [[self superview] performSelector:@selector(hide)];
 }
@@ -173,6 +188,14 @@
 - (void)reloadDataWithItems:(NSArray *)items {
     [self setItems:items];
     [self reloadData];
+}
+
+- (void)notifyContentStateChanged {
+    SEL selector = NSSelectorFromString(@"updateContentState");
+    UIView *superview = [self superview];
+    if ([superview respondsToSelector:selector]) {
+        ((void (*)(id, SEL))[superview methodForSelector:selector])(superview, selector);
+    }
 }
 
 @end

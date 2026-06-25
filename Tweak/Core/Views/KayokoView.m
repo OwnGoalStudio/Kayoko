@@ -6,9 +6,12 @@
 //
 
 #import "KayokoView.h"
+#import "KayokoClearConfirmationView.h"
+#import "KayokoEmptyStateView.h"
 #import "KayokoFavoritesTableView.h"
 #import "KayokoHistoryTableView.h"
 #import "KayokoPreviewView.h"
+#import "KayokoWordSelectionView.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 #import <rootless.h>
@@ -24,6 +27,8 @@
     self = [super initWithFrame:frame];
 
     if (self) {
+        _activeHistoryKey = kHistoryKeyHistory;
+
         [self hide];
 
         [[self layer] setShadowColor:[[UIColor blackColor] CGColor]];
@@ -86,8 +91,8 @@
         [NSLayoutConstraint activateConstraints:@[
             [[[self favoritesButton] bottomAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor]
                                                                   constant:-2],
-            [[[self favoritesButton] leadingAnchor] constraintEqualToAnchor:[[self headerView] leadingAnchor]
-                                                                   constant:24]
+            [[[self favoritesButton] centerXAnchor] constraintEqualToAnchor:[[self headerView] leadingAnchor]
+                                                                   constant:kLeadingHeaderButtonCenterXInset]
         ]];
 
         [self setTitleLabel:[[UILabel alloc] init]];
@@ -101,8 +106,8 @@
         [[self titleLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
             [[[self titleLabel] centerYAnchor] constraintEqualToAnchor:[[self favoritesButton] centerYAnchor]],
-            [[[self titleLabel] leadingAnchor] constraintEqualToAnchor:[[self favoritesButton] trailingAnchor]
-                                                              constant:12]
+            [[[self titleLabel] leadingAnchor] constraintEqualToAnchor:[[self headerView] leadingAnchor]
+                                                              constant:kTitleLabelLeadingInset]
         ]];
 
         [self setClearButton:[[UIButton alloc] init]];
@@ -119,12 +124,14 @@
         [[self clearButton] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
             [[[self clearButton] centerYAnchor] constraintEqualToAnchor:[[self favoritesButton] centerYAnchor]],
-            [[[self clearButton] trailingAnchor] constraintEqualToAnchor:[[self headerView] trailingAnchor]
-                                                                constant:-24]
+            [[[self clearButton] centerXAnchor] constraintEqualToAnchor:[[self headerView] trailingAnchor]
+                                                               constant:-kTrailingHeaderButtonCenterXInset]
         ]];
 
         [self setBackButton:[[UIButton alloc] init]];
-        [[self backButton] addTarget:self action:@selector(hidePreview) forControlEvents:UIControlEventTouchUpInside];
+        [[self backButton] addTarget:self
+                              action:@selector(handlePreviewActionButtonPressed)
+                    forControlEvents:UIControlEventTouchUpInside];
         [self updateStyleForHeaderButton:[self backButton]
                            withImageName:@"arrowshape.turn.up.backward"
                             andImageSize:kBackButtonImageSize
@@ -135,7 +142,8 @@
         [[self backButton] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
             [[[self backButton] centerYAnchor] constraintEqualToAnchor:[[self favoritesButton] centerYAnchor]],
-            [[[self backButton] trailingAnchor] constraintEqualToAnchor:[[self headerView] trailingAnchor] constant:-24]
+            [[[self backButton] centerXAnchor] constraintEqualToAnchor:[[self headerView] trailingAnchor]
+                                                              constant:-kTrailingHeaderButtonCenterXInset]
         ]];
 
         [self setHistoryTableView:[[KayokoHistoryTableView alloc] initWithName:[[PasteboardManager localizationBundle]
@@ -157,6 +165,7 @@
                                                                                      localizedStringForKey:@"Favorites"
                                                                                                      value:nil
                                                                                                      table:@"Tweak"]]];
+        [[self favoritesTableView] setHistoryKey:kHistoryKeyFavorites];
         [[self favoritesTableView] setHidden:YES];
         [self addSubview:[self favoritesTableView]];
 
@@ -170,10 +179,45 @@
             [[[self favoritesTableView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
 
+        [self setClearConfirmationView:[[KayokoClearConfirmationView alloc] init]];
+        [[self clearConfirmationView] setHidden:YES];
+        [self addSubview:[self clearConfirmationView]];
+
+        [[self clearConfirmationView] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [NSLayoutConstraint activateConstraints:@[
+            [[[self clearConfirmationView] topAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor] constant:8],
+            [[[self clearConfirmationView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
+            [[[self clearConfirmationView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
+            [[[self clearConfirmationView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
+        ]];
+
+        [[[self clearConfirmationView] cancelButton] addTarget:self
+                                                        action:@selector(handleClearConfirmationCancelButtonPressed)
+                                              forControlEvents:UIControlEventTouchUpInside];
+        [[[self clearConfirmationView] confirmButton] addTarget:self
+                                                         action:@selector(handleClearConfirmationConfirmButtonPressed)
+                                               forControlEvents:UIControlEventTouchUpInside];
+
+        [self setEmptyStateView:[[KayokoEmptyStateView alloc] init]];
+        [[self emptyStateView] setHidden:YES];
+        [self addSubview:[self emptyStateView]];
+
+        [[self emptyStateView] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [NSLayoutConstraint activateConstraints:@[
+            [[[self emptyStateView] topAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor] constant:8],
+            [[[self emptyStateView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
+            [[[self emptyStateView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
+            [[[self emptyStateView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
+        ]];
+
         [self setPreviewView:[[KayokoPreviewView alloc]
                                  initWithName:[[PasteboardManager localizationBundle] localizedStringForKey:@"Preview"
                                                                                                       value:nil
                                                                                                       table:@"Tweak"]]];
+        __weak typeof(self) weakSelf = self;
+        [[[self previewView] wordSelectionView] setSelectionChangedHandler:^{
+          [weakSelf updatePreviewActionButtonState];
+        }];
         [[self previewView] setHidden:YES];
         [self addSubview:[self previewView]];
 
@@ -250,9 +294,150 @@
                       andTintColor:(UIColor *)color {
     UIImageSymbolConfiguration *configuration =
         [UIImageSymbolConfiguration configurationWithPointSize:imageSize weight:UIImageSymbolWeightMedium];
-    [button setImage:[[UIImage systemImageNamed:imageName] imageWithConfiguration:configuration]
-            forState:UIControlStateNormal];
+    UIImage *image = [UIImage systemImageNamed:imageName];
+    if (!image) {
+        image = [UIImage systemImageNamed:@"doc.on.doc"];
+    }
+    [button setImage:[image imageWithConfiguration:configuration] forState:UIControlStateNormal];
     [button setTintColor:color];
+}
+
+- (NSString *)activeHistoryKey {
+    if (_clearConfirmationHistoryKey) {
+        return _clearConfirmationHistoryKey;
+    }
+
+    return _activeHistoryKey ?: kHistoryKeyHistory;
+}
+
+- (KayokoTableView *)tableViewForHistoryKey:(NSString *)key {
+    return [key isEqualToString:kHistoryKeyFavorites] ? [self favoritesTableView] : [self historyTableView];
+}
+
+- (UIView *)contentViewForHistoryKey:(NSString *)key {
+    KayokoTableView *tableView = [self tableViewForHistoryKey:key];
+    if ([[tableView items] count] > 0) {
+        return tableView;
+    }
+
+    [[self emptyStateView] updateWithHistoryKey:key];
+    return [self emptyStateView];
+}
+
+- (UIView *)activeHistoryContentView {
+    if (![[self historyTableView] isHidden]) {
+        return [self historyTableView];
+    }
+
+    if (![[self favoritesTableView] isHidden]) {
+        return [self favoritesTableView];
+    }
+
+    return [self emptyStateView];
+}
+
+- (void)setHistoryContentVisibleForKey:(NSString *)key {
+    _activeHistoryKey = key;
+    UIView *contentView = [self contentViewForHistoryKey:key];
+    [[self historyTableView] setHidden:contentView != [self historyTableView]];
+    [[self favoritesTableView] setHidden:contentView != [self favoritesTableView]];
+    [[self emptyStateView] setHidden:contentView != [self emptyStateView]];
+    [contentView setAlpha:1];
+    [contentView setTransform:CGAffineTransformIdentity];
+    [[self titleLabel] setText:[self titleForContentView:contentView]];
+}
+
+- (NSString *)titleForContentView:(UIView *)view {
+    if (view == [self clearConfirmationView]) {
+        return [[self titleLabel] text];
+    }
+
+    if ([view respondsToSelector:@selector(name)]) {
+        return [view valueForKey:@"name"];
+    }
+
+    return nil;
+}
+
+- (void)updateClearConfirmationTextForHistoryKey:(NSString *)key {
+    [[self clearConfirmationView] updateWithHistoryKey:key];
+}
+
+- (void)showClearConfirmationForHistoryKey:(NSString *)key {
+    _activeHistoryKey = key;
+    _clearConfirmationHistoryKey = key;
+    [self updateClearConfirmationTextForHistoryKey:key];
+    [[self clearButton] setHidden:YES];
+
+    [self showContentView:[self clearConfirmationView] andHideContentView:[self activeHistoryContentView] reverse:NO];
+}
+
+- (void)hideClearConfirmationWithReload:(BOOL)reload {
+    if ([[self clearConfirmationView] isHidden] || !_clearConfirmationHistoryKey) {
+        return;
+    }
+
+    NSString *key = _clearConfirmationHistoryKey;
+    KayokoTableView *tableView = [self tableViewForHistoryKey:key];
+    if (reload) {
+        NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:key];
+        [tableView reloadDataWithItems:items];
+    }
+
+    _clearConfirmationHistoryKey = nil;
+    [[self clearButton] setHidden:NO];
+    [self updateClearButtonStateForTableView:[self tableViewForHistoryKey:key]];
+    [self showContentView:[self contentViewForHistoryKey:key] andHideContentView:[self clearConfirmationView] reverse:YES];
+}
+
+- (void)resetClearConfirmationIfNeeded {
+    if (!_clearConfirmationHistoryKey) {
+        return;
+    }
+
+    [[self clearConfirmationView] setHidden:YES];
+    [[self clearConfirmationView] setAlpha:1];
+    [[self clearConfirmationView] setTransform:CGAffineTransformIdentity];
+    [self setHistoryContentVisibleForKey:_clearConfirmationHistoryKey];
+    [[self clearButton] setHidden:NO];
+    _clearConfirmationHistoryKey = nil;
+    [self updateClearButtonState];
+}
+
+- (BOOL)isShowingClearConfirmation {
+    return _clearConfirmationHistoryKey && ![[self clearConfirmationView] isHidden];
+}
+
+- (void)updateClearButtonState {
+    KayokoTableView *tableView = [self tableViewForHistoryKey:[self activeHistoryKey]];
+    [self updateClearButtonStateForTableView:tableView];
+}
+
+- (void)updateClearButtonStateForTableView:(KayokoTableView *)tableView {
+    BOOL enabled = [[tableView items] count] > 0;
+    [[self clearButton] setEnabled:enabled];
+    [[self clearButton] setAlpha:enabled ? 1.0 : 0.35];
+}
+
+- (void)setPreviewLineCount:(NSUInteger)previewLineCount {
+    _previewLineCount = previewLineCount;
+    [[self historyTableView] setPreviewLineCount:previewLineCount];
+    [[self favoritesTableView] setPreviewLineCount:previewLineCount];
+}
+
+- (void)updateContentState {
+    if (![self isShowingClearConfirmation] && [[self previewView] isHidden]) {
+        UIView *viewToHide = [self activeHistoryContentView];
+        UIView *viewToShow = [self contentViewForHistoryKey:[self activeHistoryKey]];
+
+        if (viewToShow != viewToHide) {
+            [self showContentView:viewToShow andHideContentView:viewToHide reverse:NO];
+        } else {
+            [[self titleLabel] setText:[self titleForContentView:viewToShow]];
+        }
+    }
+
+    [self updateClearButtonState];
 }
 
 /**
@@ -265,15 +450,36 @@
         return;
     }
 
-    if (![[self previewView] isHidden]) {
-        [self hidePreview];
+    if ([self isShowingClearConfirmation]) {
+        [self hideClearConfirmationWithReload:NO];
+        [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
+        return;
     }
 
-    if ([[self historyTableView] isHidden]) {
+    if (![[self previewView] isHidden]) {
+        [self hidePreview];
+        [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
+        return;
+    }
+
+    NSString *key = [self activeHistoryKey];
+    BOOL showingFavorites = [key isEqualToString:kHistoryKeyFavorites];
+    NSString *targetKey = showingFavorites ? kHistoryKeyHistory : kHistoryKeyFavorites;
+    KayokoTableView *targetTableView = [self tableViewForHistoryKey:targetKey];
+    UIView *viewToHide = [self activeHistoryContentView];
+
+    if (showingFavorites) {
         NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyHistory];
         [[self historyTableView] reloadDataWithItems:items];
+        _activeHistoryKey = kHistoryKeyHistory;
+        [self updateClearButtonStateForTableView:targetTableView];
 
-        [self showContentView:[self historyTableView] andHideContentView:[self favoritesTableView] reverse:YES];
+        UIView *viewToShow = [self contentViewForHistoryKey:kHistoryKeyHistory];
+        if (viewToShow != viewToHide) {
+            [self showContentView:viewToShow andHideContentView:viewToHide reverse:YES];
+        } else {
+            [[self titleLabel] setText:[self titleForContentView:viewToShow]];
+        }
 
         [self updateStyleForHeaderButton:[self favoritesButton]
                            withImageName:@"heart"
@@ -282,8 +488,15 @@
     } else {
         NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyFavorites];
         [[self favoritesTableView] reloadDataWithItems:items];
+        _activeHistoryKey = kHistoryKeyFavorites;
+        [self updateClearButtonStateForTableView:targetTableView];
 
-        [self showContentView:[self favoritesTableView] andHideContentView:[self historyTableView] reverse:NO];
+        UIView *viewToShow = [self contentViewForHistoryKey:kHistoryKeyFavorites];
+        if (viewToShow != viewToHide) {
+            [self showContentView:viewToShow andHideContentView:viewToHide reverse:NO];
+        } else {
+            [[self titleLabel] setText:[self titleForContentView:viewToShow]];
+        }
 
         [self updateStyleForHeaderButton:[self favoritesButton]
                            withImageName:@"heart.fill"
@@ -294,56 +507,92 @@
     [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
 }
 
-- (void)handleClearButtonPressed {
+- (void)handlePreviewActionButtonPressed {
+    if (!_previewItem || [[self previewView] isHidden] || ![[self previewView] showingWordSelection] ||
+        ![[self previewView] hasSelectedText]) {
+        return;
+    }
+
+    NSString *text = [[self previewView] selectedText];
+
+    if ([self automaticallyPaste]) {
+        PasteboardItem *selectedItem = [[PasteboardItem alloc] initWithBundleIdentifier:[_previewItem bundleIdentifier]
+                                                                             andContent:text
+                                                                         withImageNamed:@""];
+        NSString *historyKey =
+            _previewSourceTableView == [self favoritesTableView] ? kHistoryKeyFavorites : kHistoryKeyHistory;
+        [[PasteboardManager sharedInstance] performDirectPasteWithPasteboardItem:selectedItem
+                                                                      historyItem:_previewItem
+                                                               fromHistoryWithKey:historyKey
+                                                                  shouldAutoPaste:YES];
+    } else {
+        [[UIPasteboard generalPasteboard] setString:text];
+    }
+
+    [[self previewView] reset];
+    [[self previewView] setHidden:YES];
+    [_previewSourceTableView setHidden:NO];
+    [_previewSourceTableView setAlpha:1];
+    [_previewSourceTableView setTransform:CGAffineTransformIdentity];
+    [[self clearButton] setHidden:NO];
+    [[self backButton] setHidden:YES];
+    [[self backButton] setEnabled:YES];
+    [[self backButton] setAlpha:1.0];
+    if (_previewSourceTableView == [self favoritesTableView]) {
+        [self updateStyleForHeaderButton:[self favoritesButton]
+                           withImageName:@"heart.fill"
+                            andImageSize:kFavoritesButtonImageSize
+                            andTintColor:[UIColor systemPinkColor]];
+    } else {
+        [self updateStyleForHeaderButton:[self favoritesButton]
+                           withImageName:@"heart"
+                            andImageSize:kFavoritesButtonImageSize
+                            andTintColor:[UIColor labelColor]];
+    }
+    _previewItem = nil;
     [self hide];
+    [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
+}
 
-    NSString *key = [[self historyTableView] isHidden] ? kHistoryKeyFavorites : kHistoryKeyHistory;
-    UIAlertController *clearAlert = [UIAlertController
-        alertControllerWithTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"Kayoko"
-                                                                                         value:nil
-                                                                                         table:@"Tweak"]
-                         message:[NSString stringWithFormat:[[PasteboardManager localizationBundle]
-                                                                localizedStringForKey:@"This will clear your %@."
-                                                                                value:nil
-                                                                                table:@"Tweak"],
-                                                            [[PasteboardManager localizationBundle]
-                                                                localizedStringForKey:key
-                                                                                value:nil
-                                                                                table:@"Tweak"]]
-                  preferredStyle:UIAlertControllerStyleAlert];
+- (void)updatePreviewActionButtonState {
+    BOOL enabled = [[self previewView] showingWordSelection] && [[self previewView] hasSelectedText];
+    [[self backButton] setEnabled:enabled];
+    [[self backButton] setAlpha:enabled ? 1.0 : 0.35];
+}
 
-    UIAlertAction *yesAction = [UIAlertAction
-        actionWithTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"Yes" value:nil table:@"Tweak"]
-                  style:UIAlertActionStyleDestructive
-                handler:^(UIAlertAction *action) {
-                  NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:key];
-                  for (NSDictionary *dictionary in items) {
-                      PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
-                      [[PasteboardManager sharedInstance] removePasteboardItem:item
-                                                            fromHistoryWithKey:key
-                                                             shouldRemoveImage:YES];
-                  }
+- (void)handleClearButtonPressed {
+    if (_isAnimating || ![[self previewView] isHidden] || [self isShowingClearConfirmation]) {
+        return;
+    }
 
-                  [self show];
-                }];
+    [self showClearConfirmationForHistoryKey:[self activeHistoryKey]];
+    [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
+}
 
-    UIAlertAction *noAction = [UIAlertAction
-        actionWithTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"No" value:nil table:@"Tweak"]
-                  style:UIAlertActionStyleCancel
-                handler:^(UIAlertAction *action) {
-                  [self show];
-                }];
+- (void)handleClearConfirmationCancelButtonPressed {
+    if (_isAnimating) {
+        return;
+    }
 
-    [clearAlert addAction:yesAction];
-    [clearAlert addAction:noAction];
+    [self hideClearConfirmationWithReload:NO];
+    [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
+}
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    [[[[UIApplication sharedApplication] keyWindow] rootViewController] presentViewController:clearAlert
-                                                                                     animated:YES
-                                                                                   completion:nil];
-#pragma clang diagnostic pop
+- (void)handleClearConfirmationConfirmButtonPressed {
+    if (_isAnimating || !_clearConfirmationHistoryKey) {
+        return;
+    }
 
+    NSString *key = _clearConfirmationHistoryKey;
+    NSArray *items = [[[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:key] copy];
+    for (NSDictionary *dictionary in items) {
+        PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
+        [[PasteboardManager sharedInstance] removePasteboardItem:item
+                                              fromHistoryWithKey:key
+                                               shouldRemoveImage:YES];
+    }
+
+    [self hideClearConfirmationWithReload:YES];
     [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleHeavy];
 }
 
@@ -353,25 +602,41 @@
  * @param item The item to preview.
  */
 - (void)showPreviewWithItem:(PasteboardItem *)item {
-    if ([item hasLink]) {
-        [[[self previewView] webView] loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[item content]]]];
-        [[[self previewView] webView] setHidden:NO];
-    } else if (![[item imageName] isEqualToString:@""]) {
+    _previewItem = item;
+
+    if (![[item imageName] isEqualToString:@""]) {
         NSData *imageData = [[NSFileManager defaultManager]
             contentsAtPath:[NSString
                                stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]]];
         [[[self previewView] imageView] setImage:[UIImage imageWithData:imageData]];
         [[[self previewView] imageView] setHidden:NO];
     } else {
-        [[[self previewView] textView] setText:[item content]];
-        [[[self previewView] textView] setHidden:NO];
+        [[self previewView] showText:[item content] enablesWordSelection:[self swipeToSelectWords]];
     }
 
-    _previewSourceTableView = [[self historyTableView] isHidden] ? [self favoritesTableView] : [self historyTableView];
+    _previewSourceTableView = [self tableViewForHistoryKey:[self activeHistoryKey]];
     [self showContentView:[self previewView] andHideContentView:_previewSourceTableView reverse:NO];
 
+    [self updateStyleForHeaderButton:[self favoritesButton]
+                       withImageName:@"arrowshape.turn.up.backward"
+                        andImageSize:kFavoritesButtonImageSize
+                        andTintColor:[UIColor labelColor]];
+    [self updateStyleForHeaderButton:[self backButton]
+                       withImageName:([self automaticallyPaste] ? @"doc.on.clipboard" : @"doc.on.doc.fill")
+                        andImageSize:kBackButtonImageSize
+                        andTintColor:[UIColor labelColor]];
+    [[self favoritesButton]
+        setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Back"
+                                                                                      value:nil
+                                                                                      table:@"Tweak"]];
+    [[self backButton]
+        setAccessibilityLabel:[[PasteboardManager localizationBundle]
+                                  localizedStringForKey:([self automaticallyPaste] ? @"Paste" : @"Copy")
+                                                  value:nil
+                                                  table:@"Tweak"]];
     [[self clearButton] setHidden:YES];
-    [[self backButton] setHidden:NO];
+    [[self backButton] setHidden:![[self previewView] showingWordSelection]];
+    [self updatePreviewActionButtonState];
 
     [self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
 }
@@ -388,6 +653,25 @@
 
     [[self clearButton] setHidden:NO];
     [[self backButton] setHidden:YES];
+    [[self backButton] setEnabled:YES];
+    [[self backButton] setAlpha:1.0];
+    _previewItem = nil;
+
+    if (_previewSourceTableView == [self favoritesTableView]) {
+        [self updateStyleForHeaderButton:[self favoritesButton]
+                           withImageName:@"heart.fill"
+                            andImageSize:kFavoritesButtonImageSize
+                            andTintColor:[UIColor systemPinkColor]];
+    } else {
+        [self updateStyleForHeaderButton:[self favoritesButton]
+                           withImageName:@"heart"
+                            andImageSize:kFavoritesButtonImageSize
+                            andTintColor:[UIColor labelColor]];
+    }
+    [[self favoritesButton]
+        setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
+                                                                                      value:nil
+                                                                                      table:@"Tweak"]];
 
     [[self previewView] reset];
 }
@@ -406,7 +690,10 @@
                       duration:0.1
                        options:UIViewAnimationOptionTransitionCrossDissolve
                     animations:^{
-                      [[self titleLabel] setText:[viewToShow valueForKey:@"_name"]];
+                      NSString *title = [self titleForContentView:viewToShow];
+                      if (title) {
+                          [[self titleLabel] setText:title];
+                      }
                     }
                     completion:nil];
 
@@ -454,13 +741,14 @@
  * Reloads the active history view.
  */
 - (void)reload {
-    if (![[self historyTableView] isHidden]) {
-        NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyHistory];
-        [[self historyTableView] reloadDataWithItems:items];
-    } else {
-        NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:kHistoryKeyFavorites];
-        [[self favoritesTableView] reloadDataWithItems:items];
+    NSString *key = [self activeHistoryKey];
+    NSArray *items = [[PasteboardManager sharedInstance] getItemsFromHistoryWithKey:key];
+    [[self tableViewForHistoryKey:key] reloadDataWithItems:items];
+    if ([self isShowingClearConfirmation] || ![[self previewView] isHidden]) {
+        return;
     }
+    [self setHistoryContentVisibleForKey:key];
+    [self updateClearButtonState];
 }
 
 /**
@@ -470,6 +758,8 @@
     if (_isAnimating) {
         return;
     }
+
+    [self resetClearConfirmationIfNeeded];
 
     [[self historyTableView] setAutomaticallyPaste:[self automaticallyPaste]];
     [[self favoritesTableView] setAutomaticallyPaste:[self automaticallyPaste]];

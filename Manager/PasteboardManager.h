@@ -32,6 +32,10 @@ static NSString *const kHistoryKeyFavorites = @"favorites";
 
 - (void)pullPasteboardChanges;
 - (void)addPasteboardItem:(PasteboardItem *)item toHistoryWithKey:(NSString *)historyKey;
+- (void)performDirectPasteWithPasteboardItem:(PasteboardItem *)pasteboardItem
+                                 historyItem:(PasteboardItem *)historyItem
+                          fromHistoryWithKey:(NSString *)historyKey
+                             shouldAutoPaste:(BOOL)shouldAutoPaste;
 - (void)updatePasteboardWithItem:(PasteboardItem *)item
               fromHistoryWithKey:(NSString *)historyKey
                  shouldAutoPaste:(BOOL)shouldAutoPaste;

@@ -13,7 +13,7 @@ KayokoCore_CFLAGS += -I../../Manager
 KayokoCore_CFLAGS += -I../../Preferences
 KayokoCore_CFLAGS += -I../../Utils
 
-KayokoCore_FRAMEWORKS += UIKit AudioToolbox
+KayokoCore_FRAMEWORKS += UIKit AudioToolbox AVFoundation
 
 include $(THEOS)/makefiles/common.mk
 include $(THEOS_MAKE_PATH)/aggregate.mk

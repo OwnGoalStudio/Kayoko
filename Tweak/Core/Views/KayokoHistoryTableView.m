@@ -42,6 +42,7 @@
                                   [[PasteboardManager sharedInstance] removePasteboardItem:item
                                                                         fromHistoryWithKey:kHistoryKeyHistory
                                                                          shouldRemoveImage:NO];
+                                  [self notifyContentStateChanged];
                                   completionHandler(YES);
                                 }];
                           }];
@@ -80,6 +81,7 @@
                                   [[PasteboardManager sharedInstance] removePasteboardItem:item
                                                                         fromHistoryWithKey:kHistoryKeyHistory
                                                                          shouldRemoveImage:YES];
+                                  [self notifyContentStateChanged];
                                   completionHandler(YES);
                                 }];
                           }];

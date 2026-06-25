@@ -4,6 +4,7 @@
 "History" = "历史记录";
 "Save Text" = "保存文本";
 "Save Images" = "保存图像";
+"Swipe to Select Words" = "滑动选词";
 "Behaviors" = "行为";
 "The “Prediction Bar” method displays custom suggestions on the “More Keyboard Keyplane” (123)." = "“预测栏” 方法在 “更多键盘 (123)” 上显示自定义建议。";
 "Activation Method" = "激活方法";
@@ -18,6 +19,11 @@
 "Feedbacks" = "反馈";
 "Play Sound Effects" = "播放声音效果";
 "Play Haptic Feedback" = "播放触觉反馈";
+"Preview" = "预览";
+"Preview Lines" = "预览行数";
+"Single Line" = "单行";
+"Double Line" = "双行";
+"Triple Line" = "三行";
 "Appearance" = "外观";
 "Height (Points)" = "高度";
 "Try out your changes by typing, copying and pasting text." = "尝试输入、拷贝和粘贴文本以查看效果。";
@@ -33,10 +39,13 @@
 "Find it on my GitHub." = "在我的 GitHub 上找到它。";
 "Donate" = "捐赠";
 "Let me know that you like what I do." = "让我知道你喜欢我所做的事情。";
-"This option requires a respring to apply. Do you want to respring now?" = "此选项需要重新启动才能生效。你现在要重新启动吗？";
+"This option requires restarting SpringBoard to apply. Do you want to restart now?" = "此选项需要重新启动 SpringBoard 才能生效。你现在要重新启动吗？";
+"Respringing will restart SpringBoard and close all apps. Unsaved work may be lost." = "这会重新启动 SpringBoard，并关闭所有 App。未保存的内容可能会丢失。";
 "Are you sure you want to reset your preferences?" = "你确定要还原设置吗？";
-"Yes" = "是";
-"No" = "否";
+"Respring Now" = "立即重启";
+"Not Now" = "稍后";
+"Reset" = "还原";
+"Cancel" = "取消";
 "Maintainer" = "维护者";
 "Latest maintainer of Kayoko." = "Kayoko 的最新维护者。";
 "Made with ♥ by OwnGoal Studio" = "「乌龙工作室」倾情献制";

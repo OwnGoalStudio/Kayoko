@@ -4,9 +4,13 @@
 "Favorites" = "收藏夹";
 "favorites" = "收藏夹";
 "Preview" = "预览";
-"This will clear your %@." = "这将清除你的 %@。";
-"Yes" = "是";
-"No" = "否";
+"Back" = "返回";
+"Clear History Confirmation" = "要清空历史记录吗？此操作不可撤销。";
+"Clear Favorites Confirmation" = "要清空所有收藏内容吗？此操作不可撤销。";
+"No History Items" = "暂无历史记录";
+"No Favorite Items" = "暂无收藏内容";
+"Cancel" = "取消";
+"Clear" = "清空";
 "Copy" = "拷贝";
 "Paste" = "粘贴";
 "SpringBoard" = "主屏幕";

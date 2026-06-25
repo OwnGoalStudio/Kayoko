@@ -17,6 +17,7 @@
 
 @implementation PasteboardManager {
     dispatch_queue_t _queue;
+    BOOL _isPerformingDirectPaste;
 }
 
 /**
@@ -219,7 +220,7 @@
             if ([[historyItem content] isEqualToString:[item content]]) {
                 [history removeObject:dictionary];
 
-                if (![[item imageName] isEqualToString:@""] && shouldRemoveImage) {
+                if ([[item imageName] length] > 0 && shouldRemoveImage) {
                     NSString *filePath =
                         [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
                     [_fileManager removeItemAtPath:filePath error:nil];
@@ -235,49 +236,136 @@
     [self setJsonFromDictionary:json];
 }
 
+- (void)performDirectPasteWithPasteboardItem:(PasteboardItem *)pasteboardItem
+                                 historyItem:(PasteboardItem *)historyItem
+                          fromHistoryWithKey:(NSString *)historyKey
+                             shouldAutoPaste:(BOOL)shouldAutoPaste {
+    if (@available(iOS 16, *)) {
+        if (_queue) {
+            dispatch_async(_queue, ^{
+              [self _reallyPerformDirectPasteWithPasteboardItem:pasteboardItem
+                                                    historyItem:historyItem
+                                             fromHistoryWithKey:historyKey
+                                                shouldAutoPaste:shouldAutoPaste];
+            });
+            return;
+        }
+    }
+
+    [self _reallyPerformDirectPasteWithPasteboardItem:pasteboardItem
+                                          historyItem:historyItem
+                                   fromHistoryWithKey:historyKey
+                                      shouldAutoPaste:shouldAutoPaste];
+}
+
 - (void)updatePasteboardWithItem:(PasteboardItem *)item
               fromHistoryWithKey:(NSString *)historyKey
                  shouldAutoPaste:(BOOL)shouldAutoPaste {
-    if (@available(iOS 16, *)) {
-        dispatch_async(_queue, ^{
-          [self _reallyUpdatePasteboardWithItem:item fromHistoryWithKey:historyKey shouldAutoPaste:shouldAutoPaste];
-        });
-    } else {
-        [self _reallyUpdatePasteboardWithItem:item fromHistoryWithKey:historyKey shouldAutoPaste:shouldAutoPaste];
-    }
+    [self performDirectPasteWithPasteboardItem:item
+                                   historyItem:item
+                            fromHistoryWithKey:historyKey
+                               shouldAutoPaste:shouldAutoPaste];
 }
 
 /**
- * Updates the pasteboard with an item's content.
+ * Performs a direct paste transaction with explicit history promotion.
  *
- * @param item The item from which to set the content from.
+ * @param pasteboardItem The item from which to set the pasteboard content.
+ * @param historyItem The original item that should be moved to the top of its history.
  * @param historyKey The key for the history which the item is from.
  * @param shouldAutoPaste Whether the helper should automatically paste the new content.
  */
-- (void)_reallyUpdatePasteboardWithItem:(PasteboardItem *)item
-                     fromHistoryWithKey:(NSString *)historyKey
-                        shouldAutoPaste:(BOOL)shouldAutoPaste {
-    [_pasteboard setString:@""];
-
-    if (![[item imageName] isEqualToString:@""]) {
-        NSString *filePath =
-            [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
-        UIImage *image = [UIImage imageWithContentsOfFile:filePath];
-        [_pasteboard setImage:image];
-    } else {
-        [_pasteboard setString:[item content]];
+- (void)_reallyPerformDirectPasteWithPasteboardItem:(PasteboardItem *)pasteboardItem
+                                        historyItem:(PasteboardItem *)historyItem
+                                 fromHistoryWithKey:(NSString *)historyKey
+                                    shouldAutoPaste:(BOOL)shouldAutoPaste {
+    if (_isPerformingDirectPaste) {
+        return;
     }
 
-    // The pasteboard updates with the given item, which triggers an update event.
-    // Therefore we remove the given item to prevent duplicates.
-    [_pasteboard changeCount];
-    [self removePasteboardItem:item fromHistoryWithKey:historyKey shouldRemoveImage:YES];
+    _isPerformingDirectPaste = YES;
 
-    // Automatic paste should not occur for asynchronous operations.
-    if ([self automaticallyPaste] && shouldAutoPaste) {
+    BOOL didUpdatePasteboard = [self setPasteboardContentFromItem:pasteboardItem];
+    if (didUpdatePasteboard) {
+        _lastChangeCount = [_pasteboard changeCount];
+        [self movePasteboardItemToTop:historyItem inHistoryWithKey:historyKey];
+    }
+
+    if (didUpdatePasteboard && [self automaticallyPaste] && shouldAutoPaste) {
         CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                              (CFStringRef)kNotificationKeyHelperPaste, nil, nil, NO);
     }
+
+    _isPerformingDirectPaste = NO;
+}
+
+- (BOOL)setPasteboardContentFromItem:(PasteboardItem *)item {
+    if (!item) {
+        return NO;
+    }
+
+    if ([[item imageName] length] > 0) {
+        NSString *filePath =
+            [NSString stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]];
+        UIImage *image = [UIImage imageWithContentsOfFile:filePath];
+        if (!image) {
+            return NO;
+        }
+
+        [_pasteboard setImage:image];
+        return YES;
+    }
+
+    if ([[item content] length] == 0) {
+        return NO;
+    }
+
+    [_pasteboard setString:[item content]];
+    return YES;
+}
+
+- (void)movePasteboardItemToTop:(PasteboardItem *)item inHistoryWithKey:(NSString *)historyKey {
+    if (!item || [[item content] length] == 0 || [[historyKey description] length] == 0) {
+        return;
+    }
+
+    NSMutableDictionary *json = [self getJson];
+    NSMutableArray *history = json[historyKey];
+    if (!history) {
+        history = [[NSMutableArray alloc] init];
+    }
+
+    NSDictionary *dictionaryToPromote = nil;
+    NSUInteger indexToPromote = NSNotFound;
+    for (NSUInteger index = 0; index < [history count]; index++) {
+        NSDictionary *dictionary = history[index];
+        PasteboardItem *historyItem = [PasteboardItem itemFromDictionary:dictionary];
+        if ([[historyItem content] isEqualToString:[item content]]) {
+            dictionaryToPromote = dictionary;
+            indexToPromote = index;
+            break;
+        }
+    }
+
+    if (dictionaryToPromote) {
+        [history removeObjectAtIndex:indexToPromote];
+    } else {
+        dictionaryToPromote = @{
+            kItemKeyBundleIdentifier : [item bundleIdentifier] ?: @"com.apple.springboard",
+            kItemKeyContent : [item content] ?: @"",
+            kItemKeyImageName : [item imageName] ?: @"",
+            kItemKeyHasLink : @([item hasLink])
+        };
+    }
+
+    [history insertObject:dictionaryToPromote atIndex:0];
+
+    while ([history count] > [self maximumHistoryAmount]) {
+        [history removeLastObject];
+    }
+
+    json[historyKey] = history;
+    [self setJsonFromDictionary:json];
 }
 
 /**

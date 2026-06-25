@@ -8,6 +8,7 @@
 #import "KayokoCore.h"
 
 #import <AudioToolbox/AudioToolbox.h>
+#import <AVFoundation/AVFoundation.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <QuartzCore/QuartzCore.h>
 
@@ -31,10 +32,12 @@ NSUInteger kayokoHelperPrefsActivationMethod = 0;
 NSUInteger kayokoPrefsMaximumHistoryAmount = 0;
 BOOL kayokoPrefsSaveText = NO;
 BOOL kayokoPrefsSaveImages = NO;
+BOOL kayokoPrefsSwipeToSelectWords = NO;
 BOOL kayokoPrefsAutomaticallyPaste = NO;
 BOOL kayokoPrefsDisablePasteTips = NO;
 BOOL kayokoPrefsPlaySoundEffects = NO;
 BOOL kayokoPrefsPlayHapticFeedback = NO;
+NSUInteger kayokoPrefsPreviewLineCount = 1;
 
 CGFloat kayokoPrefsHeightInPoints = 420;
 
@@ -42,6 +45,9 @@ static BOOL isInPasteProgress = NO;
 
 static NSTimeInterval lastPasteFeedbackOccurred = 0;
 static NSTimeInterval lastCopyFeedbackOccurred = 0;
+
+static AVAudioPlayer *copySoundPlayer = nil;
+static AVAudioPlayer *pasteSoundPlayer = nil;
 
 @interface UIStatusBarStyleRequest : NSObject
 @property(nonatomic, assign, readonly) long long style;
@@ -56,6 +62,22 @@ static NSTimeInterval lastCopyFeedbackOccurred = 0;
 + (instancetype)windowSceneStatusBarManagerForEmbeddedDisplay;
 - (UIStatusBarStyleRequest *)frontmostStatusBarStyleRequest;
 @end
+
+static void apply_preferences_to_view() {
+    if (!kayokoView) {
+        return;
+    }
+
+    [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+    [kayokoView setSwipeToSelectWords:kayokoPrefsSwipeToSelectWords];
+    [kayokoView setPreviewLineCount:kayokoPrefsPreviewLineCount];
+    [kayokoView setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
+
+    CGRect bounds = [[UIScreen mainScreen] bounds];
+    CGRect newFrame =
+        CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints, bounds.size.width, kayokoPrefsHeightInPoints);
+    [kayokoView setFrame:newFrame];
+}
 
 #pragma mark - UIStatusBarWindow class hooks
 
@@ -75,7 +97,7 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
         CGRect bounds = [[UIScreen mainScreen] bounds];
         kayokoView = [[KayokoView alloc] initWithFrame:CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints,
                                                                   bounds.size.width, kayokoPrefsHeightInPoints)];
-        [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+        apply_preferences_to_view();
         [kayokoView setHidden:YES];
         [self addSubview:kayokoView];
     }
@@ -84,6 +106,39 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
 #pragma mark - Notification callbacks
 
 static void kayokoPasteWillStart() { isInPasteProgress = YES; }
+
+static AVAudioPlayer *kayokoAudioPlayerForSound(NSString *soundName) {
+    NSError *error = nil;
+    [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient
+                                     withOptions:AVAudioSessionCategoryOptionMixWithOthers
+                                           error:&error];
+    if (error) {
+        HBLogDebug(@"Kayoko: Failed to configure audio session: %@", error);
+    }
+
+    NSString *relativeSoundPath =
+        [NSString stringWithFormat:@"/Library/PreferenceBundles/KayokoPreferences.bundle/%@.aiff", soundName];
+    NSString *soundPath = JBROOT_PATH_NSSTRING(relativeSoundPath);
+    AVAudioPlayer *player = [[AVAudioPlayer alloc] initWithContentsOfURL:[NSURL fileURLWithPath:soundPath]
+                                                                    error:&error];
+    if (error) {
+        HBLogDebug(@"Kayoko: Failed to load %@ sound: %@", soundName, error);
+        return nil;
+    }
+
+    [player prepareToPlay];
+    return player;
+}
+
+static AVAudioPlayer *kayokoPlayFeedbackSound(AVAudioPlayer *player, NSString *soundName) {
+    if (!player) {
+        player = kayokoAudioPlayerForSound(soundName);
+    }
+
+    [player setCurrentTime:0];
+    [player play];
+    return player;
+}
 
 /**
  * Receives the notification that the pasteboard changed from the daemon and pulls the new changes.
@@ -102,16 +157,7 @@ static void _kayokoCopy() {
     }
     lastCopyFeedbackOccurred = now;
     if (kayokoPrefsPlaySoundEffects) {
-        static dispatch_once_t onceToken;
-        static SystemSoundID soundID;
-        dispatch_once(&onceToken, ^{
-          AudioServicesCreateSystemSoundID(
-              (__bridge CFURLRef)
-                  [NSURL fileURLWithPath:JBROOT_PATH_NSSTRING(
-                                             @"/Library/PreferenceBundles/KayokoPreferences.bundle/Copy.aiff")],
-              &soundID);
-        });
-        AudioServicesPlaySystemSound(soundID);
+        copySoundPlayer = kayokoPlayFeedbackSound(copySoundPlayer, @"Copy");
     }
     if (kayokoPrefsPlayHapticFeedback) {
         AudioServicesPlaySystemSound(1519);
@@ -203,10 +249,12 @@ static void load_preferences() {
         kPreferenceKeyMaximumHistoryAmount : @(kPreferenceKeyMaximumHistoryAmountDefaultValue),
         kPreferenceKeySaveText : @(kPreferenceKeySaveTextDefaultValue),
         kPreferenceKeySaveImages : @(kPreferenceKeySaveImagesDefaultValue),
+        kPreferenceKeySwipeToSelectWords : @(kPreferenceKeySwipeToSelectWordsDefaultValue),
         kPreferenceKeyAutomaticallyPaste : @(kPreferenceKeyAutomaticallyPasteDefaultValue),
         kPreferenceKeyDisablePasteTips : @(kPreferenceKeyDisablePasteTipsDefaultValue),
         kPreferenceKeyPlaySoundEffects : @(kPreferenceKeyPlaySoundEffectsDefaultValue),
         kPreferenceKeyPlayHapticFeedback : @(kPreferenceKeyPlayHapticFeedbackDefaultValue),
+        kPreferenceKeyPreviewLineCount : @(kPreferenceKeyPreviewLineCountDefaultValue),
         kPreferenceKeyHeightInPoints : @(kPreferenceKeyHeightInPointsDefaultValue),
     }];
 
@@ -217,10 +265,12 @@ static void load_preferences() {
         [[kayokoPreferences objectForKey:kPreferenceKeyMaximumHistoryAmount] unsignedIntegerValue];
     kayokoPrefsSaveText = [[kayokoPreferences objectForKey:kPreferenceKeySaveText] boolValue];
     kayokoPrefsSaveImages = [[kayokoPreferences objectForKey:kPreferenceKeySaveImages] boolValue];
+    kayokoPrefsSwipeToSelectWords = [[kayokoPreferences objectForKey:kPreferenceKeySwipeToSelectWords] boolValue];
     kayokoPrefsAutomaticallyPaste = [[kayokoPreferences objectForKey:kPreferenceKeyAutomaticallyPaste] boolValue];
     kayokoPrefsDisablePasteTips = [[kayokoPreferences objectForKey:kPreferenceKeyDisablePasteTips] boolValue];
     kayokoPrefsPlaySoundEffects = [[kayokoPreferences objectForKey:kPreferenceKeyPlaySoundEffects] boolValue];
     kayokoPrefsPlayHapticFeedback = [[kayokoPreferences objectForKey:kPreferenceKeyPlayHapticFeedback] boolValue];
+    kayokoPrefsPreviewLineCount = [[kayokoPreferences objectForKey:kPreferenceKeyPreviewLineCount] unsignedIntegerValue];
     kayokoPrefsHeightInPoints = [[kayokoPreferences objectForKey:kPreferenceKeyHeightInPoints] doubleValue];
 
     [[PasteboardManager sharedInstance] preparePasteboardQueue];
@@ -229,14 +279,7 @@ static void load_preferences() {
     [[PasteboardManager sharedInstance] setSaveImages:kayokoPrefsSaveImages];
     [[PasteboardManager sharedInstance] setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
 
-    if (kayokoView) {
-        [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
-        [kayokoView setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
-        CGRect bounds = [[UIScreen mainScreen] bounds];
-        CGRect newFrame =
-            CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints, bounds.size.width, kayokoPrefsHeightInPoints);
-        [kayokoView setFrame:newFrame];
-    }
+    apply_preferences_to_view();
 }
 
 #pragma mark - Sound effects
@@ -248,16 +291,7 @@ static void kayokoPaste() {
     }
     lastPasteFeedbackOccurred = now;
     if (kayokoPrefsPlaySoundEffects) {
-        static dispatch_once_t onceToken;
-        static SystemSoundID soundID;
-        dispatch_once(&onceToken, ^{
-          AudioServicesCreateSystemSoundID(
-              (__bridge CFURLRef)
-                  [NSURL fileURLWithPath:JBROOT_PATH_NSSTRING(
-                                             @"/Library/PreferenceBundles/KayokoPreferences.bundle/Paste.aiff")],
-              &soundID);
-        });
-        AudioServicesPlaySystemSound(soundID);
+        pasteSoundPlayer = kayokoPlayFeedbackSound(pasteSoundPlayer, @"Paste");
     }
     if (kayokoPrefsPlayHapticFeedback) {
         AudioServicesPlaySystemSound(1519);

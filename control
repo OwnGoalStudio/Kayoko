@@ -1,6 +1,6 @@
 Package: codes.aurora.kayoko
 Name: Kayoko
-Version: 3.1
+Version: 3.2
 Architecture: iphoneos-arm
 Description: Clipboard manager for iOS.
 Maintainer: Lessica <82flex@gmail.com>

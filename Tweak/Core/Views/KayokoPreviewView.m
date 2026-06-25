@@ -6,6 +6,7 @@
 //
 
 #import "KayokoPreviewView.h"
+#import "KayokoWordSelectionView.h"
 
 @implementation KayokoPreviewView
 
@@ -34,6 +35,18 @@
             [[[self textView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
 
+        [self setWordSelectionView:[[KayokoWordSelectionView alloc] init]];
+        [[self wordSelectionView] setHidden:YES];
+        [self addSubview:[self wordSelectionView]];
+
+        [[self wordSelectionView] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [NSLayoutConstraint activateConstraints:@[
+            [[[self wordSelectionView] topAnchor] constraintEqualToAnchor:[self topAnchor]],
+            [[[self wordSelectionView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
+            [[[self wordSelectionView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
+            [[[self wordSelectionView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
+        ]];
+
         [self setImageView:[[UIImageView alloc] init]];
         [[self imageView] setContentMode:UIViewContentModeScaleAspectFit];
         [[self imageView] setHidden:YES];
@@ -47,22 +60,35 @@
             [[[self imageView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
 
-        [self setWebView:[[WKWebView alloc] init]];
-        [[self webView] setNavigationDelegate:self];
-        [[self webView] setAllowsBackForwardNavigationGestures:YES];
-        [[self webView] setHidden:YES];
-        [self addSubview:[self webView]];
-
-        [[self webView] setTranslatesAutoresizingMaskIntoConstraints:NO];
-        [NSLayoutConstraint activateConstraints:@[
-            [[[self webView] topAnchor] constraintEqualToAnchor:[self topAnchor]],
-            [[[self webView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
-            [[[self webView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
-            [[[self webView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
-        ]];
     }
 
     return self;
+}
+
+- (NSString *)selectedText {
+    if (![[self wordSelectionView] isHidden]) {
+        return [[self wordSelectionView] selectedText];
+    }
+
+    return [[self textView] text];
+}
+
+- (BOOL)showingWordSelection {
+    return ![[self wordSelectionView] isHidden];
+}
+
+- (BOOL)hasSelectedText {
+    return [[self selectedText] length] > 0;
+}
+
+- (void)showText:(NSString *)text enablesWordSelection:(BOOL)enablesWordSelection {
+    if (enablesWordSelection) {
+        [[self wordSelectionView] setText:text];
+        [[self wordSelectionView] setHidden:NO];
+    } else {
+        [[self textView] setText:text];
+        [[self textView] setHidden:NO];
+    }
 }
 
 /**
@@ -73,10 +99,10 @@
 - (void)reset {
     [[self textView] setHidden:YES];
     [[self textView] setText:@""];
+    [[self wordSelectionView] setHidden:YES];
+    [[self wordSelectionView] reset];
     [[self imageView] setHidden:YES];
     [[self imageView] setImage:nil];
-    [[self webView] setHidden:YES];
-    [[self webView] loadHTMLString:@"" baseURL:nil];
 }
 
 @end

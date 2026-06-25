@@ -16,6 +16,7 @@
 @property(nonatomic) UIImageView *contentImageView;
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
                       andItem:(PasteboardItem *)item
+          andPreviewLineCount:(NSUInteger)previewLineCount
               reuseIdentifier:(NSString *)reuseIdentifier;
 @end
 

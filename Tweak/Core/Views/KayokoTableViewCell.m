@@ -22,10 +22,12 @@
  */
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
                       andItem:(PasteboardItem *)item
+          andPreviewLineCount:(NSUInteger)previewLineCount
               reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
 
     if (self) {
+        NSUInteger lineCount = MIN(MAX(previewLineCount, 1), 3);
         [self setBackgroundColor:[UIColor clearColor]];
 
         [self setIconImageView:[[UIImageView alloc] init]];
@@ -99,7 +101,7 @@
 
         [[self headerLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self headerLabel] topAnchor] constraintEqualToAnchor:[[self iconImageView] topAnchor] constant:1],
+            [[[self headerLabel] topAnchor] constraintEqualToAnchor:[self topAnchor] constant:12],
             [[[self headerLabel] leadingAnchor] constraintEqualToAnchor:[[self iconImageView] trailingAnchor]
                                                                constant:16]
         ]];
@@ -119,12 +121,13 @@
         [[self contentLabel] setFont:[UIFont systemFontOfSize:14]];
         [[self contentLabel] setTextColor:[[UIColor labelColor] colorWithAlphaComponent:0.8]];
         [[self contentLabel] setLineBreakMode:NSLineBreakByTruncatingTail];
+        [[self contentLabel] setNumberOfLines:lineCount];
         [self addSubview:[self contentLabel]];
 
         [[self contentLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self contentLabel] bottomAnchor] constraintEqualToAnchor:[[self iconImageView] bottomAnchor]
-                                                               constant:-1],
+            [[[self contentLabel] topAnchor] constraintEqualToAnchor:[[self headerLabel] bottomAnchor] constant:2],
+            [[[self contentLabel] bottomAnchor] constraintLessThanOrEqualToAnchor:[self bottomAnchor] constant:-10],
             [[[self contentLabel] leadingAnchor] constraintEqualToAnchor:[[self headerLabel] leadingAnchor]],
             [[[self contentLabel] trailingAnchor] constraintEqualToAnchor:[[self headerLabel] trailingAnchor]]
         ]];

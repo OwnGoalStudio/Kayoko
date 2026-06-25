@@ -241,7 +241,7 @@ static void override_UIKBInputBackdropView_didMoveToWindow(UIKBInputBackdropView
 static BOOL override_UIKeyboardImpl_shouldShowDictationKey(UIKeyboardImpl *self, SEL _cmd) { return YES; }
 
 /**
- * Notes that the app became active.
+ * Notes that the app will become active.
  *
  * Knowing that, we can prevent pasting from happening in apps that became inactive.
  */
@@ -252,13 +252,24 @@ static void override_UIKeyboardImpl_applicationDidBecomeActive(UIKeyboardImpl *s
 }
 
 /**
- * Notes that the app became inactive.
+ * Notes that the app will resign active.
  *
  * @see applicationDidBecomeActive why to save the state of an app.
  */
 static void (*orig_UIKeyboardImpl_applicationWillResignActive)(UIKeyboardImpl *self, SEL _cmd, BOOL willResignActive);
 static void override_UIKeyboardImpl_applicationWillResignActive(UIKeyboardImpl *self, SEL _cmd, BOOL willResignActive) {
     orig_UIKeyboardImpl_applicationWillResignActive(self, _cmd, willResignActive);
+    applicationIsInForeground = NO;
+}
+
+/**
+ * Notes that the app will suspend.
+ *
+ * @see applicationDidBecomeActive why to save the state of an app.
+ */
+static void (*orig_UIKeyboardImpl_applicationWillSuspend)(UIKeyboardImpl *self, SEL _cmd, BOOL willSuspend);
+static void override_UIKeyboardImpl_applicationWillSuspend(UIKeyboardImpl *self, SEL _cmd, BOOL willSuspend) {
+    orig_UIKeyboardImpl_applicationWillSuspend(self, _cmd, willSuspend);
     applicationIsInForeground = NO;
 }
 
@@ -390,6 +401,35 @@ static void addon_UIResponder_openKayoko(id self, SEL _cmd) {
     });
 }
 
+static BOOL kayokoApplicationHasActiveKeyWindow(UIApplication *application) {
+    if (!application || [application applicationState] != UIApplicationStateActive) {
+        return NO;
+    }
+
+    if (@available(iOS 13.0, *)) {
+        for (UIScene *scene in [application connectedScenes]) {
+            if ([scene activationState] != UISceneActivationStateForegroundActive ||
+                ![scene isKindOfClass:[UIWindowScene class]]) {
+                continue;
+            }
+
+            for (UIWindow *window in [(UIWindowScene *)scene windows]) {
+                if ([window isKeyWindow]) {
+                    return YES;
+                }
+            }
+        }
+
+        return NO;
+    }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    UIWindow *keyWindow = [application keyWindow];
+#pragma clang diagnostic pop
+    return keyWindow && [keyWindow isKeyWindow];
+}
+
 #pragma mark - Notification callbacks
 
 /**
@@ -397,6 +437,11 @@ static void addon_UIResponder_openKayoko(id self, SEL _cmd) {
  */
 static void kayokoPaste() {
     if (!applicationIsInForeground) {
+        return;
+    }
+
+    UIApplication *application = [UIApplication sharedApplication];
+    if (!kayokoApplicationHasActiveKeyWindow(application)) {
         return;
     }
 
@@ -420,13 +465,18 @@ static void kayokoPaste() {
         }
     }
 
-    [[UIApplication sharedApplication] sendAction:@selector(paste:) to:nil from:nil forEvent:nil];
+    [application sendAction:@selector(paste:) to:nil from:nil forEvent:nil];
 }
 
 @interface KayokoKeyboardObserver : NSObject
 @end
 
 @implementation KayokoKeyboardObserver
+
+- (void)windowDidResignKey:(NSNotification *)notification {
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (CFStringRef)kNotificationKeyCoreHide, nil, nil, YES);
+}
 
 - (void)keyboardWillHide:(NSNotification *)notification {
     NSDictionary *userInfo = [notification userInfo];
@@ -532,6 +582,8 @@ __attribute((constructor)) static void initialize() {
         return;
     }
 
+    applicationIsInForeground = [[UIApplication sharedApplication] applicationState] == UIApplicationStateActive;
+
     if (isKeyboardExtension) {
         if (kayokoHelperPrefsActivationMethod & kActivationMethodSwipeUp) {
             EnableKayokoActivationSwipeUpForKeyboardExtension();
@@ -616,6 +668,9 @@ __attribute((constructor)) static void initialize() {
     MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(applicationWillResignActive:),
                     (IMP)&override_UIKeyboardImpl_applicationWillResignActive,
                     (IMP *)&orig_UIKeyboardImpl_applicationWillResignActive);
+    MSHookMessageEx(objc_getClass("UIKeyboardImpl"), @selector(applicationWillSuspend:),
+                    (IMP)&override_UIKeyboardImpl_applicationWillSuspend,
+                    (IMP *)&orig_UIKeyboardImpl_applicationWillSuspend);
 
     if (kayokoHelperPrefsAutomaticallyPaste) {
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
@@ -625,6 +680,11 @@ __attribute((constructor)) static void initialize() {
 
     static KayokoKeyboardObserver *observer;
     observer = [[KayokoKeyboardObserver alloc] init];
+
+    [[NSNotificationCenter defaultCenter] addObserver:observer
+                                             selector:@selector(windowDidResignKey:)
+                                                 name:UIWindowDidResignKeyNotification
+                                               object:nil];
 
     [[NSNotificationCenter defaultCenter] addObserver:observer
                                              selector:@selector(keyboardWillHide:)
