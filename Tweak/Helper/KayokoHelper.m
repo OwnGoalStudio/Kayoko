@@ -92,7 +92,7 @@ static TIAutocorrectionList *kayokoCreateAutocorrectionList() {
                                                                                     value:nil
                                                                                     table:@"Tweak"]];
         [candidate setCandidate:[NSString stringWithFormat:@"{kayoko-%@}", label]];
-        [candidate setFromBundleId:@"codes.aurora.kayoko"];
+        [candidate setFromBundleId:@"com.82flex.kayoko"];
         [candidates addObject:candidate];
     }
 
@@ -118,7 +118,7 @@ static void override_UIPredictionViewController_predictionView_didSelectCandidat
                                                                                   TUIPredictionView *predictionView,
                                                                                   TIZephyrCandidate *candidate) {
     if ([candidate respondsToSelector:@selector(fromBundleId)] &&
-        [[candidate fromBundleId] isEqualToString:@"codes.aurora.kayoko"]) {
+        [[candidate fromBundleId] isEqualToString:@"com.82flex.kayoko"]) {
         if ([[candidate candidate] isEqualToString:@"{kayoko-History}"]) {
             CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                                  (CFStringRef)kNotificationKeyCoreShow, nil, nil, YES);

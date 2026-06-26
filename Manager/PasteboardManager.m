@@ -36,7 +36,7 @@
     static NSString *kHistoryPath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      kHistoryPath = JBROOT_PATH_NSSTRING(@"/var/mobile/Library/codes.aurora.kayoko/history.json");
+      kHistoryPath = JBROOT_PATH_NSSTRING(@"/var/mobile/Library/com.82flex.kayoko/history.json");
     });
     return kHistoryPath;
 }
@@ -45,7 +45,7 @@
     static NSString *kHistoryImagesPath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      kHistoryImagesPath = JBROOT_PATH_NSSTRING(@"/var/mobile/Library/codes.aurora.kayoko/images/");
+      kHistoryImagesPath = JBROOT_PATH_NSSTRING(@"/var/mobile/Library/com.82flex.kayoko/images/");
     });
     return kHistoryImagesPath;
 }
@@ -85,7 +85,7 @@
 
 - (void)preparePasteboardQueue {
     if (@available(iOS 16, *)) {
-        _queue = dispatch_queue_create("codes.aurora.kayoko.queue.pasteboard", DISPATCH_QUEUE_SERIAL);
+        _queue = dispatch_queue_create("com.82flex.kayoko.queue.pasteboard", DISPATCH_QUEUE_SERIAL);
     }
 }
 

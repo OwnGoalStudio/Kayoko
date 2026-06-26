@@ -2,7 +2,7 @@
 //  KayokoEmptyStateView.m
 //  Kayoko
 //
-//  Created by Alexandra Aurora Göttlicher
+//  Created by Lessica
 //
 
 #import "KayokoEmptyStateView.h"

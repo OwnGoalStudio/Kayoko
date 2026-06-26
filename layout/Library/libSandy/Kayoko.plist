@@ -14,7 +14,7 @@
             <key>extension_class</key>
             <string>com.apple.app-sandbox.read-write</string>
             <key>path</key>
-            <string>/var/mobile/Library/Preferences/codes.aurora.kayoko.preferences.plist</string>
+            <string>/var/mobile/Library/Preferences/com.82flex.kayoko.preferences.plist</string>
         </dict>
     </array>
 </dict>

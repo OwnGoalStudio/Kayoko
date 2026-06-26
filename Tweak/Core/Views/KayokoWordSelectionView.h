@@ -2,7 +2,7 @@
 //  KayokoWordSelectionView.h
 //  Kayoko
 //
-//  Created by 82Flex
+//  Created by Lessica
 //
 
 #import <UIKit/UIKit.h>

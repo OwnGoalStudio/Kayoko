@@ -2,7 +2,7 @@
 //  KayokoListItemsController.h
 //  Kayoko
 //
-//  Created by 82Flex
+//  Created by Lessica
 //
 
 #import <Preferences/PSListItemsController.h>

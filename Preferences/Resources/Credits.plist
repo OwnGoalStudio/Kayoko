@@ -7,20 +7,76 @@
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Project Origin</string>
 			<key>footerText</key>
-			<string>Direct and indirect Daemon assistance - uroboro and absidue</string>
+			<string>Kayoko was originally created by Alexandra Aurora Göttlicher. This maintained fork is not affiliated with or endorsed by the original author.</string>
+		</dict>
+		<dict>
+			<key>cellClass</key>
+			<string>LinkCell</string>
+			<key>label</key>
+			<string>Original Source</string>
+			<key>subtitle</key>
+			<string>Open the archived upstream project.</string>
+			<key>url</key>
+			<string>https://github.com/AlexandraAurora/Kayoko</string>
+			<key>localizationTable</key>
+			<string>Credits</string>
+			<key>height</key>
+			<integer>54</integer>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Current Maintainer</string>
 			<key>footerText</key>
-			<string>Bug fixes and iOS 16 support - Lessica</string>
+			<string>This maintained fork is developed and distributed by Lessica under GPLv3.</string>
+		</dict>
+		<dict>
+			<key>cellClass</key>
+			<string>LinkCell</string>
+			<key>label</key>
+			<string>Current Source Code</string>
+			<key>subtitle</key>
+			<string>Open the maintained source repository.</string>
+			<key>url</key>
+			<string>https://github.com/OwnGoalStudio/Kayoko</string>
+			<key>localizationTable</key>
+			<string>Credits</string>
+			<key>height</key>
+			<integer>54</integer>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Contributors</string>
 			<key>footerText</key>
-			<string>Testing - 0xilis, denial, flower and MrGcGamer</string>
+			<string>Direct and indirect daemon assistance: uroboro and absidue. Testing: 0xilis, denial, flower and MrGcGamer.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>License &amp; Source</string>
+			<key>footerText</key>
+			<string>Kayoko is distributed under GPLv3. Paid distribution does not remove recipients' GPLv3 rights to copy, modify, and redistribute the software.</string>
+		</dict>
+		<dict>
+			<key>cellClass</key>
+			<string>LinkCell</string>
+			<key>label</key>
+			<string>GPLv3 License</string>
+			<key>subtitle</key>
+			<string>Read the license terms.</string>
+			<key>url</key>
+			<string>https://www.gnu.org/licenses/gpl-3.0.en.html</string>
+			<key>localizationTable</key>
+			<string>Credits</string>
+			<key>height</key>
+			<integer>54</integer>
 		</dict>
 	</array>
 	<key>title</key>

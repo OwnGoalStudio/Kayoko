@@ -34,6 +34,7 @@ BOOL kayokoPrefsSaveText = NO;
 BOOL kayokoPrefsSaveImages = NO;
 BOOL kayokoPrefsSwipeToSelectWords = NO;
 BOOL kayokoPrefsAutomaticallyPaste = NO;
+BOOL kayokoPrefsDismissOnOutsideTouch = NO;
 BOOL kayokoPrefsDisablePasteTips = NO;
 BOOL kayokoPrefsPlaySoundEffects = NO;
 BOOL kayokoPrefsPlayHapticFeedback = NO;
@@ -69,6 +70,7 @@ static void apply_preferences_to_view() {
     }
 
     [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+    [kayokoView setDismissOnOutsideTouch:kayokoPrefsDismissOnOutsideTouch];
     [kayokoView setSwipeToSelectWords:kayokoPrefsSwipeToSelectWords];
     [kayokoView setPreviewLineCount:kayokoPrefsPreviewLineCount];
     [kayokoView setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
@@ -95,10 +97,19 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
 
     if (!kayokoView) {
         CGRect bounds = [[UIScreen mainScreen] bounds];
+        UIControl *outsideDismissOverlayView = [[UIControl alloc] initWithFrame:[self bounds]];
+        [outsideDismissOverlayView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
+        [outsideDismissOverlayView setBackgroundColor:[UIColor colorWithWhite:0 alpha:0.18]];
+        [outsideDismissOverlayView setAlpha:0];
+        [outsideDismissOverlayView setHidden:YES];
+        [outsideDismissOverlayView setUserInteractionEnabled:NO];
+        [self addSubview:outsideDismissOverlayView];
+
         kayokoView = [[KayokoView alloc] initWithFrame:CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints,
                                                                   bounds.size.width, kayokoPrefsHeightInPoints)];
-        apply_preferences_to_view();
         [kayokoView setHidden:YES];
+        [kayokoView setOutsideDismissOverlayView:outsideDismissOverlayView];
+        apply_preferences_to_view();
         [self addSubview:kayokoView];
     }
 }
@@ -251,6 +262,7 @@ static void load_preferences() {
         kPreferenceKeySaveImages : @(kPreferenceKeySaveImagesDefaultValue),
         kPreferenceKeySwipeToSelectWords : @(kPreferenceKeySwipeToSelectWordsDefaultValue),
         kPreferenceKeyAutomaticallyPaste : @(kPreferenceKeyAutomaticallyPasteDefaultValue),
+        kPreferenceKeyDismissOnOutsideTouch : @(kPreferenceKeyDismissOnOutsideTouchDefaultValue),
         kPreferenceKeyDisablePasteTips : @(kPreferenceKeyDisablePasteTipsDefaultValue),
         kPreferenceKeyPlaySoundEffects : @(kPreferenceKeyPlaySoundEffectsDefaultValue),
         kPreferenceKeyPlayHapticFeedback : @(kPreferenceKeyPlayHapticFeedbackDefaultValue),
@@ -267,6 +279,8 @@ static void load_preferences() {
     kayokoPrefsSaveImages = [[kayokoPreferences objectForKey:kPreferenceKeySaveImages] boolValue];
     kayokoPrefsSwipeToSelectWords = [[kayokoPreferences objectForKey:kPreferenceKeySwipeToSelectWords] boolValue];
     kayokoPrefsAutomaticallyPaste = [[kayokoPreferences objectForKey:kPreferenceKeyAutomaticallyPaste] boolValue];
+    kayokoPrefsDismissOnOutsideTouch =
+        [[kayokoPreferences objectForKey:kPreferenceKeyDismissOnOutsideTouch] boolValue];
     kayokoPrefsDisablePasteTips = [[kayokoPreferences objectForKey:kPreferenceKeyDisablePasteTips] boolValue];
     kayokoPrefsPlaySoundEffects = [[kayokoPreferences objectForKey:kPreferenceKeyPlaySoundEffects] boolValue];
     kayokoPrefsPlayHapticFeedback = [[kayokoPreferences objectForKey:kPreferenceKeyPlayHapticFeedback] boolValue];

@@ -26,13 +26,16 @@
     if (self) {
         NSBundle *bundle = [NSBundle bundleForClass:[self class]];
 
-        [self setTitle:[bundle localizedStringForKey:[specifier propertyForKey:@"label"] value:nil table:@"Root"]];
-        [self setSubtitle:[bundle localizedStringForKey:[specifier propertyForKey:@"subtitle"] value:nil table:@"Root"]];
+        NSString *localizationTable = [specifier propertyForKey:@"localizationTable"] ?: @"Root";
+        [self setTitle:[bundle localizedStringForKey:[specifier propertyForKey:@"label"] value:nil table:localizationTable]];
+        [self setSubtitle:[bundle localizedStringForKey:[specifier propertyForKey:@"subtitle"]
+                                                  value:nil
+                                                  table:localizationTable]];
         [self setUrl:[specifier propertyForKey:@"url"]];
 
         [self setIndicatorImageView:[[UIImageView alloc] init]];
         [[self indicatorImageView] setImage:[UIImage systemImageNamed:@"safari"]];
-        [[self indicatorImageView] setTintColor:[UIColor systemGrayColor]];
+        [[self indicatorImageView] setTintColor:[UIColor tertiaryLabelColor]];
         [self addSubview:[self indicatorImageView]];
 
         [[self indicatorImageView] setTranslatesAutoresizingMaskIntoConstraints:NO];
@@ -45,13 +48,13 @@
 
         [self setLabel:[[UILabel alloc] init]];
         [[self label] setText:[self title]];
-        [[self label] setFont:[UIFont systemFontOfSize:17]];
+        [[self label] setFont:[UIFont systemFontOfSize:15 weight:UIFontWeightMedium]];
         [[self label] setTextColor:[UIColor systemBlueColor]];
         [self addSubview:[self label]];
 
         [[self label] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self label] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor] constant:-10],
+            [[[self label] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor] constant:-8],
             [[[self label] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor] constant:16],
             [[[self label] trailingAnchor] constraintEqualToAnchor:[[self indicatorImageView] leadingAnchor]
                                                           constant:16]
@@ -59,7 +62,7 @@
 
         [self setSubtitleLabel:[[UILabel alloc] init]];
         [[self subtitleLabel] setText:[NSString stringWithFormat:@"%@", [self subtitle]]];
-        [[self subtitleLabel] setFont:[UIFont systemFontOfSize:11]];
+        [[self subtitleLabel] setFont:[UIFont systemFontOfSize:12]];
         [[self subtitleLabel] setTextColor:[[UIColor labelColor] colorWithAlphaComponent:0.6]];
         [self addSubview:[self subtitleLabel]];
 

@@ -7,7 +7,7 @@
 	<key>CFBundleExecutable</key>
 	<string>KayokoPreferences</string>
 	<key>CFBundleIdentifier</key>
-	<string>codes.aurora.kayoko.preferences</string>
+	<string>com.82flex.kayoko.preferences</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundlePackageType</key>

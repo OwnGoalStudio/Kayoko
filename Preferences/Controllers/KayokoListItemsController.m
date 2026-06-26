@@ -2,7 +2,7 @@
 //  KayokoListItemsController.m
 //  Kayoko
 //
-//  Created by 82Flex
+//  Created by Lessica
 //
 
 #import "KayokoListItemsController.h"

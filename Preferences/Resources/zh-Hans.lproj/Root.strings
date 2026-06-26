@@ -1,10 +1,12 @@
 "Kayoko" = "Kayoko";
+"Feature-rich clipboard manager for iOS." = "功能丰富的 iOS 剪贴板管理器。";
 "Enable Kayoko" = "启用 Kayoko";
 "Maximum Amount" = "最大数量";
 "History" = "历史记录";
 "Save Text" = "保存文本";
 "Save Images" = "保存图像";
 "Swipe to Select Words" = "滑动选词";
+"When enabled, long-press a text item in History or Favorites to enter word selection mode. Tap a word to select it, then drag across words to extend or reduce the selection." = "开启后，长按历史记录或收藏中的文本条目即可进入滑动选词模式。轻点词语可选中，然后在词语间滑动来扩展或缩小选区。";
 "Behaviors" = "行为";
 "The “Prediction Bar” method displays custom suggestions on the “More Keyboard Keyplane” (123)." = "“预测栏” 方法在 “更多键盘 (123)” 上显示自定义建议。";
 "Activation Method" = "激活方法";
@@ -15,6 +17,7 @@
 "Edit Menu" = "编辑菜单";
 "One-Finger Swipe Up" = "单指上划";
 "Automatically Paste" = "自动粘贴";
+"Touch Outside to Dismiss" = "触摸外部收起";
 "Disable Paste Tips" = "禁用粘贴提示";
 "Feedbacks" = "反馈";
 "Play Sound Effects" = "播放声音效果";
@@ -33,12 +36,6 @@
 "Reset Preferences" = "还原设置";
 "Thanks to you and everyone who has helped in any way." = "感谢你和所有以任何方式提供帮助的人。";
 "Credits" = "致谢";
-"My Tweaks" = "我的插件";
-"Check out my other work." = "查看我的其他作品。";
-"Source Code" = "源代码";
-"Find it on my GitHub." = "在我的 GitHub 上找到它。";
-"Donate" = "捐赠";
-"Let me know that you like what I do." = "让我知道你喜欢我所做的事情。";
 "This option requires restarting SpringBoard to apply. Do you want to restart now?" = "此选项需要重新启动 SpringBoard 才能生效。你现在要重新启动吗？";
 "Respringing will restart SpringBoard and close all apps. Unsaved work may be lost." = "这会重新启动 SpringBoard，并关闭所有 App。未保存的内容可能会丢失。";
 "Are you sure you want to reset your preferences?" = "你确定要还原设置吗？";
@@ -46,11 +43,5 @@
 "Not Now" = "稍后";
 "Reset" = "还原";
 "Cancel" = "取消";
-"Maintainer" = "维护者";
-"Latest maintainer of Kayoko." = "Kayoko 的最新维护者。";
-"Made with ♥ by OwnGoal Studio" = "「乌龙工作室」倾情献制";
-"Please support our paid works, thank you!" = "请支持我们的其他付费作品，谢谢！";
-"Original Author" = "原作者";
-"Original author of Kayoko." = "Kayoko 的原作者。";
 "%@ and %@" = "%@和%@";
 "%@ and %d others" = "%@和其他 %d 个";

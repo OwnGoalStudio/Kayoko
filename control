@@ -1,9 +1,12 @@
-Package: codes.aurora.kayoko
+Package: com.82flex.kayoko
 Name: Kayoko
-Version: 3.2
+Version: 3.3
 Architecture: iphoneos-arm
 Description: Clipboard manager for iOS.
 Maintainer: Lessica <82flex@gmail.com>
-Author: Alexandra Aurora Göttlicher
+Author: Lessica
 Section: Tweaks
 Depends: firmware (>= 14.0), mobilesubstrate, preferenceloader, com.opa334.libsandy
+Conflicts: codes.aurora.kayoko
+Replaces: codes.aurora.kayoko
+Homepage: https://github.com/OwnGoalStudio/Kayoko

@@ -5,28 +5,16 @@
 	<key>items</key>
 	<array>
 		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-		</dict>
-		<dict>
 			<key>cellClass</key>
-			<string>SingleContactCell</string>
-			<key>displayName</key>
-			<string>Alexandra</string>
-			<key>username</key>
-			<string>camieeh</string>
+			<string>KayokoHeaderCell</string>
+			<key>headerTitle</key>
+			<string>Kayoko</string>
+			<key>headerSubtitle</key>
+			<string>Feature-rich clipboard manager for iOS.</string>
+			<key>detail</key>
+			<string>v3.3</string>
 			<key>height</key>
-			<integer>58</integer>
-		</dict>
-		<dict>
-			<key>cellClass</key>
-			<string>SingleContactCell</string>
-			<key>displayName</key>
-			<string>82Flex</string>
-			<key>username</key>
-			<string>Lessica</string>
-			<key>height</key>
-			<integer>58</integer>
+			<integer>92</integer>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -34,97 +22,20 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>codes.aurora.kayoko.preferences</string>
+			<string>com.82flex.kayoko.preferences</string>
 			<key>key</key>
 			<string>Enabled</string>
 			<key>label</key>
 			<string>Enable Kayoko</string>
             <key>PostNotification</key>
-			<string>codes.aurora.kayoko.preferences.reload</string>
+			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>
 
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>History</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSStaticTextCell</string>
-			<key>label</key>
-			<string>Maximum Amount</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSSliderCell</string>
-			<key>default</key>
-			<real>200</real>
-			<key>defaults</key>
-			<string>codes.aurora.kayoko.preferences</string>
-			<key>key</key>
-			<string>MaximumHistoryAmount</string>
-			<key>min</key>
-			<real>50</real>
-			<key>max</key>
-			<real>500</real>
-			<key>showValue</key>
-			<true/>
-			<key>isSegmented</key>
-			<true/>
-			<key>segmentCount</key>
-			<real>9</real>
-			<key>PostNotification</key>
-			<string>codes.aurora.kayoko.preferences.reload</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSSwitchCell</string>
-			<key>default</key>
-			<true/>
-			<key>defaults</key>
-			<string>codes.aurora.kayoko.preferences</string>
-			<key>key</key>
-			<string>SaveText</string>
-			<key>label</key>
-			<string>Save Text</string>
-			<key>PostNotification</key>
-			<string>codes.aurora.kayoko.preferences.reload</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSSwitchCell</string>
-			<key>default</key>
-			<true/>
-			<key>defaults</key>
-			<string>codes.aurora.kayoko.preferences</string>
-			<key>key</key>
-			<string>SaveImages</string>
-			<key>label</key>
-			<string>Save Images</string>
-			<key>PostNotification</key>
-			<string>codes.aurora.kayoko.preferences.reload</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSSwitchCell</string>
-			<key>default</key>
-			<false/>
-			<key>defaults</key>
-			<string>codes.aurora.kayoko.preferences</string>
-			<key>key</key>
-			<string>SwipeToSelectWords</string>
-			<key>label</key>
-			<string>Swipe to Select Words</string>
-			<key>PostNotification</key>
-			<string>codes.aurora.kayoko.preferences.reload</string>
-		</dict>
-
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>label</key>
-			<string>Behaviors</string>
+			<string></string>
 			<key>footerText</key>
 			<string>The “Prediction Bar” method displays custom suggestions on the “More Keyboard Keyplane” (123).</string>
 		</dict>
@@ -132,11 +43,11 @@
 			<key>cell</key>
 			<string>PSLinkListCell</string>
 			<key>default</key>
-			<integer>1</integer>
+			<integer>6</integer>
 			<key>detail</key>
 			<string>KayokoListItemsController</string>
 			<key>defaults</key>
-			<string>codes.aurora.kayoko.preferences</string>
+			<string>com.82flex.kayoko.preferences</string>
 			<key>label</key>
 			<string>Activation Methods</string>
 			<key>key</key>
@@ -158,19 +69,109 @@
 				<string>One-Finger Swipe Up</string>
 			</array>
 		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>History</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSStaticTextCell</string>
+			<key>label</key>
+			<string>Maximum Amount</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>default</key>
+			<real>200</real>
+			<key>defaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>key</key>
+			<string>MaximumHistoryAmount</string>
+			<key>min</key>
+			<real>50</real>
+			<key>max</key>
+			<real>500</real>
+			<key>showValue</key>
+			<true/>
+			<key>isSegmented</key>
+			<true/>
+			<key>segmentCount</key>
+			<real>9</real>
+			<key>PostNotification</key>
+			<string>com.82flex.kayoko.preferences.reload</string>
+		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>codes.aurora.kayoko.preferences</string>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>key</key>
+			<string>SaveText</string>
+			<key>label</key>
+			<string>Save Text</string>
+			<key>PostNotification</key>
+			<string>com.82flex.kayoko.preferences.reload</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>key</key>
+			<string>SaveImages</string>
+			<key>label</key>
+			<string>Save Images</string>
+			<key>PostNotification</key>
+			<string>com.82flex.kayoko.preferences.reload</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>When enabled, long-press a text item in History or Favorites to enter word selection mode. Tap a word to select it, then drag across words to extend or reduce the selection.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>key</key>
+			<string>SwipeToSelectWords</string>
+			<key>label</key>
+			<string>Swipe to Select Words</string>
+			<key>PostNotification</key>
+			<string>com.82flex.kayoko.preferences.reload</string>
+		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Behaviors</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.82flex.kayoko.preferences</string>
 			<key>key</key>
 			<string>AutomaticallyPaste</string>
 			<key>label</key>
 			<string>Automatically Paste</string>
 			<key>PostNotification</key>
-			<string>codes.aurora.kayoko.preferences.reload</string>
+			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -178,13 +179,27 @@
 			<key>default</key>
 			<false/>
 			<key>defaults</key>
-			<string>codes.aurora.kayoko.preferences</string>
+			<string>com.82flex.kayoko.preferences</string>
 			<key>key</key>
 			<string>DisablePasteTips</string>
 			<key>label</key>
 			<string>Disable Paste Tips</string>
 			<key>PostNotification</key>
-			<string>codes.aurora.kayoko.preferences.reload</string>
+			<string>com.82flex.kayoko.preferences.reload</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>key</key>
+			<string>DismissOnOutsideTouch</string>
+			<key>label</key>
+			<string>Touch Outside to Dismiss</string>
+			<key>PostNotification</key>
+			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>
 
 		<dict>
@@ -199,13 +214,13 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>codes.aurora.kayoko.preferences</string>
+			<string>com.82flex.kayoko.preferences</string>
 			<key>key</key>
 			<string>PlaySoundEffects</string>
 			<key>label</key>
 			<string>Play Sound Effects</string>
 			<key>PostNotification</key>
-			<string>codes.aurora.kayoko.preferences.reload</string>
+			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -213,13 +228,13 @@
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
-			<string>codes.aurora.kayoko.preferences</string>
+			<string>com.82flex.kayoko.preferences</string>
 			<key>key</key>
 			<string>PlayHapticFeedback</string>
 			<key>label</key>
 			<string>Play Haptic Feedback</string>
 			<key>PostNotification</key>
-			<string>codes.aurora.kayoko.preferences.reload</string>
+			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>
 
 		<dict>
@@ -234,7 +249,7 @@
 			<key>default</key>
 			<integer>1</integer>
 			<key>defaults</key>
-			<string>codes.aurora.kayoko.preferences</string>
+			<string>com.82flex.kayoko.preferences</string>
 			<key>key</key>
 			<string>PreviewLineCount</string>
 			<key>label</key>
@@ -252,7 +267,7 @@
 				<string>Triple Line</string>
 			</array>
 			<key>PostNotification</key>
-			<string>codes.aurora.kayoko.preferences.reload</string>
+			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>
 
 		<dict>
@@ -267,7 +282,7 @@
 			<key>default</key>
 			<real>420</real>
 			<key>defaults</key>
-			<string>codes.aurora.kayoko.preferences</string>
+			<string>com.82flex.kayoko.preferences</string>
 			<key>key</key>
 			<string>HeightInPoints</string>
 			<key>min</key>
@@ -281,7 +296,7 @@
 			<key>isSegmented</key>
 			<false/>
 			<key>PostNotification</key>
-			<string>codes.aurora.kayoko.preferences.reload</string>
+			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>
 
 		<dict>
@@ -339,47 +354,6 @@
  			<string>KayokoCreditsListController</string>
  		</dict>
 
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>label</key>
-			<string>Maintainer</string>
-			<key>footerText</key>
-			<string>Latest maintainer of Kayoko.</string>
-		</dict>
-		<dict>
-			<key>cellClass</key>
-			<string>LinkCell</string>
-			<key>label</key>
-			<string>Made with ♥ by OwnGoal Studio</string>
-			<key>subtitle</key>
-			<string>Please support our paid works, thank you!</string>
-			<key>url</key>
-			<string>https://havoc.app/search/82Flex</string>
-			<key>height</key>
-			<integer>54</integer>
-		</dict>
-
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>label</key>
-			<string>Original Author</string>
-			<key>footerText</key>
-			<string>Original author of Kayoko.</string>
-		</dict>
-		<dict>
-			<key>cellClass</key>
-			<string>LinkCell</string>
-			<key>label</key>
-			<string>Source Code</string>
-			<key>subtitle</key>
-			<string>Find it on my GitHub.</string>
-			<key>url</key>
-			<string>https://github.com/OwnGoalStudio/Kayoko</string>
-			<key>height</key>
-			<integer>54</integer>
-		</dict>
 	</array>
 	<key>title</key>
 	<string>Kayoko</string>

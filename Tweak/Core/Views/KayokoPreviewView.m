@@ -8,6 +8,17 @@
 #import "KayokoPreviewView.h"
 #import "KayokoWordSelectionView.h"
 
+// Word selection creates one button per token; CJK text can approach one token per character.
+static NSUInteger const kKayokoWordSelectionMaximumTextLength = 5000;
+
+static NSString *KayokoPreviewTextByTrimmingBoundaryNewlines(NSString *text) {
+    return [(text ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+}
+
+static BOOL KayokoPreviewTextFitsWordSelectionLimits(NSString *text) {
+    return [text length] <= kKayokoWordSelectionMaximumTextLength;
+}
+
 @implementation KayokoPreviewView
 
 /**
@@ -24,14 +35,16 @@
         [[self textView] setFont:[UIFont systemFontOfSize:14]];
         [[self textView] setEditable:NO];
         [[self textView] setSelectable:NO];
+        [[self textView] setTextContainerInset:UIEdgeInsetsMake(8, 16, 8, 16)];
+        [[[self textView] textContainer] setLineFragmentPadding:0];
         [[self textView] setHidden:YES];
         [self addSubview:[self textView]];
 
         [[self textView] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
             [[[self textView] topAnchor] constraintEqualToAnchor:[self topAnchor]],
-            [[[self textView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor] constant:16],
-            [[[self textView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor] constant:-16],
+            [[[self textView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
+            [[[self textView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
             [[[self textView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
 
@@ -82,12 +95,18 @@
 }
 
 - (void)showText:(NSString *)text enablesWordSelection:(BOOL)enablesWordSelection {
-    if (enablesWordSelection) {
-        [[self wordSelectionView] setText:text];
+    NSString *previewText = KayokoPreviewTextByTrimmingBoundaryNewlines(text);
+    BOOL shouldUseWordSelection =
+        enablesWordSelection && KayokoPreviewTextFitsWordSelectionLimits(previewText);
+
+    if (shouldUseWordSelection) {
+        [[self wordSelectionView] setText:previewText];
         [[self wordSelectionView] setHidden:NO];
+        [[self textView] setHidden:YES];
     } else {
-        [[self textView] setText:text];
+        [[self textView] setText:previewText];
         [[self textView] setHidden:NO];
+        [[self wordSelectionView] setHidden:YES];
     }
 }
 

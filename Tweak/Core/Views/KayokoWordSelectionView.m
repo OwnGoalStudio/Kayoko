@@ -2,7 +2,7 @@
 //  KayokoWordSelectionView.m
 //  Kayoko
 //
-//  Created by 82Flex
+//  Created by Lessica
 //
 
 #import "KayokoWordSelectionView.h"

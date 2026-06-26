@@ -32,9 +32,9 @@
         [self hide];
 
         [[self layer] setShadowColor:[[UIColor blackColor] CGColor]];
-        [[self layer] setShadowOffset:CGSizeZero];
-        [[self layer] setShadowRadius:10];
-        [[self layer] setShadowOpacity:0.5];
+        [[self layer] setShadowOffset:CGSizeMake(0, -4)];
+        [[self layer] setShadowRadius:18];
+        [[self layer] setShadowOpacity:0.18];
 
         [self setBlurEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleRegular]];
         [self setBlurEffectView:[[UIVisualEffectView alloc] initWithEffect:[self blurEffect]]];
@@ -233,17 +233,92 @@
     return self;
 }
 
+- (void)setOutsideDismissOverlayView:(UIControl *)outsideDismissOverlayView {
+    if (_outsideDismissOverlayView == outsideDismissOverlayView) {
+        return;
+    }
+
+    [_outsideDismissOverlayView removeTarget:self
+                                      action:@selector(handleOutsideDismissOverlayTouchDown)
+                            forControlEvents:UIControlEventTouchDown];
+
+    _outsideDismissOverlayView = outsideDismissOverlayView;
+    [_outsideDismissOverlayView addTarget:self
+                                   action:@selector(handleOutsideDismissOverlayTouchDown)
+                         forControlEvents:UIControlEventTouchDown];
+    if ([self dismissOnOutsideTouch] && ![self isHidden]) {
+        [self prepareOutsideDismissOverlayForShow];
+        [[self outsideDismissOverlayView] setAlpha:1.0];
+        [self finishOutsideDismissOverlayShow];
+    } else {
+        [self hideOutsideDismissOverlay];
+    }
+}
+
+- (void)setDismissOnOutsideTouch:(BOOL)dismissOnOutsideTouch {
+    _dismissOnOutsideTouch = dismissOnOutsideTouch;
+    if (dismissOnOutsideTouch && ![self isHidden]) {
+        [self prepareOutsideDismissOverlayForShow];
+        [[self outsideDismissOverlayView] setAlpha:1.0];
+        [self finishOutsideDismissOverlayShow];
+    } else {
+        [self hideOutsideDismissOverlay];
+    }
+}
+
+- (void)handleOutsideDismissOverlayTouchDown {
+    if ([self dismissOnOutsideTouch] && ![self isHidden]) {
+        [self hide];
+    }
+}
+
+- (void)layoutOutsideDismissOverlayView {
+    UIView *superview = [[self outsideDismissOverlayView] superview];
+    if (!superview) {
+        return;
+    }
+
+    [[self outsideDismissOverlayView] setFrame:[superview bounds]];
+}
+
+- (void)prepareOutsideDismissOverlayForShow {
+    UIControl *overlayView = [self outsideDismissOverlayView];
+    if (!overlayView || ![self dismissOnOutsideTouch]) {
+        return;
+    }
+
+    [self layoutOutsideDismissOverlayView];
+    [overlayView setHidden:NO];
+    [overlayView setUserInteractionEnabled:NO];
+    [overlayView setAlpha:0];
+    [[self superview] bringSubviewToFront:overlayView];
+    [[self superview] bringSubviewToFront:self];
+}
+
+- (void)finishOutsideDismissOverlayShow {
+    BOOL enabled = [self dismissOnOutsideTouch] && ![self isHidden] && !_isAnimating;
+    [[self outsideDismissOverlayView] setUserInteractionEnabled:enabled];
+}
+
+- (void)hideOutsideDismissOverlay {
+    [[self outsideDismissOverlayView] setUserInteractionEnabled:NO];
+    [[self outsideDismissOverlayView] setAlpha:0];
+    [[self outsideDismissOverlayView] setHidden:YES];
+}
+
 /**
  * Handles the drag on the top of the main view to close it.
  *
  * @param recognizer The pan gesture recognizer.
  */
 - (void)handlePanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
-    CGPoint translation = CGPointMake(0, 0);
+    CGPoint translation = [recognizer translationInView:self];
     NSUInteger const kMaxTranslation = 100;
 
-    if ([recognizer state] == UIGestureRecognizerStateChanged) {
-        translation = [recognizer translationInView:self];
+    if ([recognizer state] == UIGestureRecognizerStateBegan) {
+        [[self outsideDismissOverlayView] setUserInteractionEnabled:NO];
+    } else if ([recognizer state] == UIGestureRecognizerStateChanged) {
+        [[self outsideDismissOverlayView] setUserInteractionEnabled:NO];
 
         if (translation.y < 0) {
             return;
@@ -265,7 +340,9 @@
             [self hide];
             return;
         }
-    } else if ([recognizer state] == UIGestureRecognizerStateEnded) {
+    } else if ([recognizer state] == UIGestureRecognizerStateEnded ||
+               [recognizer state] == UIGestureRecognizerStateCancelled ||
+               [recognizer state] == UIGestureRecognizerStateFailed) {
         if (translation.y < kMaxTranslation) {
             [UIView animateWithDuration:0.4
                                   delay:0
@@ -276,7 +353,11 @@
                                [self setTransform:CGAffineTransformIdentity];
                                [self setAlpha:1];
                              }
-                             completion:nil];
+                             completion:^(BOOL finished) {
+                               [self finishOutsideDismissOverlayShow];
+                             }];
+        } else {
+            [self hide];
         }
     }
 }
@@ -769,6 +850,7 @@
     [self setTransform:CGAffineTransformMakeTranslation(0, [self bounds].size.height / 3)];
     [self setAlpha:0];
     [self setHidden:NO];
+    [self prepareOutsideDismissOverlayForShow];
 
     _isAnimating = YES;
     [UIView animateWithDuration:0.33
@@ -779,9 +861,11 @@
         animations:^{
           [self setTransform:CGAffineTransformIdentity];
           [self setAlpha:1];
+          [[self outsideDismissOverlayView] setAlpha:1];
         }
         completion:^(BOOL finished) {
           _isAnimating = NO;
+          [self finishOutsideDismissOverlayShow];
         }];
 }
 
@@ -793,6 +877,7 @@
         return;
     }
 
+    [[self outsideDismissOverlayView] setUserInteractionEnabled:NO];
     _isAnimating = YES;
     [UIView animateWithDuration:0.33
         delay:0
@@ -801,9 +886,11 @@
         options:UIViewAnimationOptionCurveEaseOut
         animations:^{
           [self setAlpha:0];
+          [[self outsideDismissOverlayView] setAlpha:0];
         }
         completion:^(BOOL finished) {
           [self setHidden:YES];
+          [self hideOutsideDismissOverlay];
           _isAnimating = NO;
         }];
 }

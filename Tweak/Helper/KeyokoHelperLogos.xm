@@ -10,7 +10,7 @@
 #import "NotificationKeys.h"
 #import "PasteboardManager.h"
 
-#define ITEM_ID "codes.aurora.kayoko.globe"
+#define ITEM_ID "com.82flex.kayoko.globe"
 
 static BOOL kayokoSwipeUpTracking = NO;
 static BOOL kayokoSwipeUpDidTrigger = NO;

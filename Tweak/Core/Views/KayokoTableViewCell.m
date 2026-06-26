@@ -11,6 +11,24 @@
 #import "PasteboardManager.h"
 #import <substrate.h>
 
+static NSString *KayokoCellTextByTrimmingBoundaryNewlines(NSString *text) {
+    return [(text ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+}
+
+static UIColor *KayokoCellHighlightedBackgroundColor(void) {
+    if (@available(iOS 13, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+          if ([traitCollection userInterfaceStyle] == UIUserInterfaceStyleDark) {
+              return [UIColor colorWithWhite:1 alpha:0.08];
+          }
+
+          return [UIColor colorWithWhite:0 alpha:0.055];
+        }];
+    }
+
+    return [UIColor colorWithWhite:0 alpha:0.055];
+}
+
 @implementation KayokoTableViewCell
 
 /**
@@ -29,6 +47,9 @@
     if (self) {
         NSUInteger lineCount = MIN(MAX(previewLineCount, 1), 3);
         [self setBackgroundColor:[UIColor clearColor]];
+        UIView *selectedBackgroundView = [[UIView alloc] init];
+        [selectedBackgroundView setBackgroundColor:KayokoCellHighlightedBackgroundColor()];
+        [self setSelectedBackgroundView:selectedBackgroundView];
 
         [self setIconImageView:[[UIImageView alloc] init]];
 
@@ -117,7 +138,7 @@
         }
 
         [self setContentLabel:[[UILabel alloc] init]];
-        [[self contentLabel] setText:[item content]];
+        [[self contentLabel] setText:KayokoCellTextByTrimmingBoundaryNewlines([item content])];
         [[self contentLabel] setFont:[UIFont systemFontOfSize:14]];
         [[self contentLabel] setTextColor:[[UIColor labelColor] colorWithAlphaComponent:0.8]];
         [[self contentLabel] setLineBreakMode:NSLineBreakByTruncatingTail];

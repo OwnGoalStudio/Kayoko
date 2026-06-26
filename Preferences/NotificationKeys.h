@@ -5,9 +5,9 @@
 //  Created by Alexandra Aurora Göttlicher
 //
 
-static NSString *const kNotificationKeyCoreShow = @"codes.aurora.kayoko.core.show";
-static NSString *const kNotificationKeyCoreHide = @"codes.aurora.kayoko.core.hide";
-static NSString *const kNotificationKeyCoreReload = @"codes.aurora.kayoko.core.reload";
-static NSString *const kNotificationKeyHelperPaste = @"codes.aurora.kayoko.helper.paste";
-static NSString *const kNotificationKeyPreferencesReload = @"codes.aurora.kayoko.preferences.reload";
-static NSString *const kNotificationKeyPasteWillStart = @"codes.aurora.kayoko.paste.willstart";
+static NSString *const kNotificationKeyCoreShow = @"com.82flex.kayoko.core.show";
+static NSString *const kNotificationKeyCoreHide = @"com.82flex.kayoko.core.hide";
+static NSString *const kNotificationKeyCoreReload = @"com.82flex.kayoko.core.reload";
+static NSString *const kNotificationKeyHelperPaste = @"com.82flex.kayoko.helper.paste";
+static NSString *const kNotificationKeyPreferencesReload = @"com.82flex.kayoko.preferences.reload";
+static NSString *const kNotificationKeyPasteWillStart = @"com.82flex.kayoko.paste.willstart";
