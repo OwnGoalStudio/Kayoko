@@ -41,7 +41,7 @@
 - (void)updateWithHistoryKey:(NSString *)historyKey {
     NSString *localizationKey = [historyKey isEqualToString:kHistoryKeyFavorites] ? @"No Favorite Items"
                                                                                  : @"No History Items";
-    NSString *titleKey = [historyKey isEqualToString:kHistoryKeyFavorites] ? @"favorites" : @"history";
+    NSString *titleKey = [historyKey isEqualToString:kHistoryKeyFavorites] ? @"Favorites" : @"History";
     [self setName:[[PasteboardManager localizationBundle] localizedStringForKey:titleKey value:nil table:@"Tweak"]];
     [[self messageLabel] setText:[[PasteboardManager localizationBundle] localizedStringForKey:localizationKey
                                                                                         value:nil
