@@ -20,7 +20,7 @@
         [[self contentView] setBackgroundColor:[UIColor clearColor]];
         [self setBackgroundColor:[UIColor clearColor]];
 
-        UIImage *icon = [UIImage imageNamed:@"Icon" inBundle:bundle compatibleWithTraitCollection:nil];
+        UIImage *icon = [UIImage imageNamed:@"KayokoIcon" inBundle:bundle compatibleWithTraitCollection:nil];
         [self setIconImageView:[[UIImageView alloc] initWithImage:icon]];
         [[self iconImageView] setContentMode:UIViewContentModeScaleAspectFit];
         [[self iconImageView] setClipsToBounds:YES];
