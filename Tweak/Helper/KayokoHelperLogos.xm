@@ -17,7 +17,8 @@ static BOOL kayokoSwipeUpDidTrigger = NO;
 static CGPoint kayokoSwipeUpStartPoint = CGPointZero;
 static NSTimeInterval kayokoSwipeUpStartTimestamp = 0;
 static char kKayokoSwipeUpGestureRecognizerKey;
-static CGFloat const kKayokoSwipeUpMinimumVerticalDistance = 120.0;
+
+static CGFloat const kKayokoSwipeUpMinimumVerticalDistance = 200.0;
 static CGFloat const kKayokoSwipeUpMaximumHorizontalDistance = 80.0;
 static CGFloat const kKayokoSwipeUpMinimumVerticalDominance = 1.5;
 static CGFloat const kKayokoSwipeUpMinimumVerticalVelocity = 350.0;

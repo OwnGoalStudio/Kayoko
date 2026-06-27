@@ -49,6 +49,7 @@ static NSTimeInterval lastCopyFeedbackOccurred = 0;
 
 static AVAudioPlayer *copySoundPlayer = nil;
 static AVAudioPlayer *pasteSoundPlayer = nil;
+static BOOL didPreparePasteboardQueue = NO;
 
 @interface UIStatusBarStyleRequest : NSObject
 @property(nonatomic, assign, readonly) long long style;
@@ -69,16 +70,33 @@ static void apply_preferences_to_view() {
         return;
     }
 
-    [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
-    [kayokoView setDismissOnOutsideTouch:kayokoPrefsDismissOnOutsideTouch];
-    [kayokoView setSwipeToSelectWords:kayokoPrefsSwipeToSelectWords];
-    [kayokoView setPreviewLineCount:kayokoPrefsPreviewLineCount];
-    [kayokoView setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
+    if ([kayokoView automaticallyPaste] != kayokoPrefsAutomaticallyPaste) {
+        [kayokoView setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+    }
+    if ([kayokoView dismissOnOutsideTouch] != kayokoPrefsDismissOnOutsideTouch) {
+        [kayokoView setDismissOnOutsideTouch:kayokoPrefsDismissOnOutsideTouch];
+    }
+    if ([kayokoView swipeToSelectWords] != kayokoPrefsSwipeToSelectWords) {
+        [kayokoView setSwipeToSelectWords:kayokoPrefsSwipeToSelectWords];
+    }
+    if ([kayokoView previewLineCount] != kayokoPrefsPreviewLineCount) {
+        [kayokoView setPreviewLineCount:kayokoPrefsPreviewLineCount];
+    }
+    if ([kayokoView shouldPlayFeedback] != kayokoPrefsPlayHapticFeedback) {
+        [kayokoView setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
+    }
 
-    CGRect bounds = [[UIScreen mainScreen] bounds];
-    CGRect newFrame =
-        CGRectMake(0, bounds.size.height - kayokoPrefsHeightInPoints, bounds.size.width, kayokoPrefsHeightInPoints);
-    [kayokoView setFrame:newFrame];
+    UIView *containerView = [kayokoView superview];
+    CGRect bounds = containerView ? [containerView bounds] : [[UIScreen mainScreen] bounds];
+    CGFloat height = MIN(kayokoPrefsHeightInPoints, CGRectGetHeight(bounds));
+    CGRect newFrame = CGRectMake(CGRectGetMinX(bounds), CGRectGetMaxY(bounds) - height, CGRectGetWidth(bounds), height);
+    if (!CGRectEqualToRect([kayokoView frame], newFrame)) {
+        if (!CGAffineTransformIsIdentity([kayokoView transform])) {
+            [kayokoView setTransform:CGAffineTransformIdentity];
+        }
+        [kayokoView setFrame:newFrame];
+        [kayokoView setNeedsLayout];
+    }
 }
 
 #pragma mark - UIStatusBarWindow class hooks
@@ -287,12 +305,33 @@ static void load_preferences() {
     kayokoPrefsPreviewLineCount = [[kayokoPreferences objectForKey:kPreferenceKeyPreviewLineCount] unsignedIntegerValue];
     kayokoPrefsHeightInPoints = [[kayokoPreferences objectForKey:kPreferenceKeyHeightInPoints] doubleValue];
 
-    [[PasteboardManager sharedInstance] preparePasteboardQueue];
-    [[PasteboardManager sharedInstance] setMaximumHistoryAmount:kayokoPrefsMaximumHistoryAmount];
-    [[PasteboardManager sharedInstance] setSaveText:kayokoPrefsSaveText];
-    [[PasteboardManager sharedInstance] setSaveImages:kayokoPrefsSaveImages];
-    [[PasteboardManager sharedInstance] setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+    PasteboardManager *pasteboardManager = [PasteboardManager sharedInstance];
+    if (!didPreparePasteboardQueue) {
+        [pasteboardManager preparePasteboardQueue];
+        didPreparePasteboardQueue = YES;
+    }
+    if ([pasteboardManager maximumHistoryAmount] != kayokoPrefsMaximumHistoryAmount) {
+        [pasteboardManager setMaximumHistoryAmount:kayokoPrefsMaximumHistoryAmount];
+    }
+    if ([pasteboardManager saveText] != kayokoPrefsSaveText) {
+        [pasteboardManager setSaveText:kayokoPrefsSaveText];
+    }
+    if ([pasteboardManager saveImages] != kayokoPrefsSaveImages) {
+        [pasteboardManager setSaveImages:kayokoPrefsSaveImages];
+    }
+    if ([pasteboardManager automaticallyPaste] != kayokoPrefsAutomaticallyPaste) {
+        [pasteboardManager setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+    }
 
+    apply_preferences_to_view();
+}
+
+static void load_height_preference() {
+    NSUserDefaults *heightPreferences = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
+    [heightPreferences registerDefaults:@{
+        kPreferenceKeyHeightInPoints : @(kPreferenceKeyHeightInPointsDefaultValue),
+    }];
+    kayokoPrefsHeightInPoints = [[heightPreferences objectForKey:kPreferenceKeyHeightInPoints] doubleValue];
     apply_preferences_to_view();
 }
 
@@ -360,6 +399,10 @@ __attribute((constructor)) static void initialize() {
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)load_preferences,
             (CFStringRef)kNotificationKeyPreferencesReload, NULL,
+            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)load_height_preference,
+            (CFStringRef)kNotificationKeyPreferencesHeightReload, NULL,
             (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoPaste,

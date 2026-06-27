@@ -9,8 +9,8 @@
 
 @class PasteboardItem;
 
-static NSString *const kHistoryKeyHistory = @"History";
-static NSString *const kHistoryKeyFavorites = @"Favorites";
+static NSString *const kHistoryKeyHistory = @"history";
+static NSString *const kHistoryKeyFavorites = @"favorites";
 
 @interface PasteboardManager : NSObject {
     UIPasteboard *_pasteboard;

@@ -211,7 +211,7 @@
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage {
     NSMutableDictionary *json = [self getJson];
-    NSMutableArray *history = json[historyKey];
+    NSMutableArray *history = [self getItemsFromHistoryWithKey:historyKey];
 
     for (NSDictionary *dictionary in history) {
         @autoreleasepool {
@@ -330,10 +330,7 @@
     }
 
     NSMutableDictionary *json = [self getJson];
-    NSMutableArray *history = json[historyKey];
-    if (!history) {
-        history = [[NSMutableArray alloc] init];
-    }
+    NSMutableArray *history = [self getItemsFromHistoryWithKey:historyKey];
 
     NSDictionary *dictionaryToPromote = nil;
     NSUInteger indexToPromote = NSNotFound;
@@ -377,7 +374,13 @@
  */
 - (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey {
     NSDictionary *json = [self getJson];
-    return json[historyKey] ?: [[NSMutableArray alloc] init];
+    NSMutableArray *history = json[historyKey];
+    if (!history && [historyKey isEqualToString:kHistoryKeyHistory]) {
+        history = json[@"History"];
+    } else if (!history && [historyKey isEqualToString:kHistoryKeyFavorites]) {
+        history = json[@"Favorites"];
+    }
+    return history ?: [[NSMutableArray alloc] init];
 }
 
 /**

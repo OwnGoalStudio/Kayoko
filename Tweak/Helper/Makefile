@@ -1,7 +1,7 @@
 TWEAK_NAME := KayokoHelper
 
 KayokoHelper_FILES += KayokoHelper.m
-KayokoHelper_FILES += KeyokoHelperLogos.xm
+KayokoHelper_FILES += KayokoHelperLogos.xm
 KayokoHelper_FILES += KayokoMenu.m
 KayokoHelper_FILES += $(wildcard ../../Manager/*.m ../../Utils/*.m)
 
