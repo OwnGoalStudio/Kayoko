@@ -11,33 +11,24 @@
 #import "PasteboardManager.h"
 #import <substrate.h>
 
-static NSString *KayokoCellTextByTrimmingBoundaryNewlines(NSString *text) {
-    return [(text ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
-}
+@interface UIImage (Private)
++ (instancetype)_applicationIconImageForBundleIdentifier:(NSString *)bundleIdentifier
+                                                  format:(int)format
+                                                   scale:(CGFloat)scale;
+@end
 
-static UIColor *KayokoCellHighlightedBackgroundColor(void) {
-    if (@available(iOS 13, *)) {
-        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
-          if ([traitCollection userInterfaceStyle] == UIUserInterfaceStyleDark) {
-              return [UIColor colorWithWhite:1 alpha:0.08];
-          }
+@interface SBApplication : NSObject
+@property(nonatomic, copy, readonly) NSString *bundleIdentifier;
+@property(nonatomic, copy, readonly) NSString *displayName;
+@end
 
-          return [UIColor colorWithWhite:0 alpha:0.055];
-        }];
-    }
-
-    return [UIColor colorWithWhite:0 alpha:0.055];
-}
+@interface SBApplicationController : NSObject
++ (instancetype)sharedInstance;
+- (SBApplication *)applicationWithBundleIdentifier:(NSString *)bundleIdentifier;
+@end
 
 @implementation KayokoTableViewCell
 
-/**
- * Initializes the table view cell.
- *
- * @param style
- * @param item
- * @param reuseIdentifier
- */
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
                       andItem:(PasteboardItem *)item
           andPreviewLineCount:(NSUInteger)previewLineCount
@@ -48,7 +39,15 @@ static UIColor *KayokoCellHighlightedBackgroundColor(void) {
         NSUInteger lineCount = MIN(MAX(previewLineCount, 1), 3);
         [self setBackgroundColor:[UIColor clearColor]];
         UIView *selectedBackgroundView = [[UIView alloc] init];
-        [selectedBackgroundView setBackgroundColor:KayokoCellHighlightedBackgroundColor()];
+        UIColor *selectedBackgroundColor =
+            [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+              if ([traitCollection userInterfaceStyle] == UIUserInterfaceStyleDark) {
+                  return [UIColor colorWithWhite:1 alpha:0.08];
+              }
+
+              return [UIColor colorWithWhite:0 alpha:0.055];
+            }];
+        [selectedBackgroundView setBackgroundColor:selectedBackgroundColor];
         [self setSelectedBackgroundView:selectedBackgroundView];
 
         [self setIconImageView:[[UIImageView alloc] init]];
@@ -138,7 +137,8 @@ static UIColor *KayokoCellHighlightedBackgroundColor(void) {
         }
 
         [self setContentLabel:[[UILabel alloc] init]];
-        [[self contentLabel] setText:KayokoCellTextByTrimmingBoundaryNewlines([item content])];
+        [[self contentLabel]
+            setText:[([item content] ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]]];
         [[self contentLabel] setFont:[UIFont systemFontOfSize:14]];
         [[self contentLabel] setTextColor:[[UIColor labelColor] colorWithAlphaComponent:0.8]];
         [[self contentLabel] setLineBreakMode:NSLineBreakByTruncatingTail];

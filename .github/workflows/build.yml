@@ -14,7 +14,7 @@ env:
   FINALPACKAGE: 1
   HOMEBREW_NO_AUTO_UPDATE: 1
   HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
-  THEOS: ${{ github.workspace }}/theos
+  THEOS: ${{ github.workspace }}/theos-roothide
 
 jobs:
   build:
@@ -50,8 +50,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: roothide/theos
-        ref: d4826f4e54127cfe1de88103b69b92107591c05b
-        path: theos
+        path: theos-roothide
         submodules: recursive
 
     - name: Install iOS SDK
@@ -71,7 +70,7 @@ jobs:
     - name: Build Package
       run: |
         source "${{ matrix.env_script }}"
-        export THEOS="$GITHUB_WORKSPACE/theos"
+        export THEOS="$GITHUB_WORKSPACE/theos-roothide"
         make package
 
     - name: Collect dSYMs

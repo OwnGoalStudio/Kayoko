@@ -6,7 +6,9 @@
 //
 
 static NSString *const kNotificationKeyCoreShow = @"com.82flex.kayoko.core.show";
+static NSString *const kLegacyNotificationKeyCoreShow = @"codes.aurora.kayoko.core.show";
 static NSString *const kNotificationKeyCoreHide = @"com.82flex.kayoko.core.hide";
+static NSString *const kLegacyNotificationKeyCoreHide = @"codes.aurora.kayoko.core.hide";
 static NSString *const kNotificationKeyCoreReload = @"com.82flex.kayoko.core.reload";
 static NSString *const kNotificationKeyHelperPaste = @"com.82flex.kayoko.helper.paste";
 static NSString *const kNotificationKeyPreferencesReload = @"com.82flex.kayoko.preferences.reload";

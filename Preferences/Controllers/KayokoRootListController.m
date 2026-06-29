@@ -10,22 +10,30 @@
 #import <Preferences/PSSpecifier.h>
 #import <UIKit/UIKit.h>
 
-#import <libroot.h>
+#import <roothide.h>
 
 #import "../NotificationKeys.h"
 #import "../PreferenceKeys.h"
 #import "PasteboardManager.h"
+
+@interface NSConcreteNotification : NSNotification
+@end
+
+@interface PSListController (Private)
+- (void)_returnKeyPressed:(NSConcreteNotification *)notification;
+@end
+
+@interface NSTask : NSObject
+@property(nonatomic, copy) NSArray *arguments;
+@property(nonatomic, copy) NSString *launchPath;
+- (void)launch;
+@end
 
 @implementation KayokoRootListController {
     ActivationMethod _lastActivationMethod;
     BOOL _hasActivationMethodSnapshot;
 }
 
-/**
- * Loads the root specifiers.
- *
- * @return The specifiers.
- */
 - (NSArray *)specifiers {
     if (!_specifiers) {
         _specifiers = [self loadSpecifiersFromPlistName:@"Root" target:self];
@@ -56,12 +64,6 @@
     return activationMethod == 0 ? kPreferenceKeyActivationMethodDefaultValue : activationMethod;
 }
 
-/**
- * Handles preference changes.
- *
- * @param value The new value for the changed option.
- * @param specifier The specifier that was interacted with.
- */
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
     [super setPreferenceValue:value specifier:specifier];
 
@@ -77,41 +79,33 @@
     }
 }
 
-/**
- * Hides the keyboard when the "Return" key is pressed on focused text fields.
- *
- * @param notification The event notification.
- */
 - (void)_returnKeyPressed:(NSConcreteNotification *)notification {
     [[self view] endEditing:YES];
     [super _returnKeyPressed:notification];
 }
 
-/**
- * Prompts the user to respring to apply changes.
- */
 - (void)promptToRespring {
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
 
     UIAlertController *resetAlert = [UIAlertController
         alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
-                         message:[bundle localizedStringForKey:
-                                             @"This option requires restarting SpringBoard to apply. Do you want to restart now?"
+                         message:[bundle localizedStringForKey:@"This option requires restarting SpringBoard to apply. "
+                                                               @"Do you want to restart now?"
                                                          value:nil
                                                          table:@"Root"]
                   preferredStyle:UIAlertControllerStyleAlert];
 
     UIAlertAction *respringAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Respring Now"
-                                                                                          value:nil
-                                                                                          table:@"Root"]
-                                                            style:UIAlertActionStyleDestructive
-                                                          handler:^(UIAlertAction *action) {
-                                                            [self respring];
-                                                          }];
+                                                                                           value:nil
+                                                                                           table:@"Root"]
+                                                             style:UIAlertActionStyleDestructive
+                                                           handler:^(UIAlertAction *action) {
+                                                             [self respring];
+                                                           }];
 
     UIAlertAction *notNowAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Not Now"
-                                                                                        value:nil
-                                                                                        table:@"Root"]
+                                                                                         value:nil
+                                                                                         table:@"Root"]
                                                            style:UIAlertActionStyleCancel
                                                          handler:nil];
 
@@ -121,31 +115,28 @@
     [self presentViewController:resetAlert animated:YES completion:nil];
 }
 
-/**
- * Prompts the user before manually respringing.
- */
 - (void)respringPrompt {
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
 
     UIAlertController *respringAlert = [UIAlertController
         alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
-                         message:[bundle localizedStringForKey:
-                                             @"Respringing will restart SpringBoard and close all apps. Unsaved work may be lost."
+                         message:[bundle localizedStringForKey:@"Respringing will restart SpringBoard and close all "
+                                                               @"apps. Unsaved work may be lost."
                                                          value:nil
                                                          table:@"Root"]
                   preferredStyle:UIAlertControllerStyleAlert];
 
     UIAlertAction *respringAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Respring Now"
-                                                                                          value:nil
-                                                                                          table:@"Root"]
-                                                            style:UIAlertActionStyleDestructive
-                                                          handler:^(UIAlertAction *action) {
-                                                            [self respring];
-                                                          }];
+                                                                                           value:nil
+                                                                                           table:@"Root"]
+                                                             style:UIAlertActionStyleDestructive
+                                                           handler:^(UIAlertAction *action) {
+                                                             [self respring];
+                                                           }];
 
     UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
-                                                                                        value:nil
-                                                                                        table:@"Root"]
+                                                                                         value:nil
+                                                                                         table:@"Root"]
                                                            style:UIAlertActionStyleCancel
                                                          handler:nil];
 
@@ -155,19 +146,13 @@
     [self presentViewController:respringAlert animated:YES completion:nil];
 }
 
-/**
- * Resprings the device.
- */
 - (void)respring {
     NSTask *task = [[NSTask alloc] init];
-    [task setLaunchPath:JBROOT_PATH_NSSTRING(@"/usr/bin/killall")];
+    [task setLaunchPath:jbroot(@"/usr/bin/killall")];
     [task setArguments:@[ @"backboardd" ]];
     [task launch];
 }
 
-/**
- * Prompts the user to reset their preferences.
- */
 - (void)resetPrompt {
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
 
@@ -179,16 +164,16 @@
                   preferredStyle:UIAlertControllerStyleAlert];
 
     UIAlertAction *resetAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Reset"
-                                                                                       value:nil
-                                                                                       table:@"Root"]
-                                                         style:UIAlertActionStyleDestructive
-                                                       handler:^(UIAlertAction *action) {
-                                                         [self resetPreferences];
-                                                       }];
-
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
                                                                                         value:nil
                                                                                         table:@"Root"]
+                                                          style:UIAlertActionStyleDestructive
+                                                        handler:^(UIAlertAction *action) {
+                                                          [self resetPreferences];
+                                                        }];
+
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
+                                                                                         value:nil
+                                                                                         table:@"Root"]
                                                            style:UIAlertActionStyleCancel
                                                          handler:nil];
 
@@ -198,9 +183,6 @@
     [self presentViewController:resetAlert animated:YES completion:nil];
 }
 
-/**
- * Resets the preferences.
- */
 - (void)resetPreferences {
     NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
     for (NSString *key in [userDefaults dictionaryRepresentation]) {
@@ -251,14 +233,14 @@
         if ([detail isEqualToString:@"KayokoListItemsController"]) {
             UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
             NSBundle *bundle = [NSBundle bundleForClass:[self class]];
-            
+
             // Get the current activation methods
             ActivationMethod currentOptions = [self currentActivationMethod];
-            
+
             // Get valid values and titles
             NSArray *validValues = [specifier propertyForKey:@"validValues"];
             NSArray *validTitles = [specifier propertyForKey:@"validTitles"];
-            
+
             // Find selected options
             NSMutableArray *selectedTitles = [NSMutableArray array];
             for (NSUInteger i = 0; i < validValues.count; i++) {
@@ -267,7 +249,7 @@
                     [selectedTitles addObject:[bundle localizedStringForKey:validTitles[i] value:nil table:@"Root"]];
                 }
             }
-            
+
             // Format the detail text based on the number of selected options
             NSString *detailText;
             if (selectedTitles.count == 1) {
@@ -285,7 +267,7 @@
                 // No options (shouldn't happen)
                 detailText = @"";
             }
-            
+
             cell.detailTextLabel.text = detailText;
             return cell;
         }

@@ -1,5 +1,5 @@
 //
-//  LinkCell.h
+//  KayokoLinkCell.h
 //  Akarii Utils
 //
 //  Created by Alexandra Aurora Göttlicher
@@ -8,7 +8,7 @@
 #import <Preferences/PSSpecifier.h>
 #import <UIKit/UIKit.h>
 
-@interface LinkCell : PSTableCell
+@interface KayokoLinkCell : PSTableCell
 @property(nonatomic, strong) UILabel *label;
 @property(nonatomic, strong) UILabel *subtitleLabel;
 @property(nonatomic, strong) UIImageView *indicatorImageView;

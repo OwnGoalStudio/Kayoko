@@ -23,6 +23,7 @@ static NSString *const kItemKeyHasLink = @"has_link";
 - (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier
                               andContent:(NSString *)content
                           withImageNamed:(NSString *)imageName;
+
 + (PasteboardItem *)itemFromDictionary:(NSDictionary *)dictionary;
 
 @end

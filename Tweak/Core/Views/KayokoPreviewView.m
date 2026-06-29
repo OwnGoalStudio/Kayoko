@@ -21,9 +21,6 @@ static BOOL KayokoPreviewTextFitsWordSelectionLimits(NSString *text) {
 
 @implementation KayokoPreviewView
 
-/**
- * Initializes the preview view.
- */
 - (instancetype)initWithName:(NSString *)name {
     self = [super init];
 
@@ -110,11 +107,6 @@ static BOOL KayokoPreviewTextFitsWordSelectionLimits(NSString *text) {
     }
 }
 
-/**
- * Resets the preview view.
- *
- * Hides the view as well as removes any text, image or web content.
- */
 - (void)reset {
     [[self textView] setHidden:YES];
     [[self textView] setText:@""];

@@ -13,8 +13,7 @@ NSString *KayokoAppleMenuIdentifier(void) { return @"com.apple.menu.standard-edi
 UIMenuItem *KayokoMenuItem(void) {
     static UIMenuItem *menuItem = nil;
     if (!menuItem) {
-        menuItem = [[UIMenuItem alloc] initWithTitle:kayokoMenuName
-                                              action:NSSelectorFromString(kayokoSelectorName)];
+        menuItem = [[UIMenuItem alloc] initWithTitle:kayokoMenuName action:NSSelectorFromString(kayokoSelectorName)];
     }
     return menuItem;
 }

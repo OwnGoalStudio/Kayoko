@@ -36,13 +36,6 @@ static BOOL kayokoIsKeyboardExtensionProcess(void);
 
 #pragma mark - UIKeyboardAutocorrectionController class hooks
 
-/**
- * Updates the prediction bar with the original or custom items.
- *
- * This method usage only works on iOS 14 or lower.
- *
- * @param textSuggestionList The list that is used to update the prediciton bar with.
- */
 static void (*orig_UIKeyboardAutocorrectionController_setTextSuggestionList)(UIKeyboardAutocorrectionController *self,
                                                                              SEL _cmd,
                                                                              TIAutocorrectionList *textSuggestionList);
@@ -56,13 +49,6 @@ override_UIKeyboardAutocorrectionController_setTextSuggestionList(UIKeyboardAuto
     }
 }
 
-/**
- * Updates the prediction bar with the original or custom items.
- *
- * This method usage only works on iOS 15 or above.
- *
- * @param autoCorrectionList The list that is used to update the prediciton bar with.
- */
 static void (*orig_UIKeyboardAutocorrectionController_setAutocorrectionList)(UIKeyboardAutocorrectionController *self,
                                                                              SEL _cmd,
                                                                              TIAutocorrectionList *autoCorrectionList);
@@ -76,13 +62,6 @@ override_UIKeyboardAutocorrectionController_setAutocorrectionList(UIKeyboardAuto
     }
 }
 
-/**
- * Creates a list with custom prediction bar items.
- *
- * Each item has Kayoko's package id set as its bundle identifier to identify them later on.
- *
- * @return The list of custom items.
- */
 static TIAutocorrectionList *kayokoCreateAutocorrectionList() {
     NSArray *labels = @[ @"History", @"Copy", @"Paste" ];
     NSMutableArray *candidates = [[NSMutableArray alloc] init];
@@ -101,14 +80,6 @@ static TIAutocorrectionList *kayokoCreateAutocorrectionList() {
 
 #pragma mark - UIPredictionViewController class hooks
 
-/**
- * Handles the selection of a prediction bar item.
- *
- * @see kayokoCreateAutocorrectionList to learn how the items are identified.
- *
- * @param predictionView The prediction bar on which the item was selected.
- * @param candidate The item that was selected.
- */
 static void (*orig_UIPredictionViewController_predictionView_didSelectCandidate)(UIPredictionViewController *self,
                                                                                  SEL _cmd,
                                                                                  TUIPredictionView *predictionView,
@@ -149,14 +120,6 @@ static void override_UIPredictionViewController_predictionView_didSelectCandidat
     }
 }
 
-/**
- * Makes the prediction bar always visible.
- *
- * @param delegate
- * @param inputViews
- *
- * @return Whether the prediction bar should be visible or not.
- */
 static BOOL override_UIPredictionViewController_isVisibleForInputDelegate_inputViews(UIPredictionViewController *self,
                                                                                      SEL _cmd, id delegate,
                                                                                      id inputViews) {
@@ -165,11 +128,6 @@ static BOOL override_UIPredictionViewController_isVisibleForInputDelegate_inputV
 
 #pragma mark - UIKeyboardLayoutStar class hooks
 
-/**
- * Updates the prediction bar with the custom items once the user entered the numeric keyboard.
- *
- * @param name The name of the keyplane that was switched to.
- */
 static void (*orig_UIKeyboardLayoutStar_setKeyplaneName)(UIKeyboardLayoutStar *self, SEL _cmd, NSString *name);
 static void override_UIKeyboardLayoutStar_setKeyplaneName(UIKeyboardLayoutStar *self, SEL _cmd, NSString *name) {
     orig_UIKeyboardLayoutStar_setKeyplaneName(self, _cmd, name);
@@ -184,16 +142,6 @@ static void override_UIKeyboardLayoutStar_setKeyplaneName(UIKeyboardLayoutStar *
     }
 }
 
-/**
- * Shows the history with the dictation button.
- *
- * This method usage only works on devices with the old keyboard.
- * The modern keyboard has a specific dictation icon on the so-called "Keyboard Dock".
- *
- * @param point
- *
- * @return The key that was pressed.
- */
 static UIKBTree *(*orig_UIKeyboardLayoutStar_keyHitTest)(UIKeyboardLayoutStar *self, SEL _cmd, CGPoint point);
 static UIKBTree *override_UIKeyboardLayoutStar_keyHitTest(UIKeyboardLayoutStar *self, SEL _cmd, CGPoint point) {
     UIKBTree *orig = orig_UIKeyboardLayoutStar_keyHitTest(self, _cmd, point);
@@ -208,9 +156,6 @@ static UIKBTree *override_UIKeyboardLayoutStar_keyHitTest(UIKeyboardLayoutStar *
     return orig;
 }
 
-/**
- * Hides the history when they keyboard was dismissed, if the history is already visible.
- */
 static void (*orig_UIKeyboardLayoutStar_didMoveToWindow)(UIKeyboardLayoutStar *self, SEL _cmd);
 static void override_UIKeyboardLayoutStar_didMoveToWindow(UIKeyboardLayoutStar *self, SEL _cmd) {
     orig_UIKeyboardLayoutStar_didMoveToWindow(self, _cmd);
@@ -218,9 +163,6 @@ static void override_UIKeyboardLayoutStar_didMoveToWindow(UIKeyboardLayoutStar *
                                          (CFStringRef)kNotificationKeyCoreHide, nil, nil, YES);
 }
 
-/**
- * Hides the history when they keyboard was dismissed, if the history is already visible.
- */
 static void (*orig_UIKBInputBackdropView_didMoveToWindow)(UIKBInputBackdropView *self, SEL _cmd);
 static void override_UIKBInputBackdropView_didMoveToWindow(UIKBInputBackdropView *self, SEL _cmd) {
     orig_UIKBInputBackdropView_didMoveToWindow(self, _cmd);
@@ -230,43 +172,20 @@ static void override_UIKBInputBackdropView_didMoveToWindow(UIKBInputBackdropView
 
 #pragma mark - UIKeyboardImpl class hooks
 
-/**
- * Makes the dictation key always show.
- *
- * This applies to devices using the modern keyboard.
- * @see keyHitTest for a more in-depth explanation.
- *
- * @return Whether the dictation key should be shown.
- */
 static BOOL override_UIKeyboardImpl_shouldShowDictationKey(UIKeyboardImpl *self, SEL _cmd) { return YES; }
 
-/**
- * Notes that the app will become active.
- *
- * Knowing that, we can prevent pasting from happening in apps that became inactive.
- */
 static void (*orig_UIKeyboardImpl_applicationDidBecomeActive)(UIKeyboardImpl *self, SEL _cmd, BOOL didBecomeActive);
 static void override_UIKeyboardImpl_applicationDidBecomeActive(UIKeyboardImpl *self, SEL _cmd, BOOL didBecomeActive) {
     orig_UIKeyboardImpl_applicationDidBecomeActive(self, _cmd, didBecomeActive);
     applicationIsInForeground = YES;
 }
 
-/**
- * Notes that the app will resign active.
- *
- * @see applicationDidBecomeActive why to save the state of an app.
- */
 static void (*orig_UIKeyboardImpl_applicationWillResignActive)(UIKeyboardImpl *self, SEL _cmd, BOOL willResignActive);
 static void override_UIKeyboardImpl_applicationWillResignActive(UIKeyboardImpl *self, SEL _cmd, BOOL willResignActive) {
     orig_UIKeyboardImpl_applicationWillResignActive(self, _cmd, willResignActive);
     applicationIsInForeground = NO;
 }
 
-/**
- * Notes that the app will suspend.
- *
- * @see applicationDidBecomeActive why to save the state of an app.
- */
 static void (*orig_UIKeyboardImpl_applicationWillSuspend)(UIKeyboardImpl *self, SEL _cmd, BOOL willSuspend);
 static void override_UIKeyboardImpl_applicationWillSuspend(UIKeyboardImpl *self, SEL _cmd, BOOL willSuspend) {
     orig_UIKeyboardImpl_applicationWillSuspend(self, _cmd, willSuspend);
@@ -275,14 +194,6 @@ static void override_UIKeyboardImpl_applicationWillSuspend(UIKeyboardImpl *self,
 
 #pragma mark - UISystemKeyboardDockController class hooks
 
-/**
- * Shows the history with the dictation button.
- *
- * This method usage only works on devices with the modern keyboard.
- * @see keyHitTest for a more in-depth explanation.
- *
- * @param event
- */
 static void
 override_UISystemKeyboardDockController_dictationItemButtonWasPressed_withEvent(UISystemKeyboardDockController *self,
                                                                                 SEL _cmd, UIEvent *event) {
@@ -432,9 +343,6 @@ static BOOL kayokoApplicationHasActiveKeyWindow(UIApplication *application) {
 
 #pragma mark - Notification callbacks
 
-/**
- * Pastes the last copied item from the history.
- */
 static void kayokoPaste() {
     if (!applicationIsInForeground) {
         return;
@@ -493,9 +401,6 @@ static void kayokoPaste() {
 
 #pragma mark - Preferences
 
-/**
- * Loads the user's preferences.
- */
 static void load_preferences() {
     kayokoHelperPreferences = [[NSUserDefaults alloc]
         initWithSuiteName:[NSString
@@ -536,13 +441,6 @@ static BOOL kayokoIsKeyboardExtensionProcess() {
     return [extensionPointIdentifier isEqualToString:@"com.apple.keyboard-service"];
 }
 
-/**
- * Initializes the helper.
- *
- * First it loads the preferences and continues if Kayoko is enabled.
- * Secondly it checks if the helper should run in the injected process.
- * Finally it sets up the hooks.
- */
 __attribute((constructor)) static void initialize() {
     load_preferences();
 

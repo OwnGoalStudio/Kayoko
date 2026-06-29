@@ -1,8 +1,6 @@
 #import <HBLog.h>
 #import <substrate.h>
-
-@import Foundation;
-@import UIKit;
+#import <UIKit/UIKit.h>
 
 #import "KayokoCore.h"
 #import "NotificationKeys.h"

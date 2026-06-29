@@ -6,45 +6,44 @@
 //
 
 #import "KayokoHistoryTableView.h"
+#import "KayokoView.h"
 #import "PasteboardItem.h"
 #import "PasteboardManager.h"
 
 @implementation KayokoHistoryTableView
 
-/**
- * Sets up the swipe actions on the left.
- *
- * @param tableView
- * @param indexPath
- */
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
     leadingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSMutableArray *actions = [[[super tableView:tableView
         leadingSwipeActionsConfigurationForRowAtIndexPath:indexPath] actions] mutableCopy];
-    PasteboardItem *item = [PasteboardItem itemFromDictionary:[self items][[indexPath row]]];
+    NSDictionary *dictionary = [self items][[indexPath row]];
+    PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
 
     UIContextualAction *favoriteAction = [UIContextualAction
-        contextualActionWithStyle:UIContextualActionStyleNormal
+        contextualActionWithStyle:UIContextualActionStyleDestructive
                             title:@""
                           handler:^(UIContextualAction *_Nonnull action, __kindof UIView *_Nonnull sourceView,
                                     void (^_Nonnull completionHandler)(BOOL)) {
-                            [self
-                                performBatchUpdates:^{
-                                  [self deleteRowsAtIndexPaths:@[ indexPath ]
-                                              withRowAnimation:UITableViewRowAnimationRight];
-                                  NSMutableArray *items = [[self items] mutableCopy];
-                                  [items removeObjectAtIndex:[indexPath row]];
-                                  [self setItems:items];
-                                }
-                                completion:^(BOOL finished) {
-                                  [[PasteboardManager sharedInstance] addPasteboardItem:item
-                                                                       toHistoryWithKey:kHistoryKeyFavorites];
-                                  [[PasteboardManager sharedInstance] removePasteboardItem:item
-                                                                        fromHistoryWithKey:kHistoryKeyHistory
-                                                                         shouldRemoveImage:NO];
-                                  [self notifyContentStateChanged];
-                                  completionHandler(YES);
-                                }];
+                            [[PasteboardManager sharedInstance]
+                                movePasteboardItem:item
+                                fromHistoryWithKey:kHistoryKeyHistory
+                                  toHistoryWithKey:kHistoryKeyFavorites
+                                        completion:^(BOOL success) {
+                                          if (!success) {
+                                              completionHandler(NO);
+                                              return;
+                                          }
+                                          [self removeItemAtIndexPath:indexPath
+                                                           completion:^(BOOL removed) {
+                                                             if (removed) {
+                                                                 [(KayokoView *)[self superview]
+                                                                     handlePasteboardItemDictionary:dictionary
+                                                                                movedFromHistoryKey:kHistoryKeyHistory
+                                                                                        toHistoryKey:kHistoryKeyFavorites];
+                                                             }
+                                                             completionHandler(removed);
+                                                           }];
+                                        }];
                           }];
     [favoriteAction setImage:[UIImage systemImageNamed:@"heart.fill"]];
     [favoriteAction setBackgroundColor:[UIColor systemPinkColor]];
@@ -53,37 +52,27 @@
     return [UISwipeActionsConfiguration configurationWithActions:actions];
 }
 
-/**
- * Sets up the swipe actions on the right.
- *
- * @param tableView
- * @param indexPath
- */
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
     trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSMutableArray *actions = [[NSMutableArray alloc] init];
     PasteboardItem *item = [PasteboardItem itemFromDictionary:[self items][[indexPath row]]];
 
     UIContextualAction *deleteAction = [UIContextualAction
-        contextualActionWithStyle:UIContextualActionStyleNormal
+        contextualActionWithStyle:UIContextualActionStyleDestructive
                             title:@""
                           handler:^(UIContextualAction *_Nonnull action, __kindof UIView *_Nonnull sourceView,
                                     void (^_Nonnull completionHandler)(BOOL)) {
-                            [self
-                                performBatchUpdates:^{
-                                  [self deleteRowsAtIndexPaths:@[ indexPath ]
-                                              withRowAnimation:UITableViewRowAnimationLeft];
-                                  NSMutableArray *items = [[self items] mutableCopy];
-                                  [items removeObjectAtIndex:[indexPath row]];
-                                  [self setItems:items];
-                                }
-                                completion:^(BOOL finished) {
-                                  [[PasteboardManager sharedInstance] removePasteboardItem:item
-                                                                        fromHistoryWithKey:kHistoryKeyHistory
-                                                                         shouldRemoveImage:YES];
-                                  [self notifyContentStateChanged];
-                                  completionHandler(YES);
-                                }];
+                            [[PasteboardManager sharedInstance]
+                                removePasteboardItem:item
+                                  fromHistoryWithKey:kHistoryKeyHistory
+                                   shouldRemoveImage:YES
+                                          completion:^(BOOL success) {
+                                            if (!success) {
+                                                completionHandler(NO);
+                                                return;
+                                            }
+                                            [self removeItemAtIndexPath:indexPath completion:completionHandler];
+                                          }];
                           }];
     [deleteAction setImage:[UIImage systemImageNamed:@"trash.fill"]];
     [deleteAction setBackgroundColor:[UIColor systemRedColor]];

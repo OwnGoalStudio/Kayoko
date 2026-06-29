@@ -7,13 +7,13 @@
 
 #import "KayokoCore.h"
 
-#import <AudioToolbox/AudioToolbox.h>
 #import <AVFoundation/AVFoundation.h>
+#import <AudioToolbox/AudioToolbox.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <QuartzCore/QuartzCore.h>
 
 #import <HBLog.h>
-#import <libroot.h>
+#import <roothide.h>
 #import <substrate.h>
 
 #import "NotificationKeys.h"
@@ -21,7 +21,7 @@
 #import "PreferenceKeys.h"
 #import "Views/KayokoView.h"
 
-#define kMinimumFeedbackInterval 0.6
+static NSTimeInterval kKayokoMinimumFeedbackInterval = 0.6;
 
 KayokoView *kayokoView = nil;
 
@@ -50,6 +50,7 @@ static NSTimeInterval lastCopyFeedbackOccurred = 0;
 static AVAudioPlayer *copySoundPlayer = nil;
 static AVAudioPlayer *pasteSoundPlayer = nil;
 static BOOL didPreparePasteboardQueue = NO;
+static BOOL pendingHeightPreferenceApply = NO;
 
 @interface UIStatusBarStyleRequest : NSObject
 @property(nonatomic, assign, readonly) long long style;
@@ -64,6 +65,28 @@ static BOOL didPreparePasteboardQueue = NO;
 + (instancetype)windowSceneStatusBarManagerForEmbeddedDisplay;
 - (UIStatusBarStyleRequest *)frontmostStatusBarStyleRequest;
 @end
+
+static void apply_height_preference_to_view(BOOL applyWhenHidden) {
+    if (!kayokoView) {
+        return;
+    }
+
+    if (!applyWhenHidden && [kayokoView isHidden]) {
+        return;
+    }
+
+    UIView *containerView = [kayokoView superview];
+    CGRect bounds = containerView ? [containerView bounds] : [[UIScreen mainScreen] bounds];
+    CGFloat height = MIN(kayokoPrefsHeightInPoints, CGRectGetHeight(bounds));
+    CGRect newFrame = CGRectMake(CGRectGetMinX(bounds), CGRectGetMaxY(bounds) - height, CGRectGetWidth(bounds), height);
+    if (!CGRectEqualToRect([kayokoView frame], newFrame)) {
+        if (!CGAffineTransformIsIdentity([kayokoView transform])) {
+            [kayokoView setTransform:CGAffineTransformIdentity];
+        }
+        [kayokoView setFrame:newFrame];
+        [kayokoView setNeedsLayout];
+    }
+}
 
 static void apply_preferences_to_view() {
     if (!kayokoView) {
@@ -86,29 +109,11 @@ static void apply_preferences_to_view() {
         [kayokoView setShouldPlayFeedback:kayokoPrefsPlayHapticFeedback];
     }
 
-    UIView *containerView = [kayokoView superview];
-    CGRect bounds = containerView ? [containerView bounds] : [[UIScreen mainScreen] bounds];
-    CGFloat height = MIN(kayokoPrefsHeightInPoints, CGRectGetHeight(bounds));
-    CGRect newFrame = CGRectMake(CGRectGetMinX(bounds), CGRectGetMaxY(bounds) - height, CGRectGetWidth(bounds), height);
-    if (!CGRectEqualToRect([kayokoView frame], newFrame)) {
-        if (!CGAffineTransformIsIdentity([kayokoView transform])) {
-            [kayokoView setTransform:CGAffineTransformIdentity];
-        }
-        [kayokoView setFrame:newFrame];
-        [kayokoView setNeedsLayout];
-    }
+    apply_height_preference_to_view(YES);
 }
 
 #pragma mark - UIStatusBarWindow class hooks
 
-/**
- * Sets up the history view.
- *
- * Using the status bar's window is hacky, yet it's present on SpringBoard and in apps.
- * It's important to note that it runs on the SpringBoard process too, which gives us file system read/write.
- *
- * @param frame
- */
 static void (*orig_UIStatusBarWindow_initWithFrame)(UIStatusBarWindow *self, SEL _cmd, CGRect frame);
 static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SEL _cmd, CGRect frame) {
     orig_UIStatusBarWindow_initWithFrame(self, _cmd, frame);
@@ -116,7 +121,8 @@ static void override_UIStatusBarWindow_initWithFrame(UIStatusBarWindow *self, SE
     if (!kayokoView) {
         CGRect bounds = [[UIScreen mainScreen] bounds];
         UIControl *outsideDismissOverlayView = [[UIControl alloc] initWithFrame:[self bounds]];
-        [outsideDismissOverlayView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
+        [outsideDismissOverlayView
+            setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
         [outsideDismissOverlayView setBackgroundColor:[UIColor colorWithWhite:0 alpha:0.18]];
         [outsideDismissOverlayView setAlpha:0];
         [outsideDismissOverlayView setHidden:YES];
@@ -147,9 +153,9 @@ static AVAudioPlayer *kayokoAudioPlayerForSound(NSString *soundName) {
 
     NSString *relativeSoundPath =
         [NSString stringWithFormat:@"/Library/PreferenceBundles/KayokoPreferences.bundle/%@.aiff", soundName];
-    NSString *soundPath = JBROOT_PATH_NSSTRING(relativeSoundPath);
+    NSString *soundPath = jbroot(relativeSoundPath);
     AVAudioPlayer *player = [[AVAudioPlayer alloc] initWithContentsOfURL:[NSURL fileURLWithPath:soundPath]
-                                                                    error:&error];
+                                                                   error:&error];
     if (error) {
         HBLogDebug(@"Kayoko: Failed to load %@ sound: %@", soundName, error);
         return nil;
@@ -169,9 +175,6 @@ static AVAudioPlayer *kayokoPlayFeedbackSound(AVAudioPlayer *player, NSString *s
     return player;
 }
 
-/**
- * Receives the notification that the pasteboard changed from the daemon and pulls the new changes.
- */
 static void _kayokoCopy() {
     [[PasteboardManager sharedInstance] pullPasteboardChanges];
     if (isInPasteProgress) {
@@ -181,7 +184,7 @@ static void _kayokoCopy() {
         return;
     }
     NSTimeInterval now = CACurrentMediaTime();
-    if (fabs(now - lastCopyFeedbackOccurred) < kMinimumFeedbackInterval) {
+    if (fabs(now - lastCopyFeedbackOccurred) < kKayokoMinimumFeedbackInterval) {
         return;
     }
     lastCopyFeedbackOccurred = now;
@@ -199,11 +202,9 @@ static void kayokoCopy() {
     });
 }
 
-/**
- * Shows the history.
- */
 static void show() {
     if ([kayokoView isHidden]) {
+        apply_height_preference_to_view(YES);
 
         [kayokoView setOverrideUserInterfaceStyle:UIUserInterfaceStyleUnspecified];
 
@@ -246,29 +247,22 @@ static void show() {
     }
 }
 
-/**
- * Hides the history.
- */
 static void hide() {
     if (![kayokoView isHidden]) {
         [kayokoView hide];
     }
 }
 
-/**
- * Reloads the history.
- */
 static void reload() {
-    if (![kayokoView isHidden]) {
-        [kayokoView reload];
+    if (kayokoView) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [kayokoView handleHistoryChanged];
+        });
     }
 }
 
 #pragma mark - Preferences
 
-/**
- * Loads the user's preferences.
- */
 static void load_preferences() {
     kayokoPreferences = [[NSUserDefaults alloc] initWithSuiteName:kPreferencesIdentifier];
 
@@ -291,18 +285,19 @@ static void load_preferences() {
     kayokoPrefsEnabled = [[kayokoPreferences objectForKey:kPreferenceKeyEnabled] boolValue];
     kayokoHelperPrefsActivationMethod =
         [[kayokoPreferences objectForKey:kPreferenceKeyActivationMethod] unsignedIntegerValue];
-    kayokoPrefsMaximumHistoryAmount =
-        [[kayokoPreferences objectForKey:kPreferenceKeyMaximumHistoryAmount] unsignedIntegerValue];
+    kayokoPrefsMaximumHistoryAmount = [PasteboardManager
+        normalizedMaximumHistoryAmountForValue:[[kayokoPreferences objectForKey:kPreferenceKeyMaximumHistoryAmount]
+                                                   unsignedIntegerValue]];
     kayokoPrefsSaveText = [[kayokoPreferences objectForKey:kPreferenceKeySaveText] boolValue];
     kayokoPrefsSaveImages = [[kayokoPreferences objectForKey:kPreferenceKeySaveImages] boolValue];
     kayokoPrefsSwipeToSelectWords = [[kayokoPreferences objectForKey:kPreferenceKeySwipeToSelectWords] boolValue];
     kayokoPrefsAutomaticallyPaste = [[kayokoPreferences objectForKey:kPreferenceKeyAutomaticallyPaste] boolValue];
-    kayokoPrefsDismissOnOutsideTouch =
-        [[kayokoPreferences objectForKey:kPreferenceKeyDismissOnOutsideTouch] boolValue];
+    kayokoPrefsDismissOnOutsideTouch = [[kayokoPreferences objectForKey:kPreferenceKeyDismissOnOutsideTouch] boolValue];
     kayokoPrefsDisablePasteTips = [[kayokoPreferences objectForKey:kPreferenceKeyDisablePasteTips] boolValue];
     kayokoPrefsPlaySoundEffects = [[kayokoPreferences objectForKey:kPreferenceKeyPlaySoundEffects] boolValue];
     kayokoPrefsPlayHapticFeedback = [[kayokoPreferences objectForKey:kPreferenceKeyPlayHapticFeedback] boolValue];
-    kayokoPrefsPreviewLineCount = [[kayokoPreferences objectForKey:kPreferenceKeyPreviewLineCount] unsignedIntegerValue];
+    kayokoPrefsPreviewLineCount =
+        [[kayokoPreferences objectForKey:kPreferenceKeyPreviewLineCount] unsignedIntegerValue];
     kayokoPrefsHeightInPoints = [[kayokoPreferences objectForKey:kPreferenceKeyHeightInPoints] doubleValue];
 
     PasteboardManager *pasteboardManager = [PasteboardManager sharedInstance];
@@ -332,14 +327,22 @@ static void load_height_preference() {
         kPreferenceKeyHeightInPoints : @(kPreferenceKeyHeightInPointsDefaultValue),
     }];
     kayokoPrefsHeightInPoints = [[heightPreferences objectForKey:kPreferenceKeyHeightInPoints] doubleValue];
-    apply_preferences_to_view();
+    if (pendingHeightPreferenceApply) {
+        return;
+    }
+
+    pendingHeightPreferenceApply = YES;
+    dispatch_async(dispatch_get_main_queue(), ^{
+      pendingHeightPreferenceApply = NO;
+      apply_height_preference_to_view(NO);
+    });
 }
 
 #pragma mark - Sound effects
 
 static void kayokoPaste() {
     NSTimeInterval now = CACurrentMediaTime();
-    if (fabs(now - lastPasteFeedbackOccurred) < kMinimumFeedbackInterval) {
+    if (fabs(now - lastPasteFeedbackOccurred) < kKayokoMinimumFeedbackInterval) {
         return;
     }
     lastPasteFeedbackOccurred = now;
@@ -353,13 +356,6 @@ static void kayokoPaste() {
 
 #pragma mark - Constructor
 
-/**
- * Initializes the core.
- *
- * First it loads the preferences and continues if Kayoko is enabled.
- * Secondly it sets up the hooks.
- * Finally it registers the notification callbacks.
- */
 __attribute((constructor)) static void initialize() {
     NSString *bundleIdentifier = [[NSBundle mainBundle] bundleIdentifier];
     BOOL isSpringBoard = [bundleIdentifier isEqualToString:@"com.apple.springboard"];
@@ -377,8 +373,8 @@ __attribute((constructor)) static void initialize() {
             statusBarWindowCls = objc_getClass("SBStatusBarWindow");
         }
 
-        MSHookMessageEx(statusBarWindowCls, @selector(initWithFrame:),
-                        (IMP)&override_UIStatusBarWindow_initWithFrame, (IMP *)&orig_UIStatusBarWindow_initWithFrame);
+        MSHookMessageEx(statusBarWindowCls, @selector(initWithFrame:), (IMP)&override_UIStatusBarWindow_initWithFrame,
+                        (IMP *)&orig_UIStatusBarWindow_initWithFrame);
 
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)kayokoCopy,
@@ -389,8 +385,16 @@ __attribute((constructor)) static void initialize() {
             (CFStringRef)kNotificationKeyCoreShow, NULL,
             (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)show,
+            (CFStringRef)kLegacyNotificationKeyCoreShow, NULL,
+            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+        CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)hide,
             (CFStringRef)kNotificationKeyCoreHide, NULL,
+            (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)hide,
+            (CFStringRef)kLegacyNotificationKeyCoreHide, NULL,
             (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)reload,

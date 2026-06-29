@@ -9,9 +9,6 @@
 
 @implementation PasteboardItem
 
-/**
- * Initializes an item based on the given content.
- */
 - (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier
                               andContent:(NSString *)content
                           withImageNamed:(NSString *)imageName {
@@ -27,13 +24,6 @@
     return self;
 }
 
-/**
- * Creates an item from a dictionary.
- *
- * @param dictionary The dictionary to create the item from.
- *
- * @return The created item.
- */
 + (PasteboardItem *)itemFromDictionary:(NSDictionary *)dictionary {
     NSString *bundleIdentifier = dictionary[kItemKeyBundleIdentifier];
     NSString *content = dictionary[kItemKeyContent];

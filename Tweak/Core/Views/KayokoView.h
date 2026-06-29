@@ -31,11 +31,12 @@ static CGFloat const kTitleLabelLeadingInset = 64;
     NSString *_activeHistoryKey;
     NSString *_clearConfirmationHistoryKey;
     BOOL _isAnimating;
+    BOOL _panGestureDidReachZeroAlpha;
 }
+
 @property(nonatomic, strong) UIBlurEffect *blurEffect;
 @property(nonatomic, strong) UIVisualEffectView *blurEffectView;
 @property(nonatomic, strong) UIView *headerView;
-@property(nonatomic, strong) UITapGestureRecognizer *tapGestureRecognizer;
 @property(nonatomic, strong) _UIGrabber *grabber;
 @property(nonatomic, strong) UILabel *titleLabel;
 @property(nonatomic, strong) UIButton *clearButton;
@@ -54,8 +55,14 @@ static CGFloat const kTitleLabelLeadingInset = 64;
 @property(nonatomic, assign) BOOL swipeToSelectWords;
 @property(nonatomic, assign) NSUInteger previewLineCount;
 @property(nonatomic, assign) BOOL shouldPlayFeedback;
+
 - (void)showPreviewWithItem:(PasteboardItem *)item;
+- (void)handleHistoryChanged;
+- (void)handlePasteboardItemDictionary:(NSDictionary *)dictionary
+                   movedFromHistoryKey:(NSString *)sourceHistoryKey
+                           toHistoryKey:(NSString *)destinationHistoryKey;
 - (void)show;
 - (void)hide;
 - (void)reload;
+
 @end

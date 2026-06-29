@@ -42,9 +42,9 @@
         [stackView addArrangedSubview:[self confirmationLabel]];
 
         [[self confirmationLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
-        [NSLayoutConstraint activateConstraints:@[
-            [[[self confirmationLabel] widthAnchor] constraintLessThanOrEqualToAnchor:[self widthAnchor] constant:-48]
-        ]];
+        [NSLayoutConstraint activateConstraints:@[ [[[self confirmationLabel] widthAnchor]
+                                                    constraintLessThanOrEqualToAnchor:[self widthAnchor]
+                                                                             constant:-48] ]];
 
         UIStackView *buttonStackView = [[UIStackView alloc] init];
         [buttonStackView setAxis:UILayoutConstraintAxisHorizontal];
@@ -61,9 +61,9 @@
 
         [self setCancelButton:[UIButton buttonWithType:UIButtonTypeSystem]];
         [[self cancelButton] setTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"Cancel"
-                                                                                               value:nil
-                                                                                               table:@"Tweak"]
-                              forState:UIControlStateNormal];
+                                                                                              value:nil
+                                                                                              table:@"Tweak"]
+                             forState:UIControlStateNormal];
         [[self cancelButton] setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
         [[[self cancelButton] titleLabel] setFont:[UIFont systemFontOfSize:16 weight:UIFontWeightMedium]];
         [[self cancelButton] setBackgroundColor:[UIColor tertiarySystemFillColor]];
@@ -73,9 +73,9 @@
 
         [self setConfirmButton:[UIButton buttonWithType:UIButtonTypeSystem]];
         [[self confirmButton] setTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"Clear"
-                                                                                                value:nil
-                                                                                                table:@"Tweak"]
-                               forState:UIControlStateNormal];
+                                                                                               value:nil
+                                                                                               table:@"Tweak"]
+                              forState:UIControlStateNormal];
         [[self confirmButton] setTitleColor:[UIColor systemRedColor] forState:UIControlStateNormal];
         [[[self confirmButton] titleLabel] setFont:[UIFont systemFontOfSize:16 weight:UIFontWeightSemibold]];
         [[self confirmButton] setBackgroundColor:[[UIColor systemRedColor] colorWithAlphaComponent:0.14]];
@@ -89,7 +89,7 @@
 
 - (void)updateWithHistoryKey:(NSString *)historyKey {
     NSString *localizationKey = [historyKey isEqualToString:kHistoryKeyFavorites] ? @"Clear Favorites Confirmation"
-                                                                                 : @"Clear History Confirmation";
+                                                                                  : @"Clear History Confirmation";
     [[self confirmationLabel] setText:[[PasteboardManager localizationBundle] localizedStringForKey:localizationKey
                                                                                               value:nil
                                                                                               table:@"Tweak"]];

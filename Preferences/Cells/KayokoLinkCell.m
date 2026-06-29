@@ -1,23 +1,14 @@
 //
-//  LinkCell.m
+//  KayokoLinkCell.m
 //  Akarii Utils
 //
 //  Created by Alexandra Aurora Göttlicher
 //
 
-#import "LinkCell.h"
+#import "KayokoLinkCell.h"
 
-@implementation LinkCell
+@implementation KayokoLinkCell
 
-/**
- * Initializes the link cell.
- *
- * @param style
- * @param reuseIdentifier
- * @param specifier
- *
- * @return The cell.
- */
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
               reuseIdentifier:(NSString *)reuseIdentifier
                     specifier:(PSSpecifier *)specifier {
@@ -92,9 +83,6 @@
     return self;
 }
 
-/**
- * Opens the specified url.
- */
 - (void)openUrl {
     [[UIApplication sharedApplication] openURL:[NSURL URLWithString:[self url]] options:@{} completionHandler:nil];
 }

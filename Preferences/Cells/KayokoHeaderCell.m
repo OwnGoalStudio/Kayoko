@@ -31,7 +31,8 @@
 
         [[self iconImageView] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self iconImageView] leadingAnchor] constraintEqualToAnchor:[[self contentView] leadingAnchor] constant:18],
+            [[[self iconImageView] leadingAnchor] constraintEqualToAnchor:[[self contentView] leadingAnchor]
+                                                                 constant:18],
             [[[self iconImageView] centerYAnchor] constraintEqualToAnchor:[[self contentView] centerYAnchor]],
             [[[self iconImageView] widthAnchor] constraintEqualToConstant:46],
             [[[self iconImageView] heightAnchor] constraintEqualToConstant:46]
@@ -45,6 +46,8 @@
         [[self headerTitleLabel] setTextColor:[UIColor labelColor]];
         [[self headerTitleLabel] setAdjustsFontSizeToFitWidth:YES];
         [[self headerTitleLabel] setMinimumScaleFactor:0.82];
+        [[self headerTitleLabel] setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                                                 forAxis:UILayoutConstraintAxisHorizontal];
         [[self contentView] addSubview:[self headerTitleLabel]];
 
         [[self headerTitleLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
@@ -55,14 +58,21 @@
         ]];
 
         NSString *version = [specifier propertyForKey:@"detail"];
+        UIFont *versionFont = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+        CGFloat versionBadgeWidth =
+            ceil([version sizeWithAttributes:@{NSFontAttributeName : versionFont}].width) + 16.0;
         [self setVersionLabel:[[UILabel alloc] init]];
         [[self versionLabel] setText:version];
-        [[self versionLabel] setFont:[UIFont systemFontOfSize:11 weight:UIFontWeightMedium]];
+        [[self versionLabel] setFont:versionFont];
         [[self versionLabel] setTextColor:[UIColor secondaryLabelColor]];
         [[self versionLabel] setTextAlignment:NSTextAlignmentCenter];
         [[self versionLabel] setBackgroundColor:[[UIColor labelColor] colorWithAlphaComponent:0.07]];
         [[[self versionLabel] layer] setCornerRadius:7];
         [[self versionLabel] setClipsToBounds:YES];
+        [[self versionLabel] setContentHuggingPriority:UILayoutPriorityRequired
+                                               forAxis:UILayoutConstraintAxisHorizontal];
+        [[self versionLabel] setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                             forAxis:UILayoutConstraintAxisHorizontal];
         [[self contentView] addSubview:[self versionLabel]];
 
         [[self versionLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
@@ -72,7 +82,7 @@
             [[[self versionLabel] centerYAnchor] constraintEqualToAnchor:[[self headerTitleLabel] centerYAnchor]],
             [[[self versionLabel] trailingAnchor] constraintLessThanOrEqualToAnchor:[[self contentView] trailingAnchor]
                                                                            constant:-18],
-            [[[self versionLabel] widthAnchor] constraintGreaterThanOrEqualToConstant:32],
+            [[[self versionLabel] widthAnchor] constraintGreaterThanOrEqualToConstant:MAX(32.0, versionBadgeWidth)],
             [[[self versionLabel] heightAnchor] constraintEqualToConstant:18]
         ]];
 
@@ -90,7 +100,8 @@
             [[[self subtitleLabel] leadingAnchor] constraintEqualToAnchor:[[self headerTitleLabel] leadingAnchor]],
             [[[self subtitleLabel] trailingAnchor] constraintEqualToAnchor:[[self contentView] trailingAnchor]
                                                                   constant:-18],
-            [[[self subtitleLabel] topAnchor] constraintEqualToAnchor:[[self headerTitleLabel] bottomAnchor] constant:4],
+            [[[self subtitleLabel] topAnchor] constraintEqualToAnchor:[[self headerTitleLabel] bottomAnchor]
+                                                             constant:4],
             [[[self subtitleLabel] bottomAnchor] constraintLessThanOrEqualToAnchor:[[self iconImageView] bottomAnchor]
                                                                           constant:-1]
         ]];

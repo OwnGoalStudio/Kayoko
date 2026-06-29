@@ -14,7 +14,7 @@
 		</dict>
 		<dict>
 			<key>cellClass</key>
-			<string>LinkCell</string>
+			<string>KayokoLinkCell</string>
 			<key>label</key>
 			<string>Original Source</string>
 			<key>subtitle</key>
@@ -36,7 +36,7 @@
 		</dict>
 		<dict>
 			<key>cellClass</key>
-			<string>LinkCell</string>
+			<string>KayokoLinkCell</string>
 			<key>label</key>
 			<string>Current Source Code</string>
 			<key>subtitle</key>
@@ -66,7 +66,7 @@
 		</dict>
 		<dict>
 			<key>cellClass</key>
-			<string>LinkCell</string>
+			<string>KayokoLinkCell</string>
 			<key>label</key>
 			<string>GPLv3 License</string>
 			<key>subtitle</key>
