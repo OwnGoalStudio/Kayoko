@@ -13,6 +13,8 @@ static NSString *const kKayokoMigratorHistoryKey = @"history";
 static NSString *const kKayokoMigratorFavoritesKey = @"favorites";
 static NSString *const kKayokoHistoryMigratorErrorDomain = @"com.82flex.kayoko.history-migrator";
 
+NS_ASSUME_NONNULL_BEGIN
+
 @implementation KayokoHistoryMigrationSource
 
 + (instancetype)sourceWithIdentifier:(NSString *)identifier
@@ -40,6 +42,8 @@ static NSString *const kKayokoHistoryMigratorErrorDomain = @"com.82flex.kayoko.h
 @property(nonatomic, copy) NSArray<KayokoHistoryMigrationSource *> *migrationSources;
 @property(nonatomic, strong) NSMutableDictionary<NSString *, NSString *> *copiedImageNamesBySourcePath;
 @end
+
+NS_ASSUME_NONNULL_END
 
 @implementation KayokoHistoryMigrator
 
@@ -91,7 +95,9 @@ static NSString *const kKayokoHistoryMigratorErrorDomain = @"com.82flex.kayoko.h
     for (KayokoHistoryMigrationSource *source in [self migrationSources]) {
         BOOL sourceExists = NO;
         NSError *sourceError = nil;
-        NSDictionary *legacyJSON = [self legacyHistoryJSONForSource:source exists:&sourceExists error:&sourceError];
+        NSDictionary<NSString *, id> *legacyJSON = [self legacyHistoryJSONForSource:source
+                                                                             exists:&sourceExists
+                                                                              error:&sourceError];
         if (!legacyJSON) {
             if (!sourceExists) {
                 continue;
@@ -103,11 +109,12 @@ static NSString *const kKayokoHistoryMigratorErrorDomain = @"com.82flex.kayoko.h
             continue;
         }
 
-        NSArray *historyItems = [self preparedItemsFromLegacyJSON:legacyJSON
-                                                       primaryKey:kKayokoMigratorHistoryKey
-                                                      fallbackKey:@"History"
-                                                           source:source
-                                                            error:&sourceError];
+        NSArray<NSDictionary<NSString *, id> *> *historyItems =
+            [self preparedItemsFromLegacyJSON:legacyJSON
+                                   primaryKey:kKayokoMigratorHistoryKey
+                                  fallbackKey:@"History"
+                                       source:source
+                                        error:&sourceError];
         if (!historyItems) {
             didFailSource = YES;
             if (!firstSourceError) {
@@ -117,11 +124,12 @@ static NSString *const kKayokoHistoryMigratorErrorDomain = @"com.82flex.kayoko.h
             continue;
         }
 
-        NSArray *favoriteItems = [self preparedItemsFromLegacyJSON:legacyJSON
-                                                        primaryKey:kKayokoMigratorFavoritesKey
-                                                       fallbackKey:@"Favorites"
-                                                            source:source
-                                                             error:&sourceError];
+        NSArray<NSDictionary<NSString *, id> *> *favoriteItems =
+            [self preparedItemsFromLegacyJSON:legacyJSON
+                                   primaryKey:kKayokoMigratorFavoritesKey
+                                  fallbackKey:@"Favorites"
+                                       source:source
+                                        error:&sourceError];
         if (!favoriteItems) {
             didFailSource = YES;
             if (!firstSourceError) {
@@ -165,9 +173,9 @@ static NSString *const kKayokoHistoryMigratorErrorDomain = @"com.82flex.kayoko.h
 
 #pragma mark - Private
 
-- (NSDictionary *)legacyHistoryJSONForSource:(KayokoHistoryMigrationSource *)source
-                                      exists:(BOOL *)exists
-                                       error:(NSError **)error {
+- (NSDictionary<NSString *, id> *)legacyHistoryJSONForSource:(KayokoHistoryMigrationSource *)source
+                                                      exists:(BOOL *)exists
+                                                       error:(NSError **)error {
     NSFileManager *fileManager = [NSFileManager defaultManager];
     if (![fileManager fileExistsAtPath:[source historyPath]]) {
         if (exists) {
@@ -197,20 +205,23 @@ static NSString *const kKayokoHistoryMigratorErrorDomain = @"com.82flex.kayoko.h
     return json;
 }
 
-- (NSArray *)preparedItemsFromLegacyJSON:(NSDictionary *)json
-                              primaryKey:(NSString *)primaryKey
-                             fallbackKey:(NSString *)fallbackKey
-                                  source:(KayokoHistoryMigrationSource *)source
-                                   error:(NSError **)error {
-    NSArray *items = [self itemsFromLegacyJSON:json primaryKey:primaryKey fallbackKey:fallbackKey];
-    NSMutableArray *preparedItems = [[NSMutableArray alloc] initWithCapacity:[items count]];
+- (NSArray<NSDictionary<NSString *, id> *> *)preparedItemsFromLegacyJSON:(NSDictionary<NSString *, id> *)json
+                                                              primaryKey:(NSString *)primaryKey
+                                                             fallbackKey:(NSString *)fallbackKey
+                                                                  source:(KayokoHistoryMigrationSource *)source
+                                                                   error:(NSError **)error {
+    NSArray<NSDictionary<NSString *, id> *> *items = [self itemsFromLegacyJSON:json
+                                                                    primaryKey:primaryKey
+                                                                   fallbackKey:fallbackKey];
+    NSMutableArray<NSDictionary<NSString *, id> *> *preparedItems =
+        [[NSMutableArray alloc] initWithCapacity:[items count]];
 
     for (id item in items) {
         if (![item isKindOfClass:[NSDictionary class]]) {
             continue;
         }
 
-        NSDictionary *preparedItem = [self preparedItemDictionary:item source:source error:error];
+        NSDictionary<NSString *, id> *preparedItem = [self preparedItemDictionary:item source:source error:error];
         if (!preparedItem) {
             return nil;
         }
@@ -220,9 +231,9 @@ static NSString *const kKayokoHistoryMigratorErrorDomain = @"com.82flex.kayoko.h
     return preparedItems;
 }
 
-- (NSArray *)itemsFromLegacyJSON:(NSDictionary *)json
-                      primaryKey:(NSString *)primaryKey
-                     fallbackKey:(NSString *)fallbackKey {
+- (NSArray<NSDictionary<NSString *, id> *> *)itemsFromLegacyJSON:(NSDictionary<NSString *, id> *)json
+                                                      primaryKey:(NSString *)primaryKey
+                                                     fallbackKey:(NSString *)fallbackKey {
     id items = json[primaryKey];
     if (!items) {
         items = json[fallbackKey];
@@ -233,10 +244,10 @@ static NSString *const kKayokoHistoryMigratorErrorDomain = @"com.82flex.kayoko.h
     return items;
 }
 
-- (NSDictionary *)preparedItemDictionary:(NSDictionary *)item
-                                  source:(KayokoHistoryMigrationSource *)source
-                                   error:(NSError **)error {
-    NSString *imageName = [self stringValueFromDictionary:item key:kItemKeyImageName];
+- (NSDictionary<NSString *, id> *)preparedItemDictionary:(NSDictionary<NSString *, id> *)item
+                                                  source:(KayokoHistoryMigrationSource *)source
+                                                   error:(NSError **)error {
+    NSString *imageName = [self stringValueFromDictionary:item key:kKayokoItemKeyImageName];
     if ([imageName length] == 0) {
         return item;
     }
@@ -250,12 +261,12 @@ static NSString *const kKayokoHistoryMigratorErrorDomain = @"com.82flex.kayoko.h
         return item;
     }
 
-    NSMutableDictionary *preparedItem = [item mutableCopy];
-    preparedItem[kItemKeyImageName] = migratedImageName;
+    NSMutableDictionary<NSString *, id> *preparedItem = [item mutableCopy];
+    preparedItem[kKayokoItemKeyImageName] = migratedImageName;
 
-    NSString *content = [self stringValueFromDictionary:item key:kItemKeyContent];
+    NSString *content = [self stringValueFromDictionary:item key:kKayokoItemKeyContent];
     if ([content isEqualToString:imageName]) {
-        preparedItem[kItemKeyContent] = migratedImageName;
+        preparedItem[kKayokoItemKeyContent] = migratedImageName;
     }
 
     return preparedItem;
@@ -320,7 +331,7 @@ static NSString *const kKayokoHistoryMigratorErrorDomain = @"com.82flex.kayoko.h
     }
 }
 
-- (NSString *)stringValueFromDictionary:(NSDictionary *)dictionary key:(NSString *)key {
+- (NSString *)stringValueFromDictionary:(NSDictionary<NSString *, id> *)dictionary key:(NSString *)key {
     id value = dictionary[key];
     if ([value isKindOfClass:[NSString class]]) {
         return value;

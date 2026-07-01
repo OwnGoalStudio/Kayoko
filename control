@@ -1,6 +1,6 @@
 Package: com.82flex.kayoko
 Name: Kayoko
-Version: 4.0
+Version: 4.0.1
 Architecture: iphoneos-arm
 Description: A smarter clipboard experience that stays close whenever you need it.
 Maintainer: Lessica <82flex@gmail.com>

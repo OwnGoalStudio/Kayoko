@@ -7,18 +7,21 @@
 
 #import <UIKit/UIKit.h>
 
-@class PasteboardItem;
+@class KayokoTableViewCellContent;
+
+NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoTableViewCell : UITableViewCell
 
-@property(nonatomic) UIImageView *iconImageView;
-@property(nonatomic) UILabel *headerLabel;
-@property(nonatomic) UILabel *contentLabel;
-@property(nonatomic) UIImageView *contentImageView;
+@property(nonatomic, strong) UIImageView *iconImageView;
+@property(nonatomic, strong) UILabel *headerLabel;
+@property(nonatomic, strong) UILabel *contentLabel;
+@property(nonatomic, strong) UIImageView *contentImageView;
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
-                      andItem:(PasteboardItem *)item
-          andPreviewLineCount:(NSUInteger)previewLineCount
+                      content:(KayokoTableViewCellContent *)content
               reuseIdentifier:(NSString *)reuseIdentifier;
 
 @end
+
+NS_ASSUME_NONNULL_END

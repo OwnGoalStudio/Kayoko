@@ -2,8 +2,6 @@
 //  KayokoHeaderCell.m
 //  Kayoko
 //
-//  Created by Lessica
-//
 
 #import "KayokoHeaderCell.h"
 

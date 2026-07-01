@@ -15,33 +15,33 @@ typedef NS_OPTIONS(NSUInteger, ActivationMethod) {
     kActivationMethodSwipeUp = 1 << 4
 };
 
-static NSString *const kPreferencesIdentifier = @"com.82flex.kayoko.preferences";
+static NSString *const kKayokoPreferencesIdentifier = @"com.82flex.kayoko.preferences";
 
-static NSString *const kPreferenceKeyEnabled = @"Enabled";
-static NSString *const kPreferenceKeyMaximumHistoryAmount = @"MaximumHistoryAmount";
-static NSString *const kPreferenceKeySaveText = @"SaveText";
-static NSString *const kPreferenceKeySaveImages = @"SaveImages";
-static NSString *const kPreferenceKeySwipeToSelectWords = @"SwipeToSelectWords";
-static NSString *const kPreferenceKeyActivationMethod = @"ActivationMethod";
-static NSString *const kPreferenceKeyAutomaticallyPaste = @"AutomaticallyPaste";
-static NSString *const kPreferenceKeyDismissOnOutsideTouch = @"DismissOnOutsideTouch";
-static NSString *const kPreferenceKeyDisablePasteTips = @"DisablePasteTips";
-static NSString *const kPreferenceKeyPlaySoundEffects = @"PlaySoundEffects";
-static NSString *const kPreferenceKeyPlayHapticFeedback = @"PlayHapticFeedback";
-static NSString *const kPreferenceKeyPreviewLineCount = @"PreviewLineCount";
-static NSString *const kPreferenceKeyHeightInPoints = @"HeightInPoints";
+static NSString *const kKayokoPreferenceKeyEnabled = @"Enabled";
+static NSString *const kKayokoPreferenceKeyMaximumHistoryAmount = @"MaximumHistoryAmount";
+static NSString *const kKayokoPreferenceKeySaveText = @"SaveText";
+static NSString *const kKayokoPreferenceKeySaveImages = @"SaveImages";
+static NSString *const kKayokoPreferenceKeySwipeToSelectWords = @"SwipeToSelectWords";
+static NSString *const kKayokoPreferenceKeyActivationMethod = @"ActivationMethod";
+static NSString *const kKayokoPreferenceKeyAutomaticallyPaste = @"AutomaticallyPaste";
+static NSString *const kKayokoPreferenceKeyDismissOnOutsideTouch = @"DismissOnOutsideTouch";
+static NSString *const kKayokoPreferenceKeyDisablePasteTips = @"DisablePasteTips";
+static NSString *const kKayokoPreferenceKeyPlaySoundEffects = @"PlaySoundEffects";
+static NSString *const kKayokoPreferenceKeyPlayHapticFeedback = @"PlayHapticFeedback";
+static NSString *const kKayokoPreferenceKeyPreviewLineCount = @"PreviewLineCount";
+static NSString *const kKayokoPreferenceKeyHeightInPoints = @"HeightInPoints";
 
-static BOOL const kPreferenceKeyEnabledDefaultValue = YES;
-static NSUInteger const kPreferenceKeyMaximumHistoryAmountDefaultValue = 200;
-static BOOL const kPreferenceKeySaveTextDefaultValue = YES;
-static BOOL const kPreferenceKeySaveImagesDefaultValue = YES;
-static BOOL const kPreferenceKeySwipeToSelectWordsDefaultValue = YES;
-static ActivationMethod const kPreferenceKeyActivationMethodDefaultValue =
+static BOOL const kKayokoPreferenceKeyEnabledDefaultValue = YES;
+static NSUInteger const kKayokoPreferenceKeyMaximumHistoryAmountDefaultValue = 200;
+static BOOL const kKayokoPreferenceKeySaveTextDefaultValue = YES;
+static BOOL const kKayokoPreferenceKeySaveImagesDefaultValue = YES;
+static BOOL const kKayokoPreferenceKeySwipeToSelectWordsDefaultValue = YES;
+static ActivationMethod const kKayokoPreferenceKeyActivationMethodDefaultValue =
     kActivationMethodDictationKey | kActivationMethodInputSwitcher;
-static BOOL const kPreferenceKeyAutomaticallyPasteDefaultValue = YES;
-static BOOL const kPreferenceKeyDismissOnOutsideTouchDefaultValue = YES;
-static BOOL const kPreferenceKeyDisablePasteTipsDefaultValue = NO;
-static BOOL const kPreferenceKeyPlaySoundEffectsDefaultValue = YES;
-static BOOL const kPreferenceKeyPlayHapticFeedbackDefaultValue = YES;
-static NSUInteger const kPreferenceKeyPreviewLineCountDefaultValue = 1;
-static CGFloat const kPreferenceKeyHeightInPointsDefaultValue = 420;
+static BOOL const kKayokoPreferenceKeyAutomaticallyPasteDefaultValue = YES;
+static BOOL const kKayokoPreferenceKeyDismissOnOutsideTouchDefaultValue = YES;
+static BOOL const kKayokoPreferenceKeyDisablePasteTipsDefaultValue = NO;
+static BOOL const kKayokoPreferenceKeyPlaySoundEffectsDefaultValue = YES;
+static BOOL const kKayokoPreferenceKeyPlayHapticFeedbackDefaultValue = YES;
+static NSUInteger const kKayokoPreferenceKeyPreviewLineCountDefaultValue = 1;
+static CGFloat const kKayokoPreferenceKeyHeightInPointsDefaultValue = 420;

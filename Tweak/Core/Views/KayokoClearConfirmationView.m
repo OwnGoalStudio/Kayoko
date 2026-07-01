@@ -2,17 +2,20 @@
 //  KayokoClearConfirmationView.m
 //  Kayoko
 //
-//  Created by Lessica
-//
 
 #import "KayokoClearConfirmationView.h"
 #import "PasteboardManager.h"
+
+NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoClearConfirmationView ()
 @property(nonatomic, strong) UILabel *confirmationLabel;
 @property(nonatomic, strong, readwrite) UIButton *cancelButton;
 @property(nonatomic, strong, readwrite) UIButton *confirmButton;
+@property(nonatomic, strong) NSLayoutConstraint *stackViewCenterYConstraint;
 @end
+
+NS_ASSUME_NONNULL_END
 
 @implementation KayokoClearConfirmationView
 
@@ -27,9 +30,9 @@
         [self addSubview:stackView];
 
         [stackView setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [self setStackViewCenterYConstraint:[[stackView centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]]];
         [NSLayoutConstraint activateConstraints:@[
-            [[stackView centerXAnchor] constraintEqualToAnchor:[self centerXAnchor]],
-            [[stackView centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]],
+            [[stackView centerXAnchor] constraintEqualToAnchor:[self centerXAnchor]], [self stackViewCenterYConstraint],
             [[stackView leadingAnchor] constraintGreaterThanOrEqualToAnchor:[self leadingAnchor] constant:24],
             [[stackView trailingAnchor] constraintLessThanOrEqualToAnchor:[self trailingAnchor] constant:-24]
         ]];
@@ -87,9 +90,21 @@
     return self;
 }
 
+- (void)setKeyboardBottomInset:(CGFloat)keyboardBottomInset {
+    keyboardBottomInset = MAX(keyboardBottomInset, 0);
+    if (_keyboardBottomInset == keyboardBottomInset) {
+        return;
+    }
+
+    _keyboardBottomInset = keyboardBottomInset;
+    [[self stackViewCenterYConstraint] setConstant:-keyboardBottomInset / 2.0];
+    [self setNeedsLayout];
+}
+
 - (void)updateWithHistoryKey:(NSString *)historyKey {
-    NSString *localizationKey = [historyKey isEqualToString:kHistoryKeyFavorites] ? @"Clear Favorites Confirmation"
-                                                                                  : @"Clear History Confirmation";
+    NSString *localizationKey = [historyKey isEqualToString:kKayokoHistoryKeyFavorites]
+                                    ? @"Clear Favorites Confirmation"
+                                    : @"Clear History Confirmation";
     [[self confirmationLabel] setText:[[PasteboardManager localizationBundle] localizedStringForKey:localizationKey
                                                                                               value:nil
                                                                                               table:@"Tweak"]];

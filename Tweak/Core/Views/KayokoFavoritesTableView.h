@@ -5,7 +5,11 @@
 //  Created by Alexandra Aurora Göttlicher
 //
 
-#import "KayokoTableView.h"
+#import "KayokoHistoryListView.h"
 
-@interface KayokoFavoritesTableView : KayokoTableView
+NS_ASSUME_NONNULL_BEGIN
+
+@interface KayokoFavoritesTableView : KayokoHistoryListView
 @end
+
+NS_ASSUME_NONNULL_END

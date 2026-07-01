@@ -7,10 +7,12 @@
 
 #import <Foundation/Foundation.h>
 
-static NSString *const kItemKeyBundleIdentifier = @"bundle_identifier";
-static NSString *const kItemKeyContent = @"content";
-static NSString *const kItemKeyImageName = @"image_name";
-static NSString *const kItemKeyHasLink = @"has_link";
+NS_ASSUME_NONNULL_BEGIN
+
+static NSString *const kKayokoItemKeyBundleIdentifier = @"bundle_identifier";
+static NSString *const kKayokoItemKeyContent = @"content";
+static NSString *const kKayokoItemKeyImageName = @"image_name";
+static NSString *const kKayokoItemKeyHasLink = @"has_link";
 
 @interface PasteboardItem : NSObject
 
@@ -22,8 +24,11 @@ static NSString *const kItemKeyHasLink = @"has_link";
 
 - (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier
                               andContent:(NSString *)content
-                          withImageNamed:(NSString *)imageName;
+                          withImageNamed:(nullable NSString *)imageName;
 
-+ (PasteboardItem *)itemFromDictionary:(NSDictionary *)dictionary;
++ (nullable PasteboardItem *)itemFromDictionary:(nullable NSDictionary<NSString *, id> *)dictionary;
+- (NSDictionary<NSString *, id> *)dictionaryRepresentation;
 
 @end
+
+NS_ASSUME_NONNULL_END

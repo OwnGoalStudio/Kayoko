@@ -6,6 +6,7 @@ KayokoPreferences_FILES += $(wildcard Controllers/*.m Cells/*.m ../Manager/*.m)
 KayokoPreferences_FILES += $(wildcard ../Utils/*.m)
 
 KayokoPreferences_CFLAGS += -fobjc-arc
+KayokoPreferences_CFLAGS += -I.
 KayokoPreferences_CFLAGS += -I../Manager
 KayokoPreferences_CFLAGS += -I../Preferences
 KayokoPreferences_CFLAGS += -I../Utils

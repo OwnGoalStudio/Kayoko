@@ -109,7 +109,7 @@ static NSUInteger const kKayokoMobileGroupID = 501;
                   isDirectory:(BOOL)isDirectory
                   fileManager:(NSFileManager *)fileManager
                         error:(NSError **)error {
-    NSDictionary *attributes = @{
+    NSDictionary<NSFileAttributeKey, id> *attributes = @{
         NSFileOwnerAccountID : @(kKayokoMobileUserID),
         NSFileGroupOwnerAccountID : @(kKayokoMobileGroupID),
         NSFilePosixPermissions : @(isDirectory ? 0755 : 0644)

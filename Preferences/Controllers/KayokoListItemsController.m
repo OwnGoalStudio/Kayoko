@@ -2,16 +2,15 @@
 //  KayokoListItemsController.m
 //  Kayoko
 //
-//  Created by Lessica
-//
 
 #import "KayokoListItemsController.h"
-#import "../NotificationKeys.h"
-#import "../PreferenceKeys.h"
+#import "NotificationKeys.h"
+#import "PreferenceKeys.h"
+
 #import <Preferences/PSSpecifier.h>
 
 @implementation KayokoListItemsController {
-    NSMutableSet *_selectedIndices;
+    NSMutableSet<NSNumber *> *_selectedIndices;
     ActivationMethod _currentOptions;
 }
 
@@ -26,12 +25,12 @@
     id value = [self readPreferenceValue:self.specifier];
     _currentOptions = [value integerValue];
     if (_currentOptions == 0) {
-        _currentOptions = kPreferenceKeyActivationMethodDefaultValue;
+        _currentOptions = kKayokoPreferenceKeyActivationMethodDefaultValue;
     }
 
     // Initialize selected indices
     [_selectedIndices removeAllObjects];
-    NSArray *validValues = [self.specifier propertyForKey:@"validValues"];
+    NSArray<NSNumber *> *validValues = [self.specifier propertyForKey:@"validValues"];
     for (NSUInteger i = 0; i < validValues.count; i++) {
         NSNumber *value = validValues[i];
         if (_currentOptions & [value integerValue]) {
@@ -62,7 +61,7 @@
 
     // Update options
     ActivationMethod newOptions = 0;
-    NSArray *validValues = [self.specifier propertyForKey:@"validValues"];
+    NSArray<NSNumber *> *validValues = [self.specifier propertyForKey:@"validValues"];
     for (NSNumber *index in _selectedIndices) {
         NSNumber *value = validValues[[index integerValue]];
         newOptions |= [value integerValue];
@@ -74,7 +73,7 @@
 
     // Post notification
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         (CFStringRef)kNotificationKeyPreferencesReload, nil, nil, YES);
+                                         (CFStringRef)kKayokoNotificationKeyPreferencesReload, nil, nil, YES);
 
     [tableView reloadData];
 }

@@ -7,95 +7,26 @@
 
 #import <UIKit/UIKit.h>
 
-OBJC_EXTERN NSUserDefaults *kayokoHelperPreferences;
-OBJC_EXTERN BOOL kayokoHelperPrefsEnabled;
-OBJC_EXTERN NSUInteger kayokoHelperPrefsActivationMethod;
-OBJC_EXTERN BOOL kayokoHelperPrefsAutomaticallyPaste;
+NS_ASSUME_NONNULL_BEGIN
 
-OBJC_EXTERN NSString *const kayokoMenuName;
-OBJC_EXTERN NSString *const kayokoSelectorName;
-OBJC_EXTERN NSString *const kayokoSelectorSignature;
+OBJC_EXTERN BOOL KayokoHelperEnabled(void);
+OBJC_EXTERN NSUInteger KayokoHelperActivationMethod(void);
+OBJC_EXTERN BOOL KayokoHelperAutomaticallyPasteEnabled(void);
+OBJC_EXTERN BOOL KayokoHelperIsKeyboardExtensionProcess(void);
+OBJC_EXTERN void KayokoHelperLoadPreferences(void);
+OBJC_EXTERN void KayokoHelperInstallRuntimeHooks(void);
+OBJC_EXTERN void KayokoHelperInstallRuntimeObservers(void);
+OBJC_EXTERN void KayokoHelperPostCoreShow(void);
+OBJC_EXTERN void KayokoHelperCaptureCurrentFirstResponder(void);
+OBJC_EXTERN void KayokoHelperRestoreCapturedFirstResponder(void);
+OBJC_EXTERN void KayokoHelperPaste(void);
+OBJC_EXTERN void KayokoHelperOpenKayokoFromResponder(id self, SEL _cmd);
 
+OBJC_EXTERN void EnableKayokoPredictionBar(void);
+OBJC_EXTERN void EnableKayokoCalloutBar(void);
 OBJC_EXTERN void EnableKayokoActivationGlobe(void);
 OBJC_EXTERN void EnableKayokoActivationDictation(void);
 OBJC_EXTERN void EnableKayokoActivationSwipeUp(void);
 OBJC_EXTERN void EnableKayokoActivationSwipeUpForKeyboardExtension(void);
 
-@interface TIKeyboardCandidate : NSObject
-@end
-
-@interface TIAutocorrectionList : NSObject
-+ (TIAutocorrectionList *)listWithAutocorrection:(TIKeyboardCandidate *)arg1
-                                     predictions:(NSArray *)predictions
-                                       emojiList:(NSArray *)emojiList;
-@end
-
-@interface UIKeyboardAutocorrectionController : NSObject
-- (void)setTextSuggestionList:(TIAutocorrectionList *)textSuggestionList;
-- (void)setAutocorrectionList:(TIAutocorrectionList *)textSuggestionList;
-@end
-
-@interface TUIPredictionView : UIView
-@end
-
-@interface TIKeyboardCandidateSingle : TIKeyboardCandidate
-@property(nonatomic, copy) NSString *candidate;
-@property(nonatomic, copy) NSString *input;
-@end
-
-@interface TIZephyrCandidate : TIKeyboardCandidateSingle
-@property(nonatomic, copy) NSString *label;
-@property(nonatomic, copy) NSString *fromBundleId;
-@end
-
-@interface UIPredictionViewController : UIViewController
-@end
-
-@interface UIKeyboardLayout : UIView
-@end
-
-@interface UIKeyboardLayoutStar : UIKeyboardLayout
-@end
-
-@interface UIKBInputBackdropView : UIView
-@end
-
-@interface UIInputSetHostView : UIView
-@end
-
-@interface _UIHostedWindow : UIWindow
-@end
-
-@interface UISystemKeyboardDockController : NSObject
-@end
-
-@interface UIKBInputDelegateManager : NSObject
-- (UITextRange *)selectedTextRange;
-- (NSString *)textInRange:(UITextRange *)range;
-- (void)insertText:(NSString *)text;
-@end
-
-@interface UIKeyboardImpl : UIView
-@property(nonatomic, strong, readonly) UIKeyboardAutocorrectionController *autocorrectionController;
-@property(nonatomic, strong) UIKBInputDelegateManager *inputDelegateManager;
-@property(nonatomic, strong, readonly) UIResponder<UITextInput> *inputDelegate;
-+ (instancetype)activeInstance;
-- (void)insertText:(NSString *)text;
-@end
-
-@interface UIKBTree : NSObject
-@property(nonatomic, copy) NSString *name;
-@property(nonatomic, strong) NSMutableDictionary *properties;
-@end
-
-@interface UIMenu (Kayoko)
-- (UIMenu *)menuByReplacingChildren:(NSArray *)children;
-@end
-
-@interface _UICalloutBarSystemButtonDescription : NSObject
-@property (nonatomic, readonly) SEL action;
-+ (instancetype)buttonDescriptionWithTitle:(NSString *)arg1 action:(SEL)arg2 type:(int)arg3 ;
-@end
-
-@interface UICalloutBar : UIView
-@end
+NS_ASSUME_NONNULL_END

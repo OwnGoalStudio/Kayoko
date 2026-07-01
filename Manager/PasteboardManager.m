@@ -7,8 +7,8 @@
 
 #import "PasteboardManager.h"
 #import "ImageUtil.h"
-#import "KayokoHistoryMigrator.h"
-#import "KayokoHistoryStore.h"
+#import "KayokoHistoryChangeNotifier.h"
+#import "KayokoHistoryRepository.h"
 #import "NotificationKeys.h"
 #import "PasteboardItem.h"
 #import "PreferenceKeys.h"
@@ -16,15 +16,17 @@
 
 #import <roothide.h>
 
-static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
+NS_ASSUME_NONNULL_BEGIN
 
 @interface SBApplication : NSObject
 @property(nonatomic, copy, readonly) NSString *bundleIdentifier;
 @end
 
 @interface UIApplication (Private)
-- (SBApplication *)_accessibilityFrontMostApplication;
+- (SBApplication *_Nullable)_accessibilityFrontMostApplication;
 @end
+
+NS_ASSUME_NONNULL_END
 
 @implementation PasteboardManager {
     UIPasteboard *_pasteboard;
@@ -32,29 +34,14 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     NSFileManager *_fileManager;
 
     dispatch_queue_t _queue;
-    dispatch_queue_t _historyQueue;
 
     BOOL _isPerformingDirectPaste;
-    BOOL _didPrepareHistoryStore;
 
-    KayokoHistoryStore *_historyStore;
+    KayokoHistoryRepository *_historyRepository;
+    KayokoHistoryChangeNotifier *_historyChangeNotifier;
 }
 
-- (NSDictionary *)historyChangeUserInfoWithType:(NSString *)changeType
-                                     historyKey:(NSString *)historyKey
-                                 itemDictionary:(NSDictionary *)itemDictionary
-                                          limit:(NSUInteger)limit {
-    NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
-    userInfo[kPasteboardManagerHistoryChangeTypeKey] = changeType ?: kPasteboardManagerHistoryChangeTypeReload;
-    if ([historyKey length] > 0) {
-        userInfo[kPasteboardManagerHistoryChangeHistoryKeyKey] = historyKey;
-        userInfo[kPasteboardManagerHistoryChangeLimitKey] = @(limit);
-    }
-    if (itemDictionary) {
-        userInfo[kPasteboardManagerHistoryChangeItemKey] = itemDictionary;
-    }
-    return userInfo;
-}
+#pragma mark - Lifecycle
 
 + (instancetype)sharedInstance {
     static PasteboardManager *sharedInstance;
@@ -65,40 +52,43 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     return sharedInstance;
 }
 
+#pragma mark - Paths and Resources
+
 + (NSString *)historyPath {
-    static NSString *kHistoryPath = nil;
+    static NSString *kayokoHistoryPath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      kHistoryPath = jbroot(@"/var/mobile/Library/com.82flex.kayoko/history.json");
+      kayokoHistoryPath = jbroot(@"/var/mobile/Library/com.82flex.kayoko/history.json");
     });
-    return kHistoryPath;
+    return kayokoHistoryPath;
 }
 
 + (NSString *)historyImagesPath {
-    static NSString *kHistoryImagesPath = nil;
+    static NSString *kayokoHistoryImagesPath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      kHistoryImagesPath = jbroot(@"/var/mobile/Library/com.82flex.kayoko/images/");
+      kayokoHistoryImagesPath = jbroot(@"/var/mobile/Library/com.82flex.kayoko/images/");
     });
-    return kHistoryImagesPath;
+    return kayokoHistoryImagesPath;
 }
 
 + (NSBundle *)localizationBundle {
-    static NSBundle *kLocalizationBundle = nil;
+    static NSBundle *kayokoLocalizationBundle = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      kLocalizationBundle = [NSBundle bundleWithPath:jbroot(@"/Library/PreferenceBundles/KayokoPreferences.bundle")];
+      kayokoLocalizationBundle =
+          [NSBundle bundleWithPath:jbroot(@"/Library/PreferenceBundles/KayokoPreferences.bundle")];
     });
-    return kLocalizationBundle;
+    return kayokoLocalizationBundle;
 }
 
 + (NSString *)historyDatabasePath {
-    return [KayokoHistoryStore defaultDatabasePath];
+    return [KayokoHistoryRepository defaultDatabasePath];
 }
 
 + (NSUInteger)normalizedMaximumHistoryAmountForValue:(NSUInteger)value {
     if (value == 0) {
-        return kPreferenceKeyMaximumHistoryAmountDefaultValue;
+        return kKayokoPreferenceKeyMaximumHistoryAmountDefaultValue;
     }
 
     NSArray<NSNumber *> *stepValues = @[ @50, @100, @200, @300, @500, @1000, @2000, @3000, @4000, @5000 ];
@@ -112,13 +102,20 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     return [[stepValues lastObject] unsignedIntegerValue];
 }
 
+#pragma mark - Setup
+
 - (instancetype)init {
     self = [super init];
     if (self) {
         _fileManager = [NSFileManager defaultManager];
-        _historyQueue = dispatch_queue_create("com.82flex.kayoko.queue.history", DISPATCH_QUEUE_SERIAL);
-        dispatch_queue_set_specific(_historyQueue, kKayokoHistoryQueueSpecificKey, kKayokoHistoryQueueSpecificKey,
-                                    NULL);
+        __weak typeof(self) weakSelf = self;
+        _historyRepository =
+            [[KayokoHistoryRepository alloc] initWithDatabasePath:[PasteboardManager historyDatabasePath]
+                                                       imagesPath:[PasteboardManager historyImagesPath]
+                                                    limitProvider:^NSUInteger(NSString *historyKey) {
+                                                      return [weakSelf limitForHistoryKey:historyKey];
+                                                    }];
+        _historyChangeNotifier = [[KayokoHistoryChangeNotifier alloc] init];
         if (@available(iOS 15, *)) {
             [self prepareGeneralPasteboard];
         } else {
@@ -141,6 +138,12 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     }
 }
 
+- (void)prepareHistoryStore {
+    [_historyRepository prepareStore];
+}
+
+#pragma mark - Pasteboard Observation
+
 - (void)pullPasteboardChanges {
     if (@available(iOS 16, *)) {
         dispatch_async(_queue, ^{
@@ -157,7 +160,7 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
         return;
     }
 
-    [self ensureResourcesExist];
+    [_historyRepository ensureStorePrepared];
 
     if ([self saveText]) {
         // Don't pull strings if the pasteboard contains images.
@@ -174,7 +177,7 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
                         [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
                                                               andContent:string
                                                           withImageNamed:nil];
-                    [self addPasteboardItem:item toHistoryWithKey:kHistoryKeyHistory];
+                    [self addPasteboardItem:item toHistoryWithKey:kKayokoHistoryKeyHistory];
                 }
             }
         }
@@ -206,7 +209,7 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
                     [[PasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
                                                           andContent:imageName
                                                       withImageNamed:imageName];
-                [self addPasteboardItem:item toHistoryWithKey:kHistoryKeyHistory];
+                [self addPasteboardItem:item toHistoryWithKey:kKayokoHistoryKeyHistory];
             }
         }
     }
@@ -214,28 +217,24 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     _lastChangeCount = [_pasteboard changeCount];
 }
 
+#pragma mark - History Mutations
+
 - (void)addPasteboardItem:(PasteboardItem *)item toHistoryWithKey:(NSString *)historyKey {
     if ([[item content] isEqualToString:@""]) {
         return;
     }
 
-    NSDictionary *dictionary = [self dictionaryForPasteboardItem:item];
+    NSDictionary<NSString *, id> *dictionary = [item dictionaryRepresentation];
     NSUInteger limit = [self limitForHistoryKey:historyKey];
-    __block NSError *error = nil;
-    __block BOOL success = NO;
-    [self performHistorySync:^{
-      success = [[self historyStoreOnHistoryQueue] addItemDictionary:dictionary
-                                                        toHistoryKey:historyKey
-                                                               limit:limit
-                                                               error:&error];
-    }];
+    NSError *error = nil;
+    BOOL success = [_historyRepository addItemDictionary:dictionary toHistoryKey:historyKey error:&error];
     if (!success) {
         NSLog(@"Kayoko: Failed to add history item: %@", error);
         return;
     }
 
     [self postHistoryChangedNotificationForHistoryKey:historyKey
-                                           changeType:kPasteboardManagerHistoryChangeTypeUpsertTop
+                                           changeType:kKayokoPasteboardManagerHistoryChangeTypeUpsertTop
                                        itemDictionary:dictionary
                                                 limit:limit];
 }
@@ -243,22 +242,19 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
 - (void)removePasteboardItem:(PasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage {
-    NSDictionary *dictionary = [self dictionaryForPasteboardItem:item];
-    __block NSError *error = nil;
-    __block BOOL success = NO;
-    [self performHistorySync:^{
-      success = [[self historyStoreOnHistoryQueue] removeItemDictionary:dictionary
-                                                         fromHistoryKey:historyKey
-                                                      shouldRemoveImage:shouldRemoveImage
-                                                                  error:&error];
-    }];
+    NSDictionary<NSString *, id> *dictionary = [item dictionaryRepresentation];
+    NSError *error = nil;
+    BOOL success = [_historyRepository removeItemDictionary:dictionary
+                                             fromHistoryKey:historyKey
+                                          shouldRemoveImage:shouldRemoveImage
+                                                      error:&error];
     if (!success) {
         NSLog(@"Kayoko: Failed to remove history item: %@", error);
         return;
     }
 
     [self postHistoryChangedNotificationForHistoryKey:historyKey
-                                           changeType:kPasteboardManagerHistoryChangeTypeRemove
+                                           changeType:kKayokoPasteboardManagerHistoryChangeTypeRemove
                                        itemDictionary:dictionary
                                                 limit:[self limitForHistoryKey:historyKey]];
 }
@@ -267,75 +263,43 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage
                   completion:(void (^)(BOOL success))completion {
-    NSDictionary *dictionary = [self dictionaryForPasteboardItem:item];
-    [self performHistoryAsync:^{
-      NSError *error = nil;
-      BOOL success = [[self historyStoreOnHistoryQueue] removeItemDictionary:dictionary
-                                                              fromHistoryKey:historyKey
-                                                           shouldRemoveImage:shouldRemoveImage
-                                                                       error:&error];
-      if (!success) {
-          NSLog(@"Kayoko: Failed to remove history item: %@", error);
-      }
-
-      dispatch_async(dispatch_get_main_queue(), ^{
-        if (completion) {
-            completion(success);
-        }
-      });
-    }];
+    NSDictionary<NSString *, id> *dictionary = [item dictionaryRepresentation];
+    [_historyRepository removeItemDictionary:dictionary
+                              fromHistoryKey:historyKey
+                           shouldRemoveImage:shouldRemoveImage
+                                  completion:completion];
 }
 
 - (void)movePasteboardItem:(PasteboardItem *)item
         fromHistoryWithKey:(NSString *)sourceHistoryKey
           toHistoryWithKey:(NSString *)destinationHistoryKey
                 completion:(void (^)(BOOL success))completion {
-    NSDictionary *dictionary = [self dictionaryForPasteboardItem:item];
-    NSUInteger destinationLimit = [self limitForHistoryKey:destinationHistoryKey];
-    [self performHistoryAsync:^{
-      NSError *error = nil;
-      BOOL success = [[self historyStoreOnHistoryQueue] moveItemDictionary:dictionary
-                                                            fromHistoryKey:sourceHistoryKey
-                                                              toHistoryKey:destinationHistoryKey
-                                                          destinationLimit:destinationLimit
-                                                                     error:&error];
-      if (!success) {
-          NSLog(@"Kayoko: Failed to move history item: %@", error);
-      }
-
-      dispatch_async(dispatch_get_main_queue(), ^{
-        if (completion) {
-            completion(success);
-        }
-      });
-    }];
+    NSDictionary<NSString *, id> *dictionary = [item dictionaryRepresentation];
+    [_historyRepository moveItemDictionary:dictionary
+                            fromHistoryKey:sourceHistoryKey
+                              toHistoryKey:destinationHistoryKey
+                                completion:completion];
 }
 
 - (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey
                                 shouldRemoveImages:(BOOL)shouldRemoveImages
                            postsChangeNotification:(BOOL)postsChangeNotification
                                         completion:(void (^)(BOOL success))completion {
-    [self performHistoryAsync:^{
-      NSError *error = nil;
-      BOOL success = [[self historyStoreOnHistoryQueue] removeItemsFromHistoryKey:historyKey
-                                                               shouldRemoveImages:shouldRemoveImages
-                                                                            error:&error];
-      if (!success) {
-          NSLog(@"Kayoko: Failed to remove history items: %@", error);
-      }
-
-      dispatch_async(dispatch_get_main_queue(), ^{
-        if (success && postsChangeNotification) {
-            [self postHistoryChangedNotificationForHistoryKey:historyKey
-                                                   changeType:kPasteboardManagerHistoryChangeTypeClear
-                                               itemDictionary:nil
-                                                        limit:[self limitForHistoryKey:historyKey]];
-        }
-        if (completion) {
-            completion(success);
-        }
-      });
-    }];
+    [_historyRepository
+        removeItemsFromHistoryKey:historyKey
+               shouldRemoveImages:shouldRemoveImages
+                       completion:^(BOOL success) {
+                         if (success && postsChangeNotification) {
+                             [self postHistoryChangedNotificationForHistoryKey:historyKey
+                                                                    changeType:
+                                                                        kKayokoPasteboardManagerHistoryChangeTypeClear
+                                                                itemDictionary:nil
+                                                                         limit:[self limitForHistoryKey:historyKey]];
+                         }
+                         if (completion) {
+                             completion(success);
+                         }
+                       }];
 }
 
 - (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey
@@ -346,6 +310,8 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
                              postsChangeNotification:YES
                                           completion:completion];
 }
+
+#pragma mark - Direct Paste
 
 - (void)performDirectPasteWithPasteboardItem:(PasteboardItem *)pasteboardItem
                                  historyItem:(PasteboardItem *)historyItem
@@ -404,7 +370,7 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
 
     if (didUpdatePasteboard && [self automaticallyPaste] && shouldAutoPaste) {
         CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                             (CFStringRef)kNotificationKeyHelperPaste, nil, nil, NO);
+                                             (__bridge CFStringRef)kKayokoNotificationKeyHelperPaste, nil, nil, NO);
     }
 
     _isPerformingDirectPaste = NO;
@@ -440,62 +406,42 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
         return;
     }
 
-    NSDictionary *dictionary = [self dictionaryForPasteboardItem:item];
+    NSDictionary<NSString *, id> *dictionary = [item dictionaryRepresentation];
     NSUInteger limit = [self limitForHistoryKey:historyKey];
-    __block NSError *error = nil;
-    __block BOOL success = NO;
-    [self performHistorySync:^{
-      success = [[self historyStoreOnHistoryQueue] moveItemDictionaryToTop:dictionary
-                                                              inHistoryKey:historyKey
-                                                                     limit:limit
-                                                                     error:&error];
-    }];
+    NSError *error = nil;
+    BOOL success = [_historyRepository moveItemDictionaryToTop:dictionary inHistoryKey:historyKey error:&error];
     if (!success) {
         NSLog(@"Kayoko: Failed to promote history item: %@", error);
         return;
     }
 
     [self postHistoryChangedNotificationForHistoryKey:historyKey
-                                           changeType:kPasteboardManagerHistoryChangeTypeUpsertTop
+                                           changeType:kKayokoPasteboardManagerHistoryChangeTypeUpsertTop
                                        itemDictionary:dictionary
                                                 limit:limit];
 }
 
-- (NSMutableArray *)getItemsFromHistoryWithKey:(NSString *)historyKey {
-    __block NSError *error = nil;
-    __block NSMutableArray *history = nil;
-    [self performHistorySync:^{
-      history = [[self historyStoreOnHistoryQueue] itemsForHistoryKey:historyKey error:&error];
-    }];
+#pragma mark - History Reads
+
+- (NSMutableArray<NSDictionary<NSString *, id> *> *)getItemsFromHistoryWithKey:(NSString *)historyKey {
+    NSError *error = nil;
+    NSMutableArray<NSDictionary<NSString *, id> *> *history = [_historyRepository itemsForHistoryKey:historyKey
+                                                                                               error:&error];
     if (error) {
         NSLog(@"Kayoko: Failed to load history items: %@", error);
     }
     return history ?: [[NSMutableArray alloc] init];
 }
 
-- (void)getItemsFromHistoryWithKey:(NSString *)historyKey completion:(void (^)(NSMutableArray *items))completion {
-    [self performHistoryAsync:^{
-      NSError *error = nil;
-      NSMutableArray *history = [[self historyStoreOnHistoryQueue] itemsForHistoryKey:historyKey error:&error];
-      if (error) {
-          NSLog(@"Kayoko: Failed to load history items: %@", error);
-      }
-      NSMutableArray *items = history ?: [[NSMutableArray alloc] init];
-      if (!completion) {
-          return;
-      }
-      dispatch_async(dispatch_get_main_queue(), ^{
-        completion(items);
-      });
-    }];
+- (void)getItemsFromHistoryWithKey:(NSString *)historyKey
+                        completion:(void (^)(NSMutableArray<NSDictionary<NSString *, id> *> *items))completion {
+    [_historyRepository itemsForHistoryKey:historyKey completion:completion];
 }
 
 - (PasteboardItem *)getLatestHistoryItem {
-    __block NSError *error = nil;
-    __block NSDictionary *dictionary = nil;
-    [self performHistorySync:^{
-      dictionary = [[self historyStoreOnHistoryQueue] latestItemForHistoryKey:kHistoryKeyHistory error:&error];
-    }];
+    NSError *error = nil;
+    NSDictionary<NSString *, id> *dictionary = [_historyRepository latestItemForHistoryKey:kKayokoHistoryKeyHistory
+                                                                                     error:&error];
     if (error) {
         NSLog(@"Kayoko: Failed to load latest history item: %@", error);
     }
@@ -508,110 +454,31 @@ static void *kKayokoHistoryQueueSpecificKey = &kKayokoHistoryQueueSpecificKey;
     return [UIImage imageWithData:imageData];
 }
 
-- (NSDictionary *)dictionaryForPasteboardItem:(PasteboardItem *)item {
-    return @{
-        kItemKeyBundleIdentifier : [item bundleIdentifier] ?: @"com.apple.springboard",
-        kItemKeyContent : [item content] ?: @"",
-        kItemKeyImageName : [item imageName] ?: @"",
-        kItemKeyHasLink : @([item hasLink])
-    };
-}
+#pragma mark - Notifications
 
 - (void)postHistoryChangedNotification {
-    [self postHistoryChangedNotificationForHistoryKey:nil
-                                           changeType:kPasteboardManagerHistoryChangeTypeReload
-                                       itemDictionary:nil
-                                                limit:0];
+    [_historyChangeNotifier postReloadNotificationWithObject:self];
 }
 
 - (void)postHistoryChangedNotificationForHistoryKey:(NSString *)historyKey
                                          changeType:(NSString *)changeType
-                                     itemDictionary:(NSDictionary *)itemDictionary
+                                     itemDictionary:(NSDictionary<NSString *, id> *)itemDictionary
                                               limit:(NSUInteger)limit {
-    NSDictionary *userInfo = [self historyChangeUserInfoWithType:changeType
-                                                      historyKey:historyKey
-                                                  itemDictionary:itemDictionary
-                                                           limit:limit];
-    dispatch_async(dispatch_get_main_queue(), ^{
-      [[NSNotificationCenter defaultCenter] postNotificationName:kPasteboardManagerHistoryDidChangeNotification
-                                                          object:self
-                                                        userInfo:userInfo];
-    });
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         (CFStringRef)kNotificationKeyCoreReload, nil, nil, YES);
+    [_historyChangeNotifier postChangeNotificationForHistoryKey:historyKey
+                                                     changeType:changeType
+                                                 itemDictionary:itemDictionary
+                                                          limit:limit
+                                                         object:self];
 }
 
+#pragma mark - Limits
+
 - (NSUInteger)limitForHistoryKey:(NSString *)historyKey {
-    if ([historyKey isEqualToString:kHistoryKeyFavorites]) {
+    if ([historyKey isEqualToString:kKayokoHistoryKeyFavorites]) {
         return NSUIntegerMax;
     }
 
     return [self maximumHistoryAmount];
-}
-
-- (BOOL)isOnHistoryQueue {
-    return dispatch_get_specific(kKayokoHistoryQueueSpecificKey) == kKayokoHistoryQueueSpecificKey;
-}
-
-- (void)performHistoryAsync:(dispatch_block_t)block {
-    if (!block) {
-        return;
-    }
-
-    if ([self isOnHistoryQueue]) {
-        block();
-        return;
-    }
-
-    dispatch_async(_historyQueue, block);
-}
-
-- (void)performHistorySync:(dispatch_block_t)block {
-    if (!block) {
-        return;
-    }
-
-    if ([self isOnHistoryQueue]) {
-        block();
-        return;
-    }
-
-    dispatch_sync(_historyQueue, block);
-}
-
-- (KayokoHistoryStore *)historyStoreOnHistoryQueue {
-    if (!_historyStore) {
-        _historyStore = [[KayokoHistoryStore alloc] initWithDatabasePath:[PasteboardManager historyDatabasePath]
-                                                              imagesPath:[PasteboardManager historyImagesPath]];
-    }
-    [self ensureResourcesExistOnHistoryQueue];
-    return _historyStore;
-}
-
-- (void)ensureResourcesExist {
-    [self performHistorySync:^{
-      [self ensureResourcesExistOnHistoryQueue];
-    }];
-}
-
-- (void)ensureResourcesExistOnHistoryQueue {
-    if (_didPrepareHistoryStore) {
-        return;
-    }
-
-    if (!_historyStore) {
-        _historyStore = [[KayokoHistoryStore alloc] initWithDatabasePath:[PasteboardManager historyDatabasePath]
-                                                              imagesPath:[PasteboardManager historyImagesPath]];
-    }
-
-    NSError *error = nil;
-    KayokoHistoryMigrator *migrator =
-        [[KayokoHistoryMigrator alloc] initWithHistoryStore:_historyStore
-                                           migrationSources:[KayokoHistoryMigrator defaultMigrationSources]];
-    if (![migrator migrateIfNeededWithError:&error]) {
-        NSLog(@"Kayoko: Failed to prepare v4 history store: %@", error);
-    }
-    _didPrepareHistoryStore = YES;
 }
 
 @end

@@ -6,37 +6,17 @@
 //
 
 #import "KayokoTableViewCell.h"
-#import "ImageUtil.h"
-#import "PasteboardItem.h"
-#import "PasteboardManager.h"
-#import <substrate.h>
-
-@interface UIImage (Private)
-+ (instancetype)_applicationIconImageForBundleIdentifier:(NSString *)bundleIdentifier
-                                                  format:(int)format
-                                                   scale:(CGFloat)scale;
-@end
-
-@interface SBApplication : NSObject
-@property(nonatomic, copy, readonly) NSString *bundleIdentifier;
-@property(nonatomic, copy, readonly) NSString *displayName;
-@end
-
-@interface SBApplicationController : NSObject
-+ (instancetype)sharedInstance;
-- (SBApplication *)applicationWithBundleIdentifier:(NSString *)bundleIdentifier;
-@end
+#import "KayokoTableViewCellContent.h"
 
 @implementation KayokoTableViewCell
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
-                      andItem:(PasteboardItem *)item
-          andPreviewLineCount:(NSUInteger)previewLineCount
+                      content:(KayokoTableViewCellContent *)content
               reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
 
     if (self) {
-        NSUInteger lineCount = MIN(MAX(previewLineCount, 1), 3);
+        NSUInteger lineCount = MIN(MAX([content previewLineCount], 1), 3);
         [self setBackgroundColor:[UIColor clearColor]];
         UIView *selectedBackgroundView = [[UIView alloc] init];
         UIColor *selectedBackgroundColor =
@@ -51,25 +31,7 @@
         [self setSelectedBackgroundView:selectedBackgroundView];
 
         [self setIconImageView:[[UIImageView alloc] init]];
-
-        UIImage *icon = nil;
-        if ([[item bundleIdentifier] isEqualToString:@"com.apple.springboard"]) {
-            BOOL isPad = [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad;
-            icon = [UIImage imageNamed:isPad ? @"HLS_iPad_Universal" : @"HLS_iPhone_Universal"
-                                     inBundle:[PasteboardManager localizationBundle]
-                compatibleWithTraitCollection:nil];
-        } else {
-            icon = [UIImage _applicationIconImageForBundleIdentifier:[item bundleIdentifier]
-                                                              format:2
-                                                               scale:[[UIScreen mainScreen] scale]];
-        }
-        // Use the default app icon if no icon exists for the item's bundle identifier.
-        if (!icon) {
-            icon = [UIImage _applicationIconImageForBundleIdentifier:@"com.apple.WebSheet"
-                                                              format:2
-                                                               scale:[[UIScreen mainScreen] scale]];
-        }
-        [[self iconImageView] setImage:icon];
+        [[self iconImageView] setImage:[content icon]];
 
         [[self iconImageView] setContentMode:UIViewContentModeScaleAspectFit];
         [[self iconImageView] setClipsToBounds:YES];
@@ -84,15 +46,9 @@
             [[[self iconImageView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor] constant:24]
         ]];
 
-        if (![[item imageName] isEqualToString:@""]) {
+        if ([content contentImage]) {
             [self setContentImageView:[[UIImageView alloc] init]];
-
-            UIImage *originalImage = [[PasteboardManager sharedInstance] getImageForItem:item];
-            // Save memory by scaling the image down in the history view.
-            UIImage *scaledImage =
-                [ImageUtil getImageWithImage:originalImage
-                                scaledToSize:CGSizeMake(originalImage.size.width / 4, originalImage.size.height / 4)];
-            [[self contentImageView] setImage:scaledImage];
+            [[self contentImageView] setImage:[content contentImage]];
 
             [[self contentImageView] setContentMode:UIViewContentModeScaleAspectFill];
             [[self contentImageView] setClipsToBounds:YES];
@@ -109,12 +65,7 @@
         }
 
         [self setHeaderLabel:[[UILabel alloc] init]];
-        NSString *displayName = [[[objc_getClass("SBApplicationController") sharedInstance]
-                                    applicationWithBundleIdentifier:[item bundleIdentifier]] displayName]
-                                    ?: [[PasteboardManager localizationBundle] localizedStringForKey:@"SpringBoard"
-                                                                                               value:nil
-                                                                                               table:@"Tweak"];
-        [[self headerLabel] setText:displayName];
+        [[self headerLabel] setText:[content displayName]];
         [[self headerLabel] setFont:[UIFont systemFontOfSize:16 weight:UIFontWeightMedium]];
         [[self headerLabel] setTextColor:[UIColor labelColor]];
         [self addSubview:[self headerLabel]];
@@ -137,12 +88,21 @@
         }
 
         [self setContentLabel:[[UILabel alloc] init]];
-        [[self contentLabel]
-            setText:[([item content] ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]]];
         [[self contentLabel] setFont:[UIFont systemFontOfSize:14]];
         [[self contentLabel] setTextColor:[[UIColor labelColor] colorWithAlphaComponent:0.8]];
         [[self contentLabel] setLineBreakMode:NSLineBreakByTruncatingTail];
         [[self contentLabel] setNumberOfLines:lineCount];
+        if ([content attributedContentText]) {
+            NSMutableAttributedString *attributedText = [[content attributedContentText] mutableCopy];
+            NSRange fullRange = NSMakeRange(0, [attributedText length]);
+            [attributedText addAttribute:NSFontAttributeName value:[[self contentLabel] font] range:fullRange];
+            [attributedText addAttribute:NSForegroundColorAttributeName
+                                   value:[[self contentLabel] textColor]
+                                   range:fullRange];
+            [[self contentLabel] setAttributedText:attributedText];
+        } else {
+            [[self contentLabel] setText:[content contentText] ?: @""];
+        }
         [self addSubview:[self contentLabel]];
 
         [[self contentLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];

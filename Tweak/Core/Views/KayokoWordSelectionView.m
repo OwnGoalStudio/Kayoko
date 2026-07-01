@@ -2,95 +2,37 @@
 //  KayokoWordSelectionView.m
 //  Kayoko
 //
-//  Created by Lessica
-//
 
 #import "KayokoWordSelectionView.h"
+#import "KayokoWordSelectionTokenizer.h"
+#import "KayokoWordTokenView.h"
 
-static CGFloat const kKayokoWordSelectionHorizontalInset = 16;
-static CGFloat const kKayokoWordSelectionTopInset = 12;
-static CGFloat const kKayokoWordSelectionTokenSpacing = 9;
+static CGFloat const kKayokoWordSelectionHorizontalInset = 20;
+static CGFloat const kKayokoWordSelectionTopInset = 8;
+static CGFloat const kKayokoWordSelectionTokenSpacing = 2;
 static CGFloat const kKayokoWordSelectionLineSpacing = 9;
 static CGFloat const kKayokoWordSelectionTokenHeight = 34;
-static CGFloat const kKayokoWordSelectionTokenHorizontalInset = 11;
+static CGFloat const kKayokoWordSelectionTokenHorizontalInset = 3;
+static CGFloat const kKayokoWordSelectionTokenCornerRadius = 4;
+static CGFloat const kKayokoWordSelectionTokenBorderWidth = 0.5;
 
-@interface KayokoWordTokenView : UIControl
-@property(nonatomic, strong, readonly) UILabel *titleLabel;
-@property(nonatomic, assign) UIEdgeInsets kayokoContentInsets;
-- (void)setTitle:(NSString *)title forState:(UIControlState)state;
-- (void)setTitleColor:(UIColor *)color forState:(UIControlState)state;
-@end
-
-@implementation KayokoWordTokenView {
-    NSString *_title;
-    UIColor *_titleColor;
-}
-
-- (instancetype)initWithFrame:(CGRect)frame {
-    self = [super initWithFrame:frame];
-
-    if (self) {
-        _titleLabel = [[UILabel alloc] init];
-        [_titleLabel setTextAlignment:NSTextAlignmentCenter];
-        [self addSubview:_titleLabel];
-    }
-
-    return self;
-}
-
-- (void)setTitle:(NSString *)title forState:(UIControlState)state {
-    if (state != UIControlStateNormal) {
-        return;
-    }
-
-    _title = [title copy];
-    [[self titleLabel] setText:_title];
-    [self invalidateIntrinsicContentSize];
-    [self setNeedsLayout];
-}
-
-- (void)setTitleColor:(UIColor *)color forState:(UIControlState)state {
-    if (state != UIControlStateNormal) {
-        return;
-    }
-
-    _titleColor = color;
-    [[self titleLabel] setTextColor:_titleColor];
-}
-
-- (void)layoutSubviews {
-    [super layoutSubviews];
-    [[self titleLabel] setFrame:UIEdgeInsetsInsetRect([self bounds], [self kayokoContentInsets])];
-}
-
-- (CGSize)sizeThatFits:(CGSize)size {
-    UIEdgeInsets contentInsets = [self kayokoContentInsets];
-    CGFloat availableWidth = MAX(size.width - contentInsets.left - contentInsets.right, 0);
-    CGFloat availableHeight = MAX(size.height - contentInsets.top - contentInsets.bottom, 0);
-    CGSize titleSize = [[self titleLabel] sizeThatFits:CGSizeMake(availableWidth, availableHeight)];
-    return CGSizeMake(titleSize.width + contentInsets.left + contentInsets.right,
-                      titleSize.height + contentInsets.top + contentInsets.bottom);
-}
-
-- (CGSize)intrinsicContentSize {
-    return [self sizeThatFits:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)];
-}
-
-@end
+NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoWordSelectionView () <UIGestureRecognizerDelegate>
 @property(nonatomic, strong) UIScrollView *scrollView;
 @property(nonatomic, strong) UIView *contentView;
-@property(nonatomic, strong) NSMutableArray<NSDictionary *> *tokens;
+@property(nonatomic, strong) NSMutableArray<NSDictionary<NSString *, id> *> *tokens;
 @property(nonatomic, strong) NSMutableArray<KayokoWordTokenView *> *tokenButtons;
 @property(nonatomic, strong) NSMutableIndexSet *selectedTokenIndexes;
 @property(nonatomic, strong) NSMutableIndexSet *selectionGestureOriginalIndexes;
-@property(nonatomic, copy) NSString *originalText;
+@property(nonatomic, copy, nullable) NSString *originalText;
 @property(nonatomic, copy, readwrite) NSString *selectedText;
 @property(nonatomic, assign, readwrite) BOOL hasCustomSelection;
 @property(nonatomic, assign) NSUInteger selectionAnchorIndex;
 @property(nonatomic, assign) BOOL selectionGestureSelectsTokens;
 @end
+
+NS_ASSUME_NONNULL_END
 
 @implementation KayokoWordSelectionView
 
@@ -139,12 +81,12 @@ static CGFloat const kKayokoWordSelectionTokenHorizontalInset = 11;
     [self reset];
     [self setOriginalText:[text copy]];
 
-    NSArray<NSDictionary *> *tokens = [KayokoWordSelectionView tokensForText:text];
+    NSArray<NSDictionary<NSString *, id> *> *tokens = [KayokoWordSelectionTokenizer tokensForText:text];
     [[self tokens] addObjectsFromArray:tokens];
 
     for (NSUInteger index = 0; index < [[self tokens] count]; index++) {
         KayokoWordTokenView *button = [[KayokoWordTokenView alloc] initWithFrame:CGRectZero];
-        NSDictionary *token = [self tokens][index];
+        NSDictionary<NSString *, id> *token = [self tokens][index];
         [button setTag:index];
         [button setTitle:token[@"text"] forState:UIControlStateNormal];
         [[button titleLabel] setFont:[UIFont systemFontOfSize:16 weight:UIFontWeightRegular]];
@@ -152,8 +94,8 @@ static CGFloat const kKayokoWordSelectionTokenHorizontalInset = 11;
         [button setKayokoContentInsets:UIEdgeInsetsMake(0, kKayokoWordSelectionTokenHorizontalInset, 0,
                                                         kKayokoWordSelectionTokenHorizontalInset)];
         [button setUserInteractionEnabled:NO];
-        [[button layer] setCornerRadius:7];
-        [[button layer] setBorderWidth:0.5];
+        [[button layer] setCornerRadius:kKayokoWordSelectionTokenCornerRadius];
+        [[button layer] setBorderWidth:kKayokoWordSelectionTokenBorderWidth];
         [[self contentView] addSubview:button];
         [[self tokenButtons] addObject:button];
     }
@@ -180,6 +122,12 @@ static CGFloat const kKayokoWordSelectionTokenHorizontalInset = 11;
     [[self scrollView] setContentSize:CGSizeZero];
 }
 
+- (void)scrollToTopAnimated:(BOOL)animated {
+    CGPoint contentOffset = [[self scrollView] contentOffset];
+    contentOffset.y = -[[self scrollView] adjustedContentInset].top;
+    [[self scrollView] setContentOffset:contentOffset animated:animated];
+}
+
 - (void)layoutSubviews {
     [super layoutSubviews];
 
@@ -201,7 +149,7 @@ static CGFloat const kKayokoWordSelectionTokenHorizontalInset = 11;
         [button setFrame:CGRectMake(x, y, buttonWidth, kKayokoWordSelectionTokenHeight)];
         x += buttonWidth + kKayokoWordSelectionTokenSpacing;
 
-        if ([self tokens][index][@"line_break_after"] && index + 1 < [[self tokenButtons] count]) {
+        if ([self tokens][index][@"lineBreakAfter"] && index + 1 < [[self tokenButtons] count]) {
             x = kKayokoWordSelectionHorizontalInset;
             y += kKayokoWordSelectionTokenHeight + kKayokoWordSelectionLineSpacing;
         }
@@ -365,7 +313,7 @@ static CGFloat const kKayokoWordSelectionTokenHorizontalInset = 11;
     for (NSUInteger index = 0; index < [[self tokenButtons] count]; index++) {
         KayokoWordTokenView *button = [self tokenButtons][index];
         BOOL selected = [[self selectedTokenIndexes] containsIndex:index];
-        [[button layer] setBorderWidth:selected ? 0.75 : 0.5];
+        [[button layer] setBorderWidth:kKayokoWordSelectionTokenBorderWidth];
         UIColor *textColor = selected ? selectedTextColor : normalTextColor;
         UIColor *backgroundColor = selected ? selectedBackgroundColor : normalBackgroundColor;
         [button setTitleColor:textColor forState:UIControlStateNormal];
@@ -394,7 +342,7 @@ static CGFloat const kKayokoWordSelectionTokenHorizontalInset = 11;
     __block NSRange previousRange = NSMakeRange(NSNotFound, 0);
 
     [[self selectedTokenIndexes] enumerateIndexesUsingBlock:^(NSUInteger index, BOOL *stop) {
-      NSDictionary *token = [self tokens][index];
+      NSDictionary<NSString *, id> *token = [self tokens][index];
       NSRange range = [token[@"range"] rangeValue];
 
       if ([selectedText length] > 0) {
@@ -417,221 +365,6 @@ static CGFloat const kKayokoWordSelectionTokenHorizontalInset = 11;
     if ([self selectionChangedHandler]) {
         [self selectionChangedHandler]();
     }
-}
-
-+ (NSArray<NSDictionary *> *)tokensForText:(NSString *)text {
-    if (![text length]) {
-        return @[];
-    }
-
-    NSMutableArray<NSDictionary *> *tokens = [[NSMutableArray alloc] init];
-    __block NSUInteger cursor = 0;
-    __block NSUInteger previousSentenceLastTokenIndex = NSNotFound;
-    __block BOOL foundSentence = NO;
-
-    [text enumerateSubstringsInRange:NSMakeRange(0, [text length])
-                             options:NSStringEnumerationBySentences
-                          usingBlock:^(NSString *_Nullable substring, NSRange substringRange, NSRange enclosingRange,
-                                       BOOL *_Nonnull stop) {
-                            foundSentence = YES;
-
-                            if (substringRange.location > cursor) {
-                                NSRange gapRange = NSMakeRange(cursor, substringRange.location - cursor);
-                                [tokens addObjectsFromArray:[self detectedTokensForText:text inRange:gapRange]];
-                            }
-
-                            NSArray<NSDictionary *> *sentenceTokens = [self detectedTokensForText:text
-                                                                                          inRange:substringRange];
-                            if ([sentenceTokens count] > 0) {
-                                if (previousSentenceLastTokenIndex != NSNotFound) {
-                                    [self markTokenForLineBreakAtIndex:previousSentenceLastTokenIndex inTokens:tokens];
-                                }
-
-                                [tokens addObjectsFromArray:sentenceTokens];
-                                previousSentenceLastTokenIndex = [tokens count] - 1;
-                            }
-
-                            cursor = NSMaxRange(substringRange);
-                          }];
-
-    if (!foundSentence) {
-        return [self detectedTokensForText:text inRange:NSMakeRange(0, [text length])];
-    }
-
-    if (cursor < [text length]) {
-        NSRange remainingRange = NSMakeRange(cursor, [text length] - cursor);
-        [tokens addObjectsFromArray:[self detectedTokensForText:text inRange:remainingRange]];
-    }
-
-    return tokens;
-}
-
-+ (NSArray<NSDictionary *> *)detectedTokensForText:(NSString *)text inRange:(NSRange)textRange {
-    NSMutableArray<NSDictionary *> *tokens = [[NSMutableArray alloc] init];
-    NSMutableArray<NSTextCheckingResult *> *detectedResults = [[NSMutableArray alloc] init];
-    NSDataDetector *detector =
-        [NSDataDetector dataDetectorWithTypes:NSTextCheckingTypeLink | NSTextCheckingTypePhoneNumber |
-                                              NSTextCheckingTypeDate | NSTextCheckingTypeAddress
-                                        error:nil];
-    [detector enumerateMatchesInString:text
-                               options:0
-                                 range:textRange
-                            usingBlock:^(NSTextCheckingResult *_Nullable result, NSMatchingFlags flags, BOOL *stop) {
-                              if ([result range].length > 0) {
-                                  [detectedResults addObject:result];
-                              }
-                            }];
-
-    [detectedResults sortUsingComparator:^NSComparisonResult(NSTextCheckingResult *left, NSTextCheckingResult *right) {
-      if ([left range].location < [right range].location) {
-          return NSOrderedAscending;
-      }
-      if ([left range].location > [right range].location) {
-          return NSOrderedDescending;
-      }
-      return NSOrderedSame;
-    }];
-
-    NSUInteger cursor = textRange.location;
-    for (NSTextCheckingResult *result in detectedResults) {
-        NSRange range = [result range];
-        if (range.location < cursor || NSMaxRange(range) > NSMaxRange(textRange)) {
-            continue;
-        }
-
-        if (range.location > cursor) {
-            NSRange gapRange = NSMakeRange(cursor, range.location - cursor);
-            [tokens addObjectsFromArray:[self wordTokensForText:text inRange:gapRange]];
-        }
-
-        [self addTokenFromText:text inRange:range toTokens:tokens];
-        cursor = NSMaxRange(range);
-    }
-
-    if (cursor < NSMaxRange(textRange)) {
-        NSRange remainingRange = NSMakeRange(cursor, NSMaxRange(textRange) - cursor);
-        [tokens addObjectsFromArray:[self wordTokensForText:text inRange:remainingRange]];
-    }
-
-    return tokens;
-}
-
-+ (void)markTokenForLineBreakAtIndex:(NSUInteger)index inTokens:(NSMutableArray<NSDictionary *> *)tokens {
-    if (index >= [tokens count]) {
-        return;
-    }
-
-    NSMutableDictionary *token = [tokens[index] mutableCopy];
-    token[@"line_break_after"] = @YES;
-    tokens[index] = token;
-}
-
-+ (NSArray<NSDictionary *> *)wordTokensForText:(NSString *)text inRange:(NSRange)range {
-    NSMutableArray<NSDictionary *> *tokens = [[NSMutableArray alloc] init];
-    NSString *substring = [text substringWithRange:range];
-    CFStringRef cfSubstring = (__bridge CFStringRef)substring;
-    CFStringTokenizerRef tokenizer = CFStringTokenizerCreate(NULL, cfSubstring, CFRangeMake(0, [substring length]),
-                                                             kCFStringTokenizerUnitWord, NULL);
-
-    if (!tokenizer) {
-        [self addNonWhitespaceCharacterTokensFromText:text inRange:range toTokens:tokens];
-        return tokens;
-    }
-
-    NSUInteger cursor = range.location;
-    CFStringTokenizerTokenType tokenType = CFStringTokenizerAdvanceToNextToken(tokenizer);
-    while (tokenType != kCFStringTokenizerTokenNone) {
-        CFRange cfRange = CFStringTokenizerGetCurrentTokenRange(tokenizer);
-        NSRange tokenRange = NSMakeRange(range.location + cfRange.location, cfRange.length);
-
-        if (tokenRange.location > cursor) {
-            NSRange gapRange = NSMakeRange(cursor, tokenRange.location - cursor);
-            [self addNonWhitespaceCharacterTokensFromText:text inRange:gapRange toTokens:tokens];
-        }
-
-        NSString *tokenText = [text substringWithRange:tokenRange];
-        if ([self tokenContainsCJKCharacter:tokenText]) {
-            [self addCharacterTokensFromText:text inRange:tokenRange toTokens:tokens];
-        } else {
-            [self addTokenFromText:text inRange:tokenRange toTokens:tokens];
-        }
-        cursor = NSMaxRange(tokenRange);
-        tokenType = CFStringTokenizerAdvanceToNextToken(tokenizer);
-    }
-
-    CFRelease(tokenizer);
-
-    if (cursor < NSMaxRange(range)) {
-        NSRange remainingRange = NSMakeRange(cursor, NSMaxRange(range) - cursor);
-        [self addNonWhitespaceCharacterTokensFromText:text inRange:remainingRange toTokens:tokens];
-    }
-
-    return tokens;
-}
-
-+ (void)addCharacterTokensFromText:(NSString *)text
-                           inRange:(NSRange)range
-                          toTokens:(NSMutableArray<NSDictionary *> *)tokens {
-    [text enumerateSubstringsInRange:range
-                             options:NSStringEnumerationByComposedCharacterSequences
-                          usingBlock:^(NSString *_Nullable substring, NSRange substringRange, NSRange enclosingRange,
-                                       BOOL *_Nonnull stop) {
-                            if ([self isTokenTextValid:substring]) {
-                                [self addTokenFromText:text inRange:substringRange toTokens:tokens];
-                            }
-                          }];
-}
-
-+ (void)addNonWhitespaceCharacterTokensFromText:(NSString *)text
-                                        inRange:(NSRange)range
-                                       toTokens:(NSMutableArray<NSDictionary *> *)tokens {
-    [text enumerateSubstringsInRange:range
-                             options:NSStringEnumerationByComposedCharacterSequences
-                          usingBlock:^(NSString *_Nullable substring, NSRange substringRange, NSRange enclosingRange,
-                                       BOOL *_Nonnull stop) {
-                            if ([self isTokenTextValid:substring]) {
-                                [self addTokenFromText:text inRange:substringRange toTokens:tokens];
-                            }
-                          }];
-}
-
-+ (void)addTokenFromText:(NSString *)text inRange:(NSRange)range toTokens:(NSMutableArray<NSDictionary *> *)tokens {
-    NSString *tokenText = [text substringWithRange:range];
-    if (![self isTokenTextValid:tokenText]) {
-        return;
-    }
-
-    [tokens addObject:@{
-        @"text" : tokenText,
-        @"range" : [NSValue valueWithRange:range],
-    }];
-}
-
-+ (BOOL)isTokenTextValid:(NSString *)text {
-    return [[text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] length] > 0;
-}
-
-+ (BOOL)tokenContainsCJKCharacter:(NSString *)text {
-    return [text rangeOfCharacterFromSet:[self cjkCharacterSet]].location != NSNotFound;
-}
-
-+ (NSCharacterSet *)cjkCharacterSet {
-    static NSCharacterSet *characterSet = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-      NSMutableCharacterSet *set = [[NSMutableCharacterSet alloc] init];
-      [set addCharactersInRange:NSMakeRange(0x4E00, 0x9FFF - 0x4E00 + 1)];
-      [set addCharactersInRange:NSMakeRange(0xF900, 0xFAFF - 0xF900 + 1)];
-      [set addCharactersInRange:NSMakeRange(0x3000, 0x303F - 0x3000 + 1)];
-      [set addCharactersInRange:NSMakeRange(0x3040, 0x309F - 0x3040 + 1)];
-      [set addCharactersInRange:NSMakeRange(0x30A0, 0x30FF - 0x30A0 + 1)];
-      [set addCharactersInRange:NSMakeRange(0x31F0, 0x31FF - 0x31F0 + 1)];
-      [set addCharactersInRange:NSMakeRange(0xAC00, 0xD7AF - 0xAC00 + 1)];
-      [set addCharactersInRange:NSMakeRange(0x1100, 0x11FF - 0x1100 + 1)];
-      [set addCharactersInRange:NSMakeRange(0x3130, 0x318F - 0x3130 + 1)];
-      characterSet = [set copy];
-    });
-    return characterSet;
 }
 
 @end

@@ -7,9 +7,13 @@
 
 #import <Preferences/PSSpecifier.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
 @interface KayokoStepSlider : UISlider
 @property(nonatomic, copy) NSArray<NSNumber *> *stepValues;
 @end
+
+NS_ASSUME_NONNULL_END
 
 @implementation KayokoStepSlider {
     CGRect _cachedTrackRect;
@@ -155,7 +159,7 @@
 }
 
 - (NSArray<NSNumber *> *)normalizedStepValuesFromSpecifier:(PSSpecifier *)specifier {
-    NSArray *values = [specifier propertyForKey:@"stepValues"];
+    NSArray<NSNumber *> *values = [specifier propertyForKey:@"stepValues"];
     NSMutableArray<NSNumber *> *normalizedValues = [[NSMutableArray alloc] init];
     for (id value in values) {
         if ([value isKindOfClass:[NSNumber class]]) {

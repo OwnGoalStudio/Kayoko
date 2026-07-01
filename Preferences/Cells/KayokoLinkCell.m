@@ -18,7 +18,9 @@
         NSBundle *bundle = [NSBundle bundleForClass:[self class]];
 
         NSString *localizationTable = [specifier propertyForKey:@"localizationTable"] ?: @"Root";
-        [self setTitle:[bundle localizedStringForKey:[specifier propertyForKey:@"label"] value:nil table:localizationTable]];
+        [self setTitle:[bundle localizedStringForKey:[specifier propertyForKey:@"label"]
+                                               value:nil
+                                               table:localizationTable]];
         [self setSubtitle:[bundle localizedStringForKey:[specifier propertyForKey:@"subtitle"]
                                                   value:nil
                                                   table:localizationTable]];

@@ -3,7 +3,12 @@ TWEAK_NAME := KayokoHelper
 KayokoHelper_USE_MODULES := 0
 
 KayokoHelper_FILES += KayokoHelper.m
-KayokoHelper_FILES += KayokoHelperLogos.xm
+KayokoHelper_FILES += KayokoHelperRuntime.m
+KayokoHelper_FILES += KayokoPredictionBarHooks.m
+KayokoHelper_FILES += KayokoCalloutMenuHooks.m
+KayokoHelper_FILES += KayokoInputSwitcherHooks.mm
+KayokoHelper_FILES += KayokoDictationHooks.m
+KayokoHelper_FILES += KayokoSwipeUpHooks.m
 KayokoHelper_FILES += KayokoMenu.m
 KayokoHelper_FILES += $(wildcard ../../Manager/*.m ../../Utils/*.m)
 
@@ -29,6 +34,7 @@ KayokoHelper_FRAMEWORKS += UIKit
 
 KayokoHelper_LIBRARIES += sandy
 KayokoHelper_LIBRARIES += sqlite3
+KayokoHelper_LIBRARIES += substrate
 ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
 KayokoHelper_LIBRARIES += roothide
 endif

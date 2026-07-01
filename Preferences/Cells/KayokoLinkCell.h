@@ -6,7 +6,8 @@
 //
 
 #import <Preferences/PSSpecifier.h>
-#import <UIKit/UIKit.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoLinkCell : PSTableCell
 @property(nonatomic, strong) UILabel *label;
@@ -18,3 +19,5 @@
 @property(nonatomic, copy) NSString *subtitle;
 @property(nonatomic, copy) NSString *url;
 @end
+
+NS_ASSUME_NONNULL_END

@@ -4,6 +4,7 @@
 //
 
 #import "KayokoSliderCell.h"
+
 #import <Preferences/PSSpecifier.h>
 
 @implementation KayokoSliderCell {

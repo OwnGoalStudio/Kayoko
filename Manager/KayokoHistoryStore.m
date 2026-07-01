@@ -13,10 +13,14 @@
 static NSString *const kKayokoHistoryStoreErrorDomain = @"com.82flex.kayoko.history-store";
 static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imported";
 
+NS_ASSUME_NONNULL_BEGIN
+
 @interface KayokoHistoryStore ()
 @property(nonatomic, copy, readwrite) NSString *databasePath;
 @property(nonatomic, copy, readwrite) NSString *imagesPath;
 @end
+
+NS_ASSUME_NONNULL_END
 
 @implementation KayokoHistoryStore {
     sqlite3 *_database;
@@ -107,26 +111,26 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
     return [self setMetadataValue:@"1" forKey:kKayokoHistoryStoreMigrationKey error:error];
 }
 
-- (BOOL)addItemDictionary:(NSDictionary *)dictionary
+- (BOOL)addItemDictionary:(NSDictionary<NSString *, id> *)dictionary
              toHistoryKey:(NSString *)historyKey
                     limit:(NSUInteger)limit
                     error:(NSError **)error {
     return [self upsertItemDictionary:dictionary inHistoryKey:historyKey limit:limit error:error];
 }
 
-- (BOOL)moveItemDictionaryToTop:(NSDictionary *)dictionary
+- (BOOL)moveItemDictionaryToTop:(NSDictionary<NSString *, id> *)dictionary
                    inHistoryKey:(NSString *)historyKey
                           limit:(NSUInteger)limit
                           error:(NSError **)error {
     return [self upsertItemDictionary:dictionary inHistoryKey:historyKey limit:limit error:error];
 }
 
-- (BOOL)moveItemDictionary:(NSDictionary *)dictionary
+- (BOOL)moveItemDictionary:(NSDictionary<NSString *, id> *)dictionary
             fromHistoryKey:(NSString *)sourceHistoryKey
               toHistoryKey:(NSString *)destinationHistoryKey
           destinationLimit:(NSUInteger)destinationLimit
                      error:(NSError **)error {
-    NSString *content = [self stringValueFromDictionary:dictionary key:kItemKeyContent fallback:nil];
+    NSString *content = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyContent fallback:nil];
     if ([content length] == 0 || [sourceHistoryKey length] == 0 || [destinationHistoryKey length] == 0) {
         return YES;
     }
@@ -168,16 +172,16 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
     return NO;
 }
 
-- (BOOL)removeItemDictionary:(NSDictionary *)dictionary
+- (BOOL)removeItemDictionary:(NSDictionary<NSString *, id> *)dictionary
               fromHistoryKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage
                        error:(NSError **)error {
-    NSString *content = [self stringValueFromDictionary:dictionary key:kItemKeyContent fallback:nil];
+    NSString *content = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyContent fallback:nil];
     if ([content length] == 0 || [historyKey length] == 0) {
         return YES;
     }
 
-    NSString *imageName = [self stringValueFromDictionary:dictionary key:kItemKeyImageName fallback:@""];
+    NSString *imageName = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyImageName fallback:@""];
     if (![self beginTransactionWithError:error]) {
         return NO;
     }
@@ -240,9 +244,9 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
     return NO;
 }
 
-- (NSMutableArray *)itemsForHistoryKey:(NSString *)historyKey error:(NSError **)error {
+- (NSMutableArray<NSDictionary<NSString *, id> *> *)itemsForHistoryKey:(NSString *)historyKey error:(NSError **)error {
     sqlite3_stmt *statement = NULL;
-    NSMutableArray *items = [[NSMutableArray alloc] init];
+    NSMutableArray<NSDictionary<NSString *, id> *> *items = [[NSMutableArray alloc] init];
     const char *sql = "SELECT bundle_identifier, content, image_name, has_link "
                       "FROM history_items WHERE history_key = ? ORDER BY sequence DESC";
 
@@ -259,7 +263,7 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
     return items;
 }
 
-- (NSDictionary *)latestItemForHistoryKey:(NSString *)historyKey error:(NSError **)error {
+- (NSDictionary<NSString *, id> *)latestItemForHistoryKey:(NSString *)historyKey error:(NSError **)error {
     sqlite3_stmt *statement = NULL;
     const char *sql = "SELECT bundle_identifier, content, image_name, has_link "
                       "FROM history_items WHERE history_key = ? ORDER BY sequence DESC LIMIT 1";
@@ -269,7 +273,7 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
     }
 
     sqlite3_bind_text(statement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
-    NSDictionary *dictionary = nil;
+    NSDictionary<NSString *, id> *dictionary = nil;
     if (sqlite3_step(statement) == SQLITE_ROW) {
         dictionary = [self dictionaryFromCurrentRowInStatement:statement];
     }
@@ -278,7 +282,7 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
     return dictionary;
 }
 
-- (BOOL)importItemDictionaries:(NSArray<NSDictionary *> *)items
+- (BOOL)importItemDictionaries:(NSArray<NSDictionary<NSString *, id> *> *)items
                   toHistoryKey:(NSString *)historyKey
                          error:(NSError **)error {
     if ([items count] == 0) {
@@ -290,7 +294,7 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
     }
 
     BOOL success = YES;
-    for (NSDictionary *dictionary in [items reverseObjectEnumerator]) {
+    for (NSDictionary<NSString *, id> *dictionary in [items reverseObjectEnumerator]) {
         success = [self upsertItemDictionaryWithoutTransaction:dictionary inHistoryKey:historyKey error:error];
         if (!success) {
             break;
@@ -323,7 +327,7 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
     return YES;
 }
 
-- (BOOL)upsertItemDictionary:(NSDictionary *)dictionary
+- (BOOL)upsertItemDictionary:(NSDictionary<NSString *, id> *)dictionary
                 inHistoryKey:(NSString *)historyKey
                        limit:(NSUInteger)limit
                        error:(NSError **)error {
@@ -344,19 +348,19 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
     return NO;
 }
 
-- (BOOL)upsertItemDictionaryWithoutTransaction:(NSDictionary *)dictionary
+- (BOOL)upsertItemDictionaryWithoutTransaction:(NSDictionary<NSString *, id> *)dictionary
                                   inHistoryKey:(NSString *)historyKey
                                          error:(NSError **)error {
-    NSString *content = [self stringValueFromDictionary:dictionary key:kItemKeyContent fallback:nil];
+    NSString *content = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyContent fallback:nil];
     if ([content length] == 0 || [historyKey length] == 0) {
         return YES;
     }
 
     NSString *bundleIdentifier = [self stringValueFromDictionary:dictionary
-                                                             key:kItemKeyBundleIdentifier
+                                                             key:kKayokoItemKeyBundleIdentifier
                                                         fallback:@"com.apple.springboard"];
-    NSString *imageName = [self stringValueFromDictionary:dictionary key:kItemKeyImageName fallback:@""];
-    NSNumber *hasLink = @([[dictionary objectForKey:kItemKeyHasLink] boolValue]);
+    NSString *imageName = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyImageName fallback:@""];
+    NSNumber *hasLink = @([[dictionary objectForKey:kKayokoItemKeyHasLink] boolValue]);
     NSNumber *sequence = @([self nextSequence]);
     NSNumber *now = @([[NSDate date] timeIntervalSince1970]);
 
@@ -502,21 +506,23 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
                             error:error];
 }
 
-- (NSDictionary *)dictionaryFromCurrentRowInStatement:(sqlite3_stmt *)statement {
+- (NSDictionary<NSString *, id> *)dictionaryFromCurrentRowInStatement:(sqlite3_stmt *)statement {
     NSString *bundleIdentifier = [self stringFromColumn:statement index:0] ?: @"com.apple.springboard";
     NSString *content = [self stringFromColumn:statement index:1] ?: @"";
     NSString *imageName = [self stringFromColumn:statement index:2] ?: @"";
     BOOL hasLink = sqlite3_column_int(statement, 3) != 0;
 
     return @{
-        kItemKeyBundleIdentifier : bundleIdentifier,
-        kItemKeyContent : content,
-        kItemKeyImageName : imageName,
-        kItemKeyHasLink : @(hasLink)
+        kKayokoItemKeyBundleIdentifier : bundleIdentifier,
+        kKayokoItemKeyContent : content,
+        kKayokoItemKeyImageName : imageName,
+        kKayokoItemKeyHasLink : @(hasLink)
     };
 }
 
-- (NSString *)stringValueFromDictionary:(NSDictionary *)dictionary key:(NSString *)key fallback:(NSString *)fallback {
+- (NSString *)stringValueFromDictionary:(NSDictionary<NSString *, id> *)dictionary
+                                    key:(NSString *)key
+                               fallback:(NSString *)fallback {
     id value = [dictionary objectForKey:key];
     if ([value isKindOfClass:[NSString class]]) {
         return value;
@@ -548,12 +554,12 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
     return [self executeStatement:statement bindings:@[] error:error];
 }
 
-- (BOOL)executeStatement:(NSString *)statement bindings:(NSArray *)bindings error:(NSError **)error {
+- (BOOL)executeStatement:(NSString *)statement bindings:(NSArray<id> *)bindings error:(NSError **)error {
     return [self executeStatement:statement bindings:bindings changes:NULL error:error];
 }
 
 - (BOOL)executeStatement:(NSString *)statement
-                bindings:(NSArray *)bindings
+                bindings:(NSArray<id> *)bindings
                  changes:(NSInteger *)changes
                    error:(NSError **)error {
     sqlite3_stmt *compiledStatement = NULL;
@@ -588,7 +594,7 @@ static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imp
     return YES;
 }
 
-- (void)bindObjects:(NSArray *)objects toStatement:(sqlite3_stmt *)statement {
+- (void)bindObjects:(NSArray<id> *)objects toStatement:(sqlite3_stmt *)statement {
     for (NSUInteger index = 0; index < [objects count]; index++) {
         id object = objects[index];
         int parameterIndex = (int)index + 1;
