@@ -8,9 +8,9 @@
 #import <Foundation/Foundation.h>
 
 static NSString *const kKayokoNotificationKeyCoreShow = @"com.82flex.kayoko.core.show";
-static NSString *const kKayokoLegacyNotificationKeyCoreShow = @"codes.aurora.kayoko.core.show";
+static NSString *const kKayokoLegacyNotificationKeyCoreShow = @"dev.traurige.kayoko.core.show";
 static NSString *const kKayokoNotificationKeyCoreHide = @"com.82flex.kayoko.core.hide";
-static NSString *const kKayokoLegacyNotificationKeyCoreHide = @"codes.aurora.kayoko.core.hide";
+static NSString *const kKayokoLegacyNotificationKeyCoreHide = @"dev.traurige.kayoko.core.hide";
 static NSString *const kKayokoNotificationKeyCoreReload = @"com.82flex.kayoko.core.reload";
 static NSString *const kKayokoNotificationKeyHelperPaste = @"com.82flex.kayoko.helper.paste";
 static NSString *const kKayokoNotificationKeyHelperRestoreFocus = @"com.82flex.kayoko.helper.restore-focus";

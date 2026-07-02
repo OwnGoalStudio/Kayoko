@@ -9,6 +9,7 @@
 
 #import <CaptainHook/CaptainHook.h>
 #import <UIKit/UIKit.h>
+#import <objc/runtime.h>
 
 CHDeclareClass(UIKeyboardDockItem);
 CHDeclareClass(UIKeyboardDockItemButton);
@@ -18,6 +19,7 @@ CHDeclareClass(UIKeyboardLayoutStar);
 
 @interface UIKeyboardDockItem : NSObject
 - (id)initWithImageName:(id)arg1 identifier:(id)arg2;
+- (UIImage *)imageWithRenderConfig:(id)arg1;
 - (void)setImageName:(NSString *)arg1;
 @end
 
@@ -37,6 +39,69 @@ CHDeclareClass(UIKeyboardLayoutStar);
 
 @interface UIKeyboardLayoutStar : UIView
 @end
+
+static const void *kKayokoScaledDockImageAssociatedKey = &kKayokoScaledDockImageAssociatedKey;
+
+static CGFloat KayokoDockIconScaleFactor(void) {
+    if (@available(iOS 16, *)) {
+        return 0.92;
+    }
+    return 0.88;
+}
+
+static UIImage *KayokoScaledDockImageIfNeeded(UIImage *image) {
+    if (!image) {
+        return image;
+    }
+
+    CGSize originalSize = image.size;
+    if (ABS(originalSize.width - originalSize.height) <= 1.0) {
+        return image;
+    }
+
+    UIImage *cachedImage = objc_getAssociatedObject(image, kKayokoScaledDockImageAssociatedKey);
+    if (cachedImage) {
+        return cachedImage;
+    }
+
+    CGFloat scaleFactor = KayokoDockIconScaleFactor();
+    CGSize scaledSize = CGSizeMake(originalSize.width * scaleFactor, originalSize.height * scaleFactor);
+    if (scaledSize.width <= 0.0 || scaledSize.height <= 0.0) {
+        return image;
+    }
+
+    UIEdgeInsets alignmentInsets = image.alignmentRectInsets;
+    CGRect imageBounds = CGRectMake(0.0, 0.0, originalSize.width, originalSize.height);
+    CGRect alignmentRect = UIEdgeInsetsInsetRect(imageBounds, alignmentInsets);
+    if (CGRectIsEmpty(alignmentRect) || CGRectIsNull(alignmentRect)) {
+        alignmentRect = imageBounds;
+    }
+    CGPoint anchor = CGPointMake(CGRectGetMidX(alignmentRect), CGRectGetMidY(alignmentRect));
+    CGPoint centeredOrigin = CGPointMake(anchor.x - scaledSize.width / 2.0, anchor.y - scaledSize.height / 2.0);
+
+    UIGraphicsBeginImageContextWithOptions(originalSize, NO, image.scale);
+    [image drawInRect:CGRectMake(centeredOrigin.x, centeredOrigin.y, scaledSize.width, scaledSize.height)];
+    UIImage *scaledImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    if (!scaledImage) {
+        return image;
+    }
+
+    UIImage *result = [scaledImage imageWithRenderingMode:image.renderingMode];
+    result = [result imageWithAlignmentRectInsets:alignmentInsets];
+    if (@available(iOS 13, *)) {
+        if (image.hasBaseline) {
+            result = [result imageWithBaselineOffsetFromBottom:image.baselineOffsetFromBottom];
+        }
+    }
+    if (image.flipsForRightToLeftLayoutDirection) {
+        result = [result imageFlippedForRightToLeftLayoutDirection];
+    }
+
+    objc_setAssociatedObject(image, kKayokoScaledDockImageAssociatedKey, result, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    return result;
+}
 
 CHOptimizedMethod2(self, id, UIKeyboardDockItem, initWithImageName, id, arg1, identifier, id, arg2) {
     if ([arg1 isEqualToString:@"mic"]) {
@@ -58,6 +123,11 @@ CHOptimizedMethod1(self, void, UIKeyboardDockItem, setImageName, NSString *, arg
         }
     }
     CHSuper1(UIKeyboardDockItem, setImageName, arg1);
+}
+
+CHOptimizedMethod1(self, UIImage *, UIKeyboardDockItem, imageWithRenderConfig, id, arg1) {
+    UIImage *image = CHSuper1(UIKeyboardDockItem, imageWithRenderConfig, arg1);
+    return KayokoScaledDockImageIfNeeded(image);
 }
 
 CHOptimizedMethod1(self, CGRect, UIKeyboardDockItemButton, imageRectForContentRect, CGRect, arg1) {
@@ -107,7 +177,7 @@ CHOptimizedMethod1(self, UIKBTree *, UIKeyboardLayoutStar, keyHitTest, CGPoint, 
 void EnableKayokoActivationDictation(void) {
     static dispatch_once_t sOnceToken;
     dispatch_once(&sOnceToken, ^{
-      CHLoadClass_(&UIKeyboardDockItem$, NSClassFromString(@"UIKeyboardDockItem"));
+      Class dockItemClass = CHLoadClass_(&UIKeyboardDockItem$, NSClassFromString(@"UIKeyboardDockItem"));
       CHLoadClass_(&UIKeyboardDockItemButton$, NSClassFromString(@"UIKeyboardDockItemButton"));
       CHLoadClass_(&UISystemKeyboardDockController$, NSClassFromString(@"UISystemKeyboardDockController"));
       CHLoadClass_(&UIKeyboardImpl$, NSClassFromString(@"UIKeyboardImpl"));
@@ -115,7 +185,11 @@ void EnableKayokoActivationDictation(void) {
 
       CHHook2(UIKeyboardDockItem, initWithImageName, identifier);
       CHHook1(UIKeyboardDockItem, setImageName);
-      CHHook1(UIKeyboardDockItemButton, imageRectForContentRect);
+      if (class_getInstanceMethod(dockItemClass, @selector(imageWithRenderConfig:))) {
+          CHHook1(UIKeyboardDockItem, imageWithRenderConfig);
+      } else {
+          CHHook1(UIKeyboardDockItemButton, imageRectForContentRect);
+      }
       CHHook3(UISystemKeyboardDockController, dictationItemButtonWasPressed, withEvent, isRunningButton);
       CHHook2(UISystemKeyboardDockController, dictationItemButtonWasPressed, withEvent);
       CHHook0(UIKeyboardImpl, shouldShowDictationKey);

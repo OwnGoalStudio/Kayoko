@@ -4,7 +4,6 @@
 //
 
 #import "KayokoApplicationMetadataProvider.h"
-
 #import "PasteboardManager.h"
 
 #import <objc/runtime.h>
@@ -28,7 +27,20 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
+@interface KayokoApplicationMetadataProvider ()
+@property(nonatomic, strong) NSCache<NSString *, UIImage *> *iconCache;
+@end
+
 @implementation KayokoApplicationMetadataProvider
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _iconCache = [[NSCache alloc] init];
+        [_iconCache setCountLimit:256];
+    }
+    return self;
+}
 
 - (NSString *)displayNameForBundleIdentifier:(NSString *)bundleIdentifier {
     if ([bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
@@ -41,6 +53,12 @@ NS_ASSUME_NONNULL_END
 }
 
 - (UIImage *)iconForBundleIdentifier:(NSString *)bundleIdentifier {
+    NSString *cacheKey = [bundleIdentifier length] > 0 ? bundleIdentifier : @"com.apple.WebSheet";
+    UIImage *cachedIcon = [[self iconCache] objectForKey:cacheKey];
+    if (cachedIcon) {
+        return cachedIcon;
+    }
+
     UIImage *icon = nil;
     if ([bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
         BOOL isPad = [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad;
@@ -53,9 +71,18 @@ NS_ASSUME_NONNULL_END
                                                            scale:[[UIScreen mainScreen] scale]];
     }
     if (!icon) {
-        icon = [UIImage _applicationIconImageForBundleIdentifier:@"com.apple.WebSheet"
-                                                          format:2
-                                                           scale:[[UIScreen mainScreen] scale]];
+        icon = [[self iconCache] objectForKey:@"com.apple.WebSheet"];
+        if (!icon) {
+            icon = [UIImage _applicationIconImageForBundleIdentifier:@"com.apple.WebSheet"
+                                                              format:2
+                                                               scale:[[UIScreen mainScreen] scale]];
+            if (icon) {
+                [[self iconCache] setObject:icon forKey:@"com.apple.WebSheet"];
+            }
+        }
+    }
+    if (icon) {
+        [[self iconCache] setObject:icon forKey:cacheKey];
     }
     return icon;
 }

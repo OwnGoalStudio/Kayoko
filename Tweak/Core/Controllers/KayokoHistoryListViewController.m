@@ -4,7 +4,6 @@
 //
 
 #import "KayokoHistoryListViewController.h"
-
 #import "KayokoFavoritesTableView.h"
 #import "KayokoHistoryItemActionHandler.h"
 #import "KayokoHistoryListView.h"
@@ -25,10 +24,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) KayokoTableDataStore *dataStore;
 @property(nonatomic, strong) KayokoTableViewCellContentProvider *cellContentProvider;
 @property(nonatomic, strong) KayokoHistoryItemActionHandler *actionHandler;
-- (UITableViewRowAnimation)rowAnimationForTopInsertionFromContentOffset:(CGPoint)contentOffset;
-- (BOOL)shouldRestoreContentOffsetAfterTopInsertionFromOffset:(CGPoint)contentOffset;
-- (BOOL)shouldRestoreContentOffsetAfterTopRowRemovalAtIndexPath:(NSIndexPath *)indexPath
-                                                     fromOffset:(CGPoint)contentOffset;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -405,6 +400,17 @@ NS_ASSUME_NONNULL_END
     KayokoTableViewCell *cell = [[KayokoTableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
                                                                    content:content
                                                            reuseIdentifier:@"KayokoTableViewCell"];
+
+    NSString *imageName = [[item imageName] copy];
+    if ([imageName length] > 0) {
+        __weak KayokoTableViewCell *weakCell = cell;
+        [[self cellContentProvider] loadThumbnailForItem:item
+                                              targetSize:CGSizeMake(70, 40)
+                                              completion:^(UIImage *_Nullable image) {
+                                                [weakCell setContentImage:image forImageName:imageName];
+                                              }];
+    }
+
     UILongPressGestureRecognizer *gesture =
         [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPressGestureRecognizer:)];
     [cell addGestureRecognizer:gesture];

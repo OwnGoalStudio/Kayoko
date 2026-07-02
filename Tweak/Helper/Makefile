@@ -11,13 +11,12 @@ KayokoHelper_FILES += KayokoDictationHooks.m
 KayokoHelper_FILES += KayokoSwipeUpGestureRecognizer.m
 KayokoHelper_FILES += KayokoSwipeUpHooks.m
 KayokoHelper_FILES += KayokoMenu.m
-KayokoHelper_FILES += $(wildcard ../../Manager/*.m ../../Utils/*.m)
+KayokoHelper_FILES += $(wildcard ../../Manager/*.m)
 
 KayokoHelper_CFLAGS += -fobjc-arc
 KayokoHelper_CFLAGS += -I../../Headers
 KayokoHelper_CFLAGS += -I../../Preferences
 KayokoHelper_CFLAGS += -I../../Manager
-KayokoHelper_CFLAGS += -I../../Utils
 
 ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
 KayokoHelper_LDFLAGS += -L../../Libraries/_roothide
@@ -30,6 +29,7 @@ endif
 endif
 
 KayokoHelper_FRAMEWORKS += CoreGraphics
+KayokoHelper_FRAMEWORKS += ImageIO
 KayokoHelper_FRAMEWORKS += QuartzCore
 KayokoHelper_FRAMEWORKS += UIKit
 

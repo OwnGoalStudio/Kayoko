@@ -29,11 +29,11 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
 @property(nonatomic, assign) BOOL saveText;
 @property(nonatomic, assign) BOOL saveImages;
 @property(nonatomic, assign) BOOL automaticallyPaste;
+@property(nonatomic, assign) BOOL ignoreRemoteReplication;
 
 + (instancetype)sharedInstance;
 - (instancetype)init NS_UNAVAILABLE;
-- (void)preparePasteboardQueue;
-- (void)prepareHistoryStore;
+- (void)warmUpHistoryAccess;
 
 + (NSString *)historyPath;
 + (NSString *)historyDatabasePath;
@@ -42,7 +42,8 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
 + (NSUInteger)normalizedMaximumHistoryAmountForValue:(NSUInteger)value;
 
 - (void)pullPasteboardChanges;
-- (void)addPasteboardItem:(PasteboardItem *)item toHistoryWithKey:(NSString *)historyKey;
+- (void)pullPasteboardChangesWithCompletion:(nullable void (^)(BOOL didSaveAnyItem))completion;
+- (BOOL)addPasteboardItem:(PasteboardItem *)item toHistoryWithKey:(NSString *)historyKey;
 - (void)performDirectPasteWithPasteboardItem:(PasteboardItem *)pasteboardItem
                                  historyItem:(PasteboardItem *)historyItem
                           fromHistoryWithKey:(NSString *)historyKey
@@ -75,6 +76,9 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
                         completion:(nullable void (^)(NSMutableArray<NSDictionary<NSString *, id> *> *items))completion;
 - (nullable PasteboardItem *)getLatestHistoryItem;
 - (nullable UIImage *)getImageForItem:(PasteboardItem *)item;
+- (void)getThumbnailForItem:(PasteboardItem *)item
+                 targetSize:(CGSize)targetSize
+                 completion:(void (^)(UIImage *_Nullable image))completion;
 
 @end
 

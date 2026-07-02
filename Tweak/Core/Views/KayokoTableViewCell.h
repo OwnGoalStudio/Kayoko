@@ -16,11 +16,12 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) UIImageView *iconImageView;
 @property(nonatomic, strong) UILabel *headerLabel;
 @property(nonatomic, strong) UILabel *contentLabel;
-@property(nonatomic, strong) UIImageView *contentImageView;
+@property(nonatomic, strong, nullable) UIImageView *contentImageView;
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
                       content:(KayokoTableViewCellContent *)content
               reuseIdentifier:(NSString *)reuseIdentifier;
+- (void)setContentImage:(nullable UIImage *)image forImageName:(NSString *)imageName;
 
 @end
 

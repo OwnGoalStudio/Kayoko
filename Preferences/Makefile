@@ -3,15 +3,14 @@ BUNDLE_NAME += KayokoPreferences
 KayokoPreferences_USE_MODULES := 0
 
 KayokoPreferences_FILES += $(wildcard Controllers/*.m Cells/*.m ../Manager/*.m)
-KayokoPreferences_FILES += $(wildcard ../Utils/*.m)
 
 KayokoPreferences_CFLAGS += -fobjc-arc
 KayokoPreferences_CFLAGS += -I.
 KayokoPreferences_CFLAGS += -I../Manager
 KayokoPreferences_CFLAGS += -I../Preferences
-KayokoPreferences_CFLAGS += -I../Utils
 
 KayokoPreferences_FRAMEWORKS += CoreGraphics
+KayokoPreferences_FRAMEWORKS += ImageIO
 KayokoPreferences_FRAMEWORKS += QuartzCore
 KayokoPreferences_FRAMEWORKS += UIKit
 KayokoPreferences_PRIVATE_FRAMEWORKS += Preferences

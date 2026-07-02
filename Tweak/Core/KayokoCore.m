@@ -6,12 +6,11 @@
 //
 
 #import "KayokoCore.h"
-
-#import <CoreFoundation/CoreFoundation.h>
-
 #import "KayokoCoreRuntime.h"
 #import "KayokoSpringBoardHooks.h"
 #import "NotificationKeys.h"
+
+#import <CoreFoundation/CoreFoundation.h>
 
 static void kayokoCoreAddDarwinObserver(CFStringRef name, CFNotificationCallback callback) {
     CFNotificationCenterAddObserver(
@@ -64,15 +63,17 @@ static void kayokoCoreInstallSpringBoardRuntime(void) {
                                 (CFNotificationCallback)KayokoCorePasteWillStart);
 }
 
+static void kayokoCoreReloadPasteTipPreferences(void) { KayokoCoreRefreshPasteTipPreferences(); }
+
 static void kayokoCoreInstallDruidOrPastedRuntime(void) {
-    KayokoCoreLoadPreferences();
-    if (!KayokoCoreEnabled()) {
+    BOOL shouldInstallPasteTipHooks = KayokoCoreRefreshPasteTipPreferences();
+    if (!shouldInstallPasteTipHooks) {
         return;
     }
 
     EnableKayokoDisablePasteTips();
     kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyPreferencesReload),
-                                (CFNotificationCallback)KayokoCoreLoadPreferences);
+                                (CFNotificationCallback)kayokoCoreReloadPasteTipPreferences);
 }
 
 __attribute((constructor)) static void initialize() {

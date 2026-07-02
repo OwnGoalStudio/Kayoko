@@ -45,7 +45,6 @@ static NSTimeInterval kayokoLastPasteFeedbackOccurred = 0;
 static NSTimeInterval kayokoLastCopyFeedbackOccurred = 0;
 static AVAudioPlayer *copySoundPlayer = nil;
 static AVAudioPlayer *pasteSoundPlayer = nil;
-static BOOL kayokoDidPreparePasteboardQueue = NO;
 static BOOL kayokoPendingHeightPreferenceApply = NO;
 static BOOL kayokoDidRequestInitialHistoryPreload = NO;
 static int kayokoLockStateToken = 0;
@@ -128,7 +127,8 @@ void KayokoCorePreloadInitialHistory(void) {
     kayokoDidRequestInitialHistoryPreload = YES;
 
     PasteboardManager *pasteboardManager = [PasteboardManager sharedInstance];
-    [pasteboardManager prepareHistoryStore];
+    [pasteboardManager warmUpHistoryAccess];
+
     if (kayokoMainViewController) {
         [kayokoMainViewController preloadHistoryIfNeeded];
     }
@@ -181,9 +181,24 @@ static void kayokoCoreApplyPreferencesToView(void) {
     kayokoCoreApplyHeightPreferenceToView(YES);
 }
 
+static void kayokoCoreReadPasteTipPreferences(NSUserDefaults *preferences) {
+    kayokoPrefsEnabled = [[preferences objectForKey:kKayokoPreferenceKeyEnabled] boolValue];
+    kayokoPrefsDisablePasteTips = [[preferences objectForKey:kKayokoPreferenceKeyDisablePasteTips] boolValue];
+}
+
+BOOL KayokoCoreRefreshPasteTipPreferences(void) {
+    NSUserDefaults *preferences = [[NSUserDefaults alloc] initWithSuiteName:kKayokoPreferencesIdentifier];
+    [preferences registerDefaults:@{
+        kKayokoPreferenceKeyEnabled : @(kKayokoPreferenceKeyEnabledDefaultValue),
+        kKayokoPreferenceKeyDisablePasteTips : @(kKayokoPreferenceKeyDisablePasteTipsDefaultValue),
+    }];
+
+    kayokoCoreReadPasteTipPreferences(preferences);
+    return kayokoPrefsEnabled;
+}
+
 void KayokoCoreLoadPreferences(void) {
     kayokoPreferences = [[NSUserDefaults alloc] initWithSuiteName:kKayokoPreferencesIdentifier];
-
     [kayokoPreferences registerDefaults:@{
         kKayokoPreferenceKeyEnabled : @(kKayokoPreferenceKeyEnabledDefaultValue),
         kKayokoPreferenceKeyActivationMethod : @(kKayokoPreferenceKeyActivationMethodDefaultValue),
@@ -194,13 +209,14 @@ void KayokoCoreLoadPreferences(void) {
         kKayokoPreferenceKeyAutomaticallyPaste : @(kKayokoPreferenceKeyAutomaticallyPasteDefaultValue),
         kKayokoPreferenceKeyDismissOnOutsideTouch : @(kKayokoPreferenceKeyDismissOnOutsideTouchDefaultValue),
         kKayokoPreferenceKeyDisablePasteTips : @(kKayokoPreferenceKeyDisablePasteTipsDefaultValue),
+        kKayokoPreferenceKeyIgnoreRemoteReplication : @(kKayokoPreferenceKeyIgnoreRemoteReplicationDefaultValue),
         kKayokoPreferenceKeyPlaySoundEffects : @(kKayokoPreferenceKeyPlaySoundEffectsDefaultValue),
         kKayokoPreferenceKeyPlayHapticFeedback : @(kKayokoPreferenceKeyPlayHapticFeedbackDefaultValue),
         kKayokoPreferenceKeyPreviewLineCount : @(kKayokoPreferenceKeyPreviewLineCountDefaultValue),
         kKayokoPreferenceKeyHeightInPoints : @(kKayokoPreferenceKeyHeightInPointsDefaultValue),
     }];
 
-    kayokoPrefsEnabled = [[kayokoPreferences objectForKey:kKayokoPreferenceKeyEnabled] boolValue];
+    kayokoCoreReadPasteTipPreferences(kayokoPreferences);
     kayokoHelperPrefsActivationMethod =
         [[kayokoPreferences objectForKey:kKayokoPreferenceKeyActivationMethod] unsignedIntegerValue];
     kayokoPrefsMaximumHistoryAmount = [PasteboardManager
@@ -213,7 +229,8 @@ void KayokoCoreLoadPreferences(void) {
     kayokoPrefsAutomaticallyPaste = [[kayokoPreferences objectForKey:kKayokoPreferenceKeyAutomaticallyPaste] boolValue];
     kayokoPrefsDismissOnOutsideTouch =
         [[kayokoPreferences objectForKey:kKayokoPreferenceKeyDismissOnOutsideTouch] boolValue];
-    kayokoPrefsDisablePasteTips = [[kayokoPreferences objectForKey:kKayokoPreferenceKeyDisablePasteTips] boolValue];
+    BOOL ignoreRemoteReplication =
+        [[kayokoPreferences objectForKey:kKayokoPreferenceKeyIgnoreRemoteReplication] boolValue];
     kayokoPrefsPlaySoundEffects = [[kayokoPreferences objectForKey:kKayokoPreferenceKeyPlaySoundEffects] boolValue];
     kayokoPrefsPlayHapticFeedback = [[kayokoPreferences objectForKey:kKayokoPreferenceKeyPlayHapticFeedback] boolValue];
     kayokoPrefsPreviewLineCount =
@@ -221,10 +238,6 @@ void KayokoCoreLoadPreferences(void) {
     kayokoPrefsHeightInPoints = [[kayokoPreferences objectForKey:kKayokoPreferenceKeyHeightInPoints] doubleValue];
 
     PasteboardManager *pasteboardManager = [PasteboardManager sharedInstance];
-    if (!kayokoDidPreparePasteboardQueue) {
-        [pasteboardManager preparePasteboardQueue];
-        kayokoDidPreparePasteboardQueue = YES;
-    }
     if ([pasteboardManager maximumHistoryAmount] != kayokoPrefsMaximumHistoryAmount) {
         [pasteboardManager setMaximumHistoryAmount:kayokoPrefsMaximumHistoryAmount];
     }
@@ -236,6 +249,9 @@ void KayokoCoreLoadPreferences(void) {
     }
     if ([pasteboardManager automaticallyPaste] != kayokoPrefsAutomaticallyPaste) {
         [pasteboardManager setAutomaticallyPaste:kayokoPrefsAutomaticallyPaste];
+    }
+    if ([pasteboardManager ignoreRemoteReplication] != ignoreRemoteReplication) {
+        [pasteboardManager setIgnoreRemoteReplication:ignoreRemoteReplication];
     }
 
     kayokoCoreApplyPreferencesToView();
@@ -333,22 +349,27 @@ static void kayokoCorePlayFailureHapticFeedbackIfNeeded(void) {
 void KayokoCorePasteWillStart(void) { kayokoIsInPasteProgress = YES; }
 
 static void kayokoCoreCopyNow(void) {
-    [[PasteboardManager sharedInstance] pullPasteboardChanges];
-    if (kayokoIsInPasteProgress) {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-          kayokoIsInPasteProgress = NO;
-        });
-        return;
-    }
-    NSTimeInterval now = CACurrentMediaTime();
-    if (fabs(now - kayokoLastCopyFeedbackOccurred) < kKayokoMinimumFeedbackInterval) {
-        return;
-    }
-    kayokoLastCopyFeedbackOccurred = now;
-    if (kayokoPrefsPlaySoundEffects) {
-        copySoundPlayer = kayokoCorePlayFeedbackSound(copySoundPlayer, @"Copy");
-    }
-    kayokoCorePlaySuccessHapticFeedbackIfNeeded();
+    [[PasteboardManager sharedInstance] pullPasteboardChangesWithCompletion:^(BOOL didSaveAnyItem) {
+      if (kayokoIsInPasteProgress) {
+          dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            kayokoIsInPasteProgress = NO;
+          });
+          return;
+      }
+      if (!didSaveAnyItem) {
+          return;
+      }
+
+      NSTimeInterval now = CACurrentMediaTime();
+      if (fabs(now - kayokoLastCopyFeedbackOccurred) < kKayokoMinimumFeedbackInterval) {
+          return;
+      }
+      kayokoLastCopyFeedbackOccurred = now;
+      if (kayokoPrefsPlaySoundEffects) {
+          copySoundPlayer = kayokoCorePlayFeedbackSound(copySoundPlayer, @"Copy");
+      }
+      kayokoCorePlaySuccessHapticFeedbackIfNeeded();
+    }];
 }
 
 void KayokoCoreCopy(void) {

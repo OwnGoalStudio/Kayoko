@@ -6,12 +6,11 @@ KayokoCore_FILES += KayokoCore.m
 KayokoCore_FILES += KayokoCoreRuntime.m
 KayokoCore_FILES += KayokoSpringBoardHooks.m
 KayokoCore_FILES += KayokoPasteTipHooks.m
-KayokoCore_FILES += $(wildcard ../../Manager/*.m Actions/*.m Controllers/*.m Coordinators/*.m DataSources/*.m Models/*.m Presentation/*.m Views/*.m ../../Utils/*.m)
+KayokoCore_FILES += $(wildcard ../../Manager/*.m Actions/*.m Controllers/*.m Coordinators/*.m DataSources/*.m Models/*.m Presentation/*.m Views/*.m)
 
 KayokoCore_CFLAGS += -fobjc-arc
 KayokoCore_CFLAGS += -I../../Manager
 KayokoCore_CFLAGS += -I../../Preferences
-KayokoCore_CFLAGS += -I../../Utils
 KayokoCore_CFLAGS += -IActions
 KayokoCore_CFLAGS += -IControllers
 KayokoCore_CFLAGS += -ICoordinators
@@ -23,6 +22,7 @@ KayokoCore_CFLAGS += -IViews
 KayokoCore_FRAMEWORKS += AudioToolbox
 KayokoCore_FRAMEWORKS += AVFoundation
 KayokoCore_FRAMEWORKS += CoreGraphics
+KayokoCore_FRAMEWORKS += ImageIO
 KayokoCore_FRAMEWORKS += QuartzCore
 KayokoCore_FRAMEWORKS += UIKit
 

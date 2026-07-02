@@ -8,6 +8,10 @@
 #import "KayokoTableViewCell.h"
 #import "KayokoTableViewCellContent.h"
 
+@interface KayokoTableViewCell ()
+@property(nonatomic, copy, nullable) NSString *representedImageName;
+@end
+
 @implementation KayokoTableViewCell
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
@@ -46,12 +50,18 @@
             [[[self iconImageView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor] constant:24]
         ]];
 
-        if ([content contentImage]) {
+        UIImage *contentImage = [content contentImage];
+        NSString *thumbnailImageName = [content thumbnailImageName];
+        BOOL hasContentImageSlot = contentImage || [thumbnailImageName length] > 0;
+        [self setRepresentedImageName:thumbnailImageName];
+        if (hasContentImageSlot) {
             [self setContentImageView:[[UIImageView alloc] init]];
-            [[self contentImageView] setImage:[content contentImage]];
+            [[self contentImageView] setImage:contentImage];
 
             [[self contentImageView] setContentMode:UIViewContentModeScaleAspectFill];
             [[self contentImageView] setClipsToBounds:YES];
+            [[self contentImageView]
+                setBackgroundColor:contentImage ? [UIColor clearColor] : [UIColor tertiarySystemFillColor]];
             [[[self contentImageView] layer] setCornerRadius:4];
             [self addSubview:[self contentImageView]];
 
@@ -115,6 +125,19 @@
     }
 
     return self;
+}
+
+- (void)setContentImage:(UIImage *)image forImageName:(NSString *)imageName {
+    if ([[self representedImageName] length] == 0 || ![[self representedImageName] isEqualToString:imageName]) {
+        return;
+    }
+
+    if (![self contentImageView]) {
+        return;
+    }
+
+    [[self contentImageView] setImage:image];
+    [[self contentImageView] setBackgroundColor:image ? [UIColor clearColor] : [UIColor tertiarySystemFillColor]];
 }
 
 @end

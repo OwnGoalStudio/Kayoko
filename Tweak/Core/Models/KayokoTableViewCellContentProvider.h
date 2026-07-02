@@ -17,6 +17,10 @@ NS_ASSUME_NONNULL_BEGIN
                                   previewLineCount:(NSUInteger)previewLineCount
                                         searchText:(nullable NSString *)searchText;
 
+- (void)loadThumbnailForItem:(PasteboardItem *)item
+                  targetSize:(CGSize)targetSize
+                  completion:(void (^)(UIImage *_Nullable image))completion;
+
 @end
 
 NS_ASSUME_NONNULL_END

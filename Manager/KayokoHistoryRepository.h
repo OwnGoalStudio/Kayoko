@@ -25,6 +25,9 @@ typedef NSUInteger (^KayokoHistoryLimitProvider)(NSString *historyKey);
 - (BOOL)addItemDictionary:(NSDictionary<NSString *, id> *)dictionary
              toHistoryKey:(NSString *)historyKey
                     error:(NSError *_Nullable *_Nullable)error;
+- (void)addItemDictionaries:(NSArray<NSDictionary<NSString *, id> *> *)dictionaries
+               toHistoryKey:(NSString *)historyKey
+                 completion:(nullable void (^)(NSArray<NSDictionary<NSString *, id> *> *savedDictionaries))completion;
 - (BOOL)moveItemDictionaryToTop:(NSDictionary<NSString *, id> *)dictionary
                    inHistoryKey:(NSString *)historyKey
                           error:(NSError *_Nullable *_Nullable)error;

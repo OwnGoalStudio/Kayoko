@@ -4,8 +4,6 @@
 //
 
 #import "KayokoTableViewCellContentProvider.h"
-
-#import "ImageUtil.h"
 #import "KayokoApplicationMetadataProvider.h"
 #import "KayokoTableViewCellContent.h"
 #import "PasteboardItem.h"
@@ -27,20 +25,6 @@ NS_ASSUME_NONNULL_END
         _metadataProvider = [[KayokoApplicationMetadataProvider alloc] init];
     }
     return self;
-}
-
-- (UIImage *)scaledContentImageForItem:(PasteboardItem *)item {
-    if ([[item imageName] length] == 0) {
-        return nil;
-    }
-
-    UIImage *originalImage = [[PasteboardManager sharedInstance] getImageForItem:item];
-    if (!originalImage) {
-        return nil;
-    }
-
-    return [ImageUtil getImageWithImage:originalImage
-                           scaledToSize:CGSizeMake(originalImage.size.width / 4, originalImage.size.height / 4)];
 }
 
 - (UIColor *)searchHighlightBackgroundColor {
@@ -90,9 +74,15 @@ NS_ASSUME_NONNULL_END
     [content setDisplayName:[[self metadataProvider] displayNameForBundleIdentifier:bundleIdentifier]];
     [content setContentText:contentText];
     [content setAttributedContentText:[self attributedContentTextForText:contentText searchText:searchText]];
-    [content setContentImage:[self scaledContentImageForItem:item]];
+    [content setThumbnailImageName:[item imageName]];
     [content setPreviewLineCount:previewLineCount];
     return content;
+}
+
+- (void)loadThumbnailForItem:(PasteboardItem *)item
+                  targetSize:(CGSize)targetSize
+                  completion:(void (^)(UIImage *_Nullable image))completion {
+    [[PasteboardManager sharedInstance] getThumbnailForItem:item targetSize:targetSize completion:completion];
 }
 
 @end

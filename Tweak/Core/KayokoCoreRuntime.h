@@ -8,6 +8,7 @@ OBJC_EXTERN BOOL KayokoCorePanelVisible(void);
 OBJC_EXTERN BOOL KayokoCoreFullscreenSearchActive(void);
 
 OBJC_EXTERN void KayokoCoreLoadPreferences(void);
+OBJC_EXTERN BOOL KayokoCoreRefreshPasteTipPreferences(void);
 OBJC_EXTERN void KayokoCoreLoadHeightPreference(void);
 OBJC_EXTERN void KayokoCoreInstallPanelInStatusBarWindow(UIWindow *window);
 OBJC_EXTERN void KayokoCorePreloadInitialHistory(void);

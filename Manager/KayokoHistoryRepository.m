@@ -66,6 +66,34 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
     return success;
 }
 
+- (void)addItemDictionaries:(NSArray<NSDictionary<NSString *, id> *> *)dictionaries
+               toHistoryKey:(NSString *)historyKey
+                 completion:(void (^)(NSArray<NSDictionary<NSString *, id> *> *savedDictionaries))completion {
+    [self performAsync:^{
+      NSMutableArray<NSDictionary<NSString *, id> *> *savedDictionaries =
+          [[NSMutableArray alloc] initWithCapacity:[dictionaries count]];
+      for (NSDictionary<NSString *, id> *dictionary in dictionaries) {
+          NSError *error = nil;
+          BOOL success = [[self historyStoreOnQueue] addItemDictionary:dictionary
+                                                          toHistoryKey:historyKey
+                                                                 limit:[self limitForHistoryKey:historyKey]
+                                                                 error:&error];
+          if (!success) {
+              NSLog(@"Kayoko: Failed to add history item: %@", error);
+              continue;
+          }
+          [savedDictionaries addObject:dictionary];
+      }
+
+      if (!completion) {
+          return;
+      }
+      dispatch_async(dispatch_get_main_queue(), ^{
+        completion(savedDictionaries);
+      });
+    }];
+}
+
 - (BOOL)moveItemDictionaryToTop:(NSDictionary<NSString *, id> *)dictionary
                    inHistoryKey:(NSString *)historyKey
                           error:(NSError **)error {
