@@ -6,6 +6,7 @@
 #define CHUseSubstrate
 
 #import "KayokoHelper.h"
+#import "KayokoSwipeUpGestureRecognizer.h"
 
 #import <CaptainHook/CaptainHook.h>
 #import <HBLog.h>
@@ -91,7 +92,7 @@ static void kayokoSetManualSwipeUpActive(UIWindow *window, BOOL active);
 
 @interface KayokoSwipeUpGestureHandler : NSObject <UIGestureRecognizerDelegate>
 - (instancetype)initWithView:(UIView *)view keyboardExtension:(BOOL)keyboardExtension;
-- (void)handleSwipeUpGesture:(UISwipeGestureRecognizer *)recognizer;
+- (void)handleSwipeUpGesture:(UIGestureRecognizer *)recognizer;
 @end
 
 @interface KayokoSwipeUpGestureHandler ()
@@ -119,7 +120,7 @@ static void kayokoSetManualSwipeUpActive(UIWindow *window, BOOL active);
     return kayokoPointIsInsideAllowedSwipeRegion(view, [touch locationInView:view]);
 }
 
-- (void)handleSwipeUpGesture:(UISwipeGestureRecognizer *)recognizer {
+- (void)handleSwipeUpGesture:(UIGestureRecognizer *)recognizer {
     if (recognizer.state != UIGestureRecognizerStateRecognized) {
         return;
     }
@@ -150,16 +151,15 @@ static KayokoSwipeUpGestureHandler *kayokoSwipeUpGestureHandlerForView(UIView *v
     return handler;
 }
 
-static UISwipeGestureRecognizer *kayokoEnsureSwipeUpGestureRecognizer(UIView *view, BOOL keyboardExtension) {
-    UISwipeGestureRecognizer *recognizer = objc_getAssociatedObject(view, &kayokoSwipeUpGestureRecognizerKey);
+static KayokoSwipeUpGestureRecognizer *kayokoEnsureSwipeUpGestureRecognizer(UIView *view, BOOL keyboardExtension) {
+    KayokoSwipeUpGestureRecognizer *recognizer = objc_getAssociatedObject(view, &kayokoSwipeUpGestureRecognizerKey);
     if (recognizer) {
         return recognizer;
     }
 
     KayokoSwipeUpGestureHandler *handler = kayokoSwipeUpGestureHandlerForView(view, keyboardExtension);
-    recognizer = [[UISwipeGestureRecognizer alloc] initWithTarget:handler action:@selector(handleSwipeUpGesture:)];
-    recognizer.direction = UISwipeGestureRecognizerDirectionUp;
-    recognizer.numberOfTouchesRequired = 1;
+    recognizer = [[KayokoSwipeUpGestureRecognizer alloc] initWithTarget:handler
+                                                                 action:@selector(handleSwipeUpGesture:)];
     recognizer.cancelsTouchesInView = NO;
     recognizer.delegate = handler;
     [view addGestureRecognizer:recognizer];
@@ -168,7 +168,7 @@ static UISwipeGestureRecognizer *kayokoEnsureSwipeUpGestureRecognizer(UIView *vi
 }
 
 static void kayokoDiscardSwipeUpGestureRecognizer(UIView *view) {
-    UISwipeGestureRecognizer *recognizer = objc_getAssociatedObject(view, &kayokoSwipeUpGestureRecognizerKey);
+    UIGestureRecognizer *recognizer = objc_getAssociatedObject(view, &kayokoSwipeUpGestureRecognizerKey);
     if (!recognizer) {
         return;
     }
@@ -215,7 +215,7 @@ static void kayokoManuallyFeedSwipeUpRecognizerInKeyboardWindow(UIWindow *window
     NSSet<UITouch *> *windowTouches = kayokoTouchesForWindow(window, event);
     if (windowTouches.count > 1) {
         if (kayokoManualSwipeUpIsActive(window)) {
-            UISwipeGestureRecognizer *recognizer = objc_getAssociatedObject(window, &kayokoSwipeUpGestureRecognizerKey);
+            UIGestureRecognizer *recognizer = objc_getAssociatedObject(window, &kayokoSwipeUpGestureRecognizerKey);
             [recognizer touchesCancelled:windowTouches withEvent:event];
             kayokoSetManualSwipeUpActive(window, NO);
             kayokoDiscardSwipeUpGestureRecognizer(window);
@@ -232,7 +232,7 @@ static void kayokoManuallyFeedSwipeUpRecognizerInKeyboardWindow(UIWindow *window
         HBLogDebug(@"Kayoko: manual swipe recognizer began active=%@", active ? @"YES" : @"NO");
         if (active) {
             kayokoDiscardSwipeUpGestureRecognizer(window);
-            UISwipeGestureRecognizer *recognizer = kayokoEnsureSwipeUpGestureRecognizer(window, YES);
+            UIGestureRecognizer *recognizer = kayokoEnsureSwipeUpGestureRecognizer(window, YES);
             HBLogDebug(@"Kayoko: installed manual-feed swipe recognizer on _UIHostedWindow from began");
             [recognizer touchesBegan:beganTouches withEvent:event];
         }
@@ -243,7 +243,7 @@ static void kayokoManuallyFeedSwipeUpRecognizerInKeyboardWindow(UIWindow *window
         return;
     }
 
-    UISwipeGestureRecognizer *recognizer = objc_getAssociatedObject(window, &kayokoSwipeUpGestureRecognizerKey);
+    UIGestureRecognizer *recognizer = objc_getAssociatedObject(window, &kayokoSwipeUpGestureRecognizerKey);
     if (!recognizer) {
         kayokoSetManualSwipeUpActive(window, NO);
         return;
