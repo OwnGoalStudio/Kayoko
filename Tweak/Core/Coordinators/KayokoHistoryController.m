@@ -7,7 +7,7 @@
 
 #import "KayokoHistoryListView.h"
 #import "KayokoHistoryListViewController.h"
-#import "PasteboardManager.h"
+#import "KayokoPasteboardManager.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -99,7 +99,7 @@ NS_ASSUME_NONNULL_END
     if ([historyKey isEqualToString:kKayokoHistoryKeyFavorites]) {
         return NSUIntegerMax;
     }
-    return [[PasteboardManager sharedInstance] maximumHistoryAmount];
+    return [[KayokoPasteboardManager sharedInstance] maximumHistoryAmount];
 }
 
 - (BOOL)shouldAnimateUpdatesForHistoryKey:(NSString *)historyKey {
@@ -208,7 +208,7 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    [[PasteboardManager sharedInstance]
+    [[KayokoPasteboardManager sharedInstance]
         getItemsFromHistoryWithKey:historyKey
                         completion:^(NSMutableArray<NSDictionary<NSString *, id> *> *items) {
                           [listViewController updateDataWithItems:items animatingTopInsertions:animatingTopInsertions];

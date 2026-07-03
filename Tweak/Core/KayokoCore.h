@@ -9,7 +9,13 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-OBJC_EXTERN BOOL KayokoCorePasteTipsDisabled(void);
-OBJC_EXTERN void EnableKayokoDisablePasteTips(void);
+@interface KayokoPasteTipHookInstaller : NSObject
+
++ (void)installHooks;
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
+@end
 
 NS_ASSUME_NONNULL_END

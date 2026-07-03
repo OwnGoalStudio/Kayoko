@@ -1,13 +1,13 @@
 //
-//  PasteboardItem.m
+//  KayokoPasteboardItem.m
 //  Kayoko
 //
 //  Created by Alexandra Aurora Göttlicher
 //
 
-#import "PasteboardItem.h"
+#import "KayokoPasteboardItem.h"
 
-@implementation PasteboardItem
+@implementation KayokoPasteboardItem
 
 - (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier
                               andContent:(NSString *)content
@@ -24,7 +24,7 @@
     return self;
 }
 
-+ (PasteboardItem *)itemFromDictionary:(NSDictionary<NSString *, id> *)dictionary {
++ (KayokoPasteboardItem *)itemFromDictionary:(NSDictionary<NSString *, id> *)dictionary {
     if (!dictionary) {
         return nil;
     }
@@ -32,9 +32,9 @@
     NSString *bundleIdentifier = dictionary[kKayokoItemKeyBundleIdentifier];
     NSString *content = dictionary[kKayokoItemKeyContent];
     NSString *imageName = dictionary[kKayokoItemKeyImageName];
-    return [[PasteboardItem alloc] initWithBundleIdentifier:bundleIdentifier
-                                                 andContent:content
-                                             withImageNamed:imageName];
+    return [[KayokoPasteboardItem alloc] initWithBundleIdentifier:bundleIdentifier
+                                                       andContent:content
+                                                   withImageNamed:imageName];
 }
 
 - (NSDictionary<NSString *, id> *)dictionaryRepresentation {

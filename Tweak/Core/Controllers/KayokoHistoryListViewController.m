@@ -8,12 +8,12 @@
 #import "KayokoHistoryItemActionHandler.h"
 #import "KayokoHistoryListView.h"
 #import "KayokoHistoryTableView.h"
+#import "KayokoPasteboardItem.h"
+#import "KayokoPasteboardManager.h"
 #import "KayokoTableDataStore.h"
 #import "KayokoTableViewCell.h"
 #import "KayokoTableViewCellContent.h"
 #import "KayokoTableViewCellContentProvider.h"
-#import "PasteboardItem.h"
-#import "PasteboardManager.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -392,7 +392,7 @@ NS_ASSUME_NONNULL_END
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSDictionary<NSString *, id> *dictionary = [self itemDictionaryAtIndexPath:indexPath];
-    PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
+    KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:dictionary];
     KayokoTableViewCellContent *content = [[self cellContentProvider] cellContentForItem:item
                                                                         previewLineCount:[self previewLineCount]
                                                                               searchText:[self searchText]];
@@ -420,12 +420,17 @@ NS_ASSUME_NONNULL_END
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [[tableView cellForRowAtIndexPath:indexPath] setSelected:NO animated:YES];
 
-    PasteboardItem *item = [PasteboardItem itemFromDictionary:[self itemDictionaryAtIndexPath:indexPath]];
+    KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:[self itemDictionaryAtIndexPath:indexPath]];
     [[self actionHandler] performDirectPasteWithItem:item
                                           historyKey:[self historyKey]
                                           completion:^(BOOL success) {
                                             if (success) {
-                                                [[self delegate] historyListViewControllerDidRequestHide:self];
+                                                if ([self automaticallyPaste]) {
+                                                    [[self delegate]
+                                                        historyListViewControllerDidRequestHideAfterDirectPaste:self];
+                                                } else {
+                                                    [[self delegate] historyListViewControllerDidRequestHide:self];
+                                                }
                                             }
                                           }];
 }
@@ -434,7 +439,7 @@ NS_ASSUME_NONNULL_END
     leadingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSMutableArray<UIContextualAction *> *actions = [[NSMutableArray alloc] init];
     NSDictionary<NSString *, id> *dictionary = [self itemDictionaryAtIndexPath:indexPath];
-    PasteboardItem *item = [PasteboardItem itemFromDictionary:dictionary];
+    KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:dictionary];
 
     UIContextualAction *moveAction = [self moveActionForItem:item dictionary:dictionary indexPath:indexPath];
     if (moveAction) {
@@ -456,7 +461,7 @@ NS_ASSUME_NONNULL_END
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
     trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
-    PasteboardItem *item = [PasteboardItem itemFromDictionary:[self itemDictionaryAtIndexPath:indexPath]];
+    KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:[self itemDictionaryAtIndexPath:indexPath]];
 
     UIContextualAction *deleteAction = [UIContextualAction
         contextualActionWithStyle:UIContextualActionStyleDestructive
@@ -488,7 +493,7 @@ NS_ASSUME_NONNULL_END
     return [UISwipeActionsConfiguration configurationWithActions:@[ deleteAction ]];
 }
 
-- (UIContextualAction *)moveActionForItem:(PasteboardItem *)item
+- (UIContextualAction *)moveActionForItem:(KayokoPasteboardItem *)item
                                dictionary:(NSDictionary<NSString *, id> *)dictionary
                                 indexPath:(NSIndexPath *)indexPath {
     NSString *sourceHistoryKey = [self historyKey];
@@ -532,7 +537,7 @@ NS_ASSUME_NONNULL_END
     return moveAction;
 }
 
-- (UIContextualAction *)saveActionForItem:(PasteboardItem *)item {
+- (UIContextualAction *)saveActionForItem:(KayokoPasteboardItem *)item {
     if (![self automaticallyPaste] && [[item imageName] length] == 0) {
         return nil;
     }
@@ -554,7 +559,7 @@ NS_ASSUME_NONNULL_END
     return saveAction;
 }
 
-- (UIContextualAction *)linkActionForItem:(PasteboardItem *)item {
+- (UIContextualAction *)linkActionForItem:(KayokoPasteboardItem *)item {
     if (![item hasLink]) {
         return nil;
     }
@@ -577,7 +582,7 @@ NS_ASSUME_NONNULL_END
     }
 
     NSIndexPath *indexPath = [[self tableView] indexPathForCell:(UITableViewCell *)[recognizer view]];
-    PasteboardItem *item = [PasteboardItem itemFromDictionary:[self itemDictionaryAtIndexPath:indexPath]];
+    KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:[self itemDictionaryAtIndexPath:indexPath]];
     if (item) {
         [[self delegate] historyListViewController:self didRequestPreviewForItem:item];
     }

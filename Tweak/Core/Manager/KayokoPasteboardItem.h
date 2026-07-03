@@ -1,5 +1,5 @@
 //
-//  PasteboardItem.h
+//  KayokoPasteboardItem.h
 //  Kayoko
 //
 //  Created by Alexandra Aurora Göttlicher
@@ -14,7 +14,7 @@ static NSString *const kKayokoItemKeyContent = @"content";
 static NSString *const kKayokoItemKeyImageName = @"image_name";
 static NSString *const kKayokoItemKeyHasLink = @"has_link";
 
-@interface PasteboardItem : NSObject
+@interface KayokoPasteboardItem : NSObject
 
 @property(nonatomic, copy) NSString *bundleIdentifier;
 @property(nonatomic, copy) NSString *displayName;
@@ -26,7 +26,7 @@ static NSString *const kKayokoItemKeyHasLink = @"has_link";
                               andContent:(NSString *)content
                           withImageNamed:(nullable NSString *)imageName;
 
-+ (nullable PasteboardItem *)itemFromDictionary:(nullable NSDictionary<NSString *, id> *)dictionary;
++ (nullable KayokoPasteboardItem *)itemFromDictionary:(nullable NSDictionary<NSString *, id> *)dictionary;
 - (NSDictionary<NSString *, id> *)dictionaryRepresentation;
 
 @end

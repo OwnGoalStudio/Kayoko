@@ -5,12 +5,12 @@ kayoko_updater_USE_MODULES := 0
 
 kayoko_updater_FILES += main.m
 kayoko_updater_FILES += KayokoPostinstallUpdater.m
-kayoko_updater_FILES += ../Manager/KayokoHistoryStore.m
-kayoko_updater_FILES += ../Manager/KayokoHistoryMigrator.m
-kayoko_updater_FILES += ../Manager/PasteboardItem.m
+kayoko_updater_FILES += ../Tweak/Core/Manager/KayokoHistoryStore.m
+kayoko_updater_FILES += ../Tweak/Core/Manager/KayokoHistoryMigrator.m
+kayoko_updater_FILES += ../Tweak/Core/Manager/KayokoPasteboardItem.m
 
 kayoko_updater_CFLAGS += -fobjc-arc
-kayoko_updater_CFLAGS += -I../Manager
+kayoko_updater_CFLAGS += -I../Tweak/Core/Manager
 kayoko_updater_CFLAGS += -I../Preferences
 
 kayoko_updater_LIBRARIES += sqlite3

@@ -4,7 +4,7 @@
 //
 
 #import "KayokoEmptyStateView.h"
-#import "PasteboardManager.h"
+#import "KayokoPasteboardManager.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -58,10 +58,12 @@ NS_ASSUME_NONNULL_END
     NSString *localizationKey =
         [historyKey isEqualToString:kKayokoHistoryKeyFavorites] ? @"No Favorite Items" : @"No History Items";
     NSString *titleKey = [historyKey isEqualToString:kKayokoHistoryKeyFavorites] ? @"Favorites" : @"History";
-    [self setName:[[PasteboardManager localizationBundle] localizedStringForKey:titleKey value:nil table:@"Tweak"]];
-    [[self messageLabel] setText:[[PasteboardManager localizationBundle] localizedStringForKey:localizationKey
-                                                                                         value:nil
-                                                                                         table:@"Tweak"]];
+    [self setName:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:titleKey
+                                                                                value:nil
+                                                                                table:@"Tweak"]];
+    [[self messageLabel] setText:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:localizationKey
+                                                                                               value:nil
+                                                                                               table:@"Tweak"]];
 }
 
 @end

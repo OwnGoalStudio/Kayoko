@@ -4,7 +4,7 @@
 //
 
 #import "KayokoApplicationMetadataProvider.h"
-#import "PasteboardManager.h"
+#import "KayokoPasteboardManager.h"
 
 #import <objc/runtime.h>
 
@@ -44,7 +44,9 @@ NS_ASSUME_NONNULL_END
 
 - (NSString *)displayNameForBundleIdentifier:(NSString *)bundleIdentifier {
     if ([bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
-        return [[PasteboardManager localizationBundle] localizedStringForKey:@"SpringBoard" value:nil table:@"Tweak"];
+        return [[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"SpringBoard"
+                                                                             value:nil
+                                                                             table:@"Tweak"];
     }
 
     NSString *displayName = [[[objc_getClass("SBApplicationController") sharedInstance]
@@ -63,7 +65,7 @@ NS_ASSUME_NONNULL_END
     if ([bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
         BOOL isPad = [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad;
         icon = [UIImage imageNamed:isPad ? @"HLS_iPad_Universal" : @"HLS_iPhone_Universal"
-                                 inBundle:[PasteboardManager localizationBundle]
+                                 inBundle:[KayokoPasteboardManager localizationBundle]
             compatibleWithTraitCollection:nil];
     } else {
         icon = [UIImage _applicationIconImageForBundleIdentifier:bundleIdentifier

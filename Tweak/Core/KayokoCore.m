@@ -7,83 +7,220 @@
 
 #import "KayokoCore.h"
 #import "KayokoCoreRuntime.h"
+#import "KayokoNotificationKeys.h"
 #import "KayokoSpringBoardHooks.h"
-#import "NotificationKeys.h"
 
 #import <CoreFoundation/CoreFoundation.h>
 
-static void kayokoCoreAddDarwinObserver(CFStringRef name, CFNotificationCallback callback) {
+typedef NS_ENUM(NSUInteger, KayokoCoreProcessKind) {
+    KayokoCoreProcessKindUnsupported = 0,
+    KayokoCoreProcessKindSpringBoard,
+    KayokoCoreProcessKindDruidOrPasted,
+};
+
+@interface KayokoCoreProcessContext : NSObject
+
+@property(nonatomic, assign, readonly) KayokoCoreProcessKind kind;
+
++ (instancetype)currentContext;
+
+- (instancetype)initWithKind:(KayokoCoreProcessKind)kind;
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
+@end
+
+@interface KayokoCoreBootstrap : NSObject
+
++ (void)installForSpringBoard;
++ (void)installForDruidOrPasted;
+
+@end
+
+@implementation KayokoCoreProcessContext
+
++ (instancetype)currentContext {
+    if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"]) {
+        return [[self alloc] initWithKind:KayokoCoreProcessKindSpringBoard];
+    }
+
+    NSArray<NSString *> *args = [[NSProcessInfo processInfo] arguments];
+    NSString *processName = [[NSProcessInfo processInfo] processName];
+    NSString *executablePath = [args firstObject];
+    BOOL isSystemExecutable =
+        [executablePath hasPrefix:@"/System/Library/"] || [executablePath hasPrefix:@"/usr/libexec/"];
+    BOOL isPasteTipProcess = [processName isEqualToString:@"druid"] || [processName isEqualToString:@"pasted"];
+    if (isSystemExecutable && isPasteTipProcess) {
+        return [[self alloc] initWithKind:KayokoCoreProcessKindDruidOrPasted];
+    }
+
+    return [[self alloc] initWithKind:KayokoCoreProcessKindUnsupported];
+}
+
+- (instancetype)initWithKind:(KayokoCoreProcessKind)kind {
+    self = [super init];
+    if (self) {
+        _kind = kind;
+    }
+    return self;
+}
+
+@end
+
+static void kayokoCorePasteboardChangedCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                                const void *object, CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] capturePasteboardChange];
+}
+
+static void kayokoCoreShowCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object,
+                                   CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] show];
+}
+
+static void kayokoCoreHideCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object,
+                                   CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] hide];
+}
+
+static void kayokoCoreReloadCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                     const void *object, CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] reloadHistory];
+}
+
+static void kayokoCorePreferencesReloadCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                                const void *object, CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] loadPreferences];
+}
+
+static void kayokoCoreHeightPreferenceReloadCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                                     const void *object, CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] loadHeightPreference];
+}
+
+static void kayokoCoreHelperPasteCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                          const void *object, CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] playPasteFeedback];
+}
+
+static void kayokoCorePasteWillStartCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                             const void *object, CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] markPasteWillStart];
+}
+
+static void kayokoCorePasteTipPreferencesReloadCallback(CFNotificationCenterRef center, void *observer,
+                                                        CFStringRef name, const void *object,
+                                                        CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] refreshPasteTipPreferences];
+}
+
+@implementation KayokoCoreBootstrap
+
++ (void)addDarwinObserverForName:(CFStringRef)name callback:(CFNotificationCallback)callback {
     CFNotificationCenterAddObserver(
         CFNotificationCenterGetDarwinNotifyCenter(), NULL, callback, name, NULL,
         (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
 }
 
-static CFStringRef kayokoCoreNotificationName(NSString *name) { return (__bridge CFStringRef)name; }
-
-static BOOL kayokoCoreIsSpringBoardProcess(void) {
-    return [[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"];
-}
-
-static BOOL kayokoCoreIsDruidOrPastedProcess(void) {
-    NSArray<NSString *> *args = [[NSProcessInfo processInfo] arguments];
-    NSString *processName = [[NSProcessInfo processInfo] processName];
-    NSString *executablePath = [args firstObject];
-    return ([executablePath hasPrefix:@"/System/Library/"] || [executablePath hasPrefix:@"/usr/libexec/"]) &&
-           ([processName isEqualToString:@"druid"] || [processName isEqualToString:@"pasted"]);
-}
-
-static void kayokoCoreInstallSpringBoardRuntime(void) {
-    KayokoCoreLoadPreferences();
-    if (!KayokoCoreEnabled()) {
++ (void)installForSpringBoard {
+    KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];
+    [runtime loadPreferences];
+    if (![runtime isEnabled]) {
         return;
     }
 
-    EnableKayokoDisablePasteTips();
-    KayokoInstallSpringBoardHooks();
-    KayokoCoreStartLockStateObserver();
+    [KayokoPasteTipHookInstaller installHooks];
+    [KayokoSpringBoardHookInstaller installHooks];
+    [runtime startLockStateObserver];
 
-    kayokoCoreAddDarwinObserver(CFSTR("com.apple.pasteboard.notify.changed"), (CFNotificationCallback)KayokoCoreCopy);
-    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyCoreShow),
-                                (CFNotificationCallback)KayokoCoreShow);
-    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoLegacyNotificationKeyCoreShow),
-                                (CFNotificationCallback)KayokoCoreShow);
-    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyCoreHide),
-                                (CFNotificationCallback)KayokoCoreHide);
-    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoLegacyNotificationKeyCoreHide),
-                                (CFNotificationCallback)KayokoCoreHide);
-    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyCoreReload),
-                                (CFNotificationCallback)KayokoCoreReload);
-    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyPreferencesReload),
-                                (CFNotificationCallback)KayokoCoreLoadPreferences);
-    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyPreferencesHeightReload),
-                                (CFNotificationCallback)KayokoCoreLoadHeightPreference);
-    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyHelperPaste),
-                                (CFNotificationCallback)KayokoCorePaste);
-    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyPasteWillStart),
-                                (CFNotificationCallback)KayokoCorePasteWillStart);
+    [self addDarwinObserverForName:CFSTR("com.apple.pasteboard.notify.changed")
+                          callback:kayokoCorePasteboardChangedCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCoreShow
+                          callback:kayokoCoreShowCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoLegacyNotificationKeyCoreShow
+                          callback:kayokoCoreShowCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCoreHide
+                          callback:kayokoCoreHideCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoLegacyNotificationKeyCoreHide
+                          callback:kayokoCoreHideCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCoreReload
+                          callback:kayokoCoreReloadCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyPreferencesReload
+                          callback:kayokoCorePreferencesReloadCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyPreferencesHeightReload
+                          callback:kayokoCoreHeightPreferenceReloadCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyHelperPaste
+                          callback:kayokoCoreHelperPasteCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyPasteWillStart
+                          callback:kayokoCorePasteWillStartCallback];
 }
 
-static void kayokoCoreReloadPasteTipPreferences(void) { KayokoCoreRefreshPasteTipPreferences(); }
-
-static void kayokoCoreInstallDruidOrPastedRuntime(void) {
-    BOOL shouldInstallPasteTipHooks = KayokoCoreRefreshPasteTipPreferences();
++ (void)installForDruidOrPasted {
+    BOOL shouldInstallPasteTipHooks = [[KayokoCoreRuntime sharedRuntime] refreshPasteTipPreferences];
     if (!shouldInstallPasteTipHooks) {
         return;
     }
 
-    EnableKayokoDisablePasteTips();
-    kayokoCoreAddDarwinObserver(kayokoCoreNotificationName(kKayokoNotificationKeyPreferencesReload),
-                                (CFNotificationCallback)kayokoCoreReloadPasteTipPreferences);
+    [KayokoPasteTipHookInstaller installHooks];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyPreferencesReload
+                          callback:kayokoCorePasteTipPreferencesReloadCallback];
 }
 
-__attribute((constructor)) static void initialize() {
-    if (kayokoCoreIsSpringBoardProcess()) {
-        kayokoCoreInstallSpringBoardRuntime();
-        return;
-    }
+@end
 
-    if (kayokoCoreIsDruidOrPastedProcess()) {
-        kayokoCoreInstallDruidOrPastedRuntime();
+__attribute((constructor)) static void initialize() {
+    switch ([KayokoCoreProcessContext currentContext].kind) {
+    case KayokoCoreProcessKindSpringBoard:
+        [KayokoCoreBootstrap installForSpringBoard];
+        return;
+    case KayokoCoreProcessKindDruidOrPasted:
+        [KayokoCoreBootstrap installForDruidOrPasted];
+        return;
+    case KayokoCoreProcessKindUnsupported:
         return;
     }
 }

@@ -7,9 +7,9 @@
 
 #import "KayokoHistoryListView.h"
 #import "KayokoHistoryListViewController.h"
+#import "KayokoPasteboardManager.h"
 #import "KayokoSearchBar.h"
 #import "KayokoSearchPresentationController.h"
-#import "PasteboardManager.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -56,9 +56,9 @@ NS_ASSUME_NONNULL_END
 
 - (UISearchBar *)newSearchBar {
     UISearchBar *searchBar = [[KayokoSearchBar alloc] initWithFrame:CGRectZero];
-    [searchBar setPlaceholder:[[PasteboardManager localizationBundle] localizedStringForKey:@"Search"
-                                                                                      value:nil
-                                                                                      table:@"Tweak"]];
+    [searchBar setPlaceholder:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Search"
+                                                                                            value:nil
+                                                                                            table:@"Tweak"]];
     [searchBar setSearchBarStyle:UISearchBarStyleMinimal];
     [searchBar setBackgroundImage:[[UIImage alloc] init]];
     [searchBar setTintColor:[UIColor labelColor]];

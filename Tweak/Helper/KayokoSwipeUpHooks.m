@@ -5,7 +5,8 @@
 
 #define CHUseSubstrate
 
-#import "KayokoHelper.h"
+#import "KayokoHelperHookInstaller.h"
+#import "KayokoHelperRuntime.h"
 #import "KayokoSwipeUpGestureRecognizer.h"
 
 #import <CaptainHook/CaptainHook.h>
@@ -35,19 +36,13 @@ static CGFloat const kKayokoSwipeUpAdditionalBottomSafetyInset = 0.0;
 @interface _UIHostedWindow : UIWindow
 @end
 
-static CGRect kayokoSwipeAllowedBoundsForView(UIView *view) {
+static BOOL kayokoPointIsInsideAllowedSwipeRegion(UIView *view, CGPoint point) {
     UIEdgeInsets safeAreaInsets = view.safeAreaInsets;
     safeAreaInsets.bottom += kKayokoSwipeUpAdditionalBottomSafetyInset;
     CGRect allowedBounds = UIEdgeInsetsInsetRect(view.bounds, safeAreaInsets);
     if (CGRectGetWidth(allowedBounds) <= 0 || CGRectGetHeight(allowedBounds) <= 0) {
-        return CGRectNull;
+        return NO;
     }
-
-    return allowedBounds;
-}
-
-static BOOL kayokoPointIsInsideAllowedSwipeRegion(UIView *view, CGPoint point) {
-    CGRect allowedBounds = kayokoSwipeAllowedBoundsForView(view);
     if (CGRectIsNull(allowedBounds)) {
         return NO;
     }
@@ -55,40 +50,10 @@ static BOOL kayokoPointIsInsideAllowedSwipeRegion(UIView *view, CGPoint point) {
     return CGRectContainsPoint(allowedBounds, point);
 }
 
-static id kayokoSharedApplication(void) {
-    Class applicationClass = NSClassFromString(@"UIApplication");
-    SEL sharedApplicationSelector = NSSelectorFromString(@"sharedApplication");
-    if (![applicationClass respondsToSelector:sharedApplicationSelector]) {
-        return nil;
-    }
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-    return [applicationClass performSelector:sharedApplicationSelector];
-#pragma clang diagnostic pop
-}
-
-static void kayokoCancelAllTouches(void) {
-    id application = kayokoSharedApplication();
-    SEL cancelAllTouchesSelector = NSSelectorFromString(@"_cancelAllTouches");
-    if (![application respondsToSelector:cancelAllTouchesSelector]) {
-        return;
-    }
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-    [application performSelector:cancelAllTouchesSelector];
-#pragma clang diagnostic pop
-}
-
-static void kayokoShowKayokoAndCancelTouches(void) {
-    KayokoHelperCaptureCurrentFirstResponder();
-    KayokoHelperPostCoreShow();
-    kayokoCancelAllTouches();
-}
-
 static void kayokoDiscardSwipeUpGestureRecognizer(UIView *view);
 static void kayokoSetManualSwipeUpActive(UIWindow *window, BOOL active);
+
+NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSwipeUpGestureHandler : NSObject <UIGestureRecognizerDelegate>
 - (instancetype)initWithView:(UIView *)view keyboardExtension:(BOOL)keyboardExtension;
@@ -99,6 +64,8 @@ static void kayokoSetManualSwipeUpActive(UIWindow *window, BOOL active);
 @property(nonatomic, weak, readonly) UIView *view;
 @property(nonatomic, assign, readonly, getter=isKeyboardExtension) BOOL keyboardExtension;
 @end
+
+NS_ASSUME_NONNULL_END
 
 @implementation KayokoSwipeUpGestureHandler
 
@@ -135,21 +102,30 @@ static void kayokoSetManualSwipeUpActive(UIWindow *window, BOOL active);
         }
     }
 
-    kayokoShowKayokoAndCancelTouches();
+    if ([[KayokoHelperRuntime sharedRuntime] activateKayokoAfterCapturingCurrentFocus]) {
+        Class applicationClass = NSClassFromString(@"UIApplication");
+        SEL sharedApplicationSelector = NSSelectorFromString(@"sharedApplication");
+        if (![applicationClass respondsToSelector:sharedApplicationSelector]) {
+            return;
+        }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        id application = [applicationClass performSelector:sharedApplicationSelector];
+#pragma clang diagnostic pop
+        SEL cancelAllTouchesSelector = NSSelectorFromString(@"_cancelAllTouches");
+        if (![application respondsToSelector:cancelAllTouchesSelector]) {
+            return;
+        }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        [application performSelector:cancelAllTouchesSelector];
+#pragma clang diagnostic pop
+    }
 }
 
 @end
-
-static KayokoSwipeUpGestureHandler *kayokoSwipeUpGestureHandlerForView(UIView *view, BOOL keyboardExtension) {
-    KayokoSwipeUpGestureHandler *handler = objc_getAssociatedObject(view, &kayokoSwipeUpGestureHandlerKey);
-    if (handler) {
-        return handler;
-    }
-
-    handler = [[KayokoSwipeUpGestureHandler alloc] initWithView:view keyboardExtension:keyboardExtension];
-    objc_setAssociatedObject(view, &kayokoSwipeUpGestureHandlerKey, handler, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    return handler;
-}
 
 static KayokoSwipeUpGestureRecognizer *kayokoEnsureSwipeUpGestureRecognizer(UIView *view, BOOL keyboardExtension) {
     KayokoSwipeUpGestureRecognizer *recognizer = objc_getAssociatedObject(view, &kayokoSwipeUpGestureRecognizerKey);
@@ -157,7 +133,12 @@ static KayokoSwipeUpGestureRecognizer *kayokoEnsureSwipeUpGestureRecognizer(UIVi
         return recognizer;
     }
 
-    KayokoSwipeUpGestureHandler *handler = kayokoSwipeUpGestureHandlerForView(view, keyboardExtension);
+    KayokoSwipeUpGestureHandler *handler = objc_getAssociatedObject(view, &kayokoSwipeUpGestureHandlerKey);
+    if (!handler) {
+        handler = [[KayokoSwipeUpGestureHandler alloc] initWithView:view keyboardExtension:keyboardExtension];
+        objc_setAssociatedObject(view, &kayokoSwipeUpGestureHandlerKey, handler, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+
     recognizer = [[KayokoSwipeUpGestureRecognizer alloc] initWithTarget:handler
                                                                  action:@selector(handleSwipeUpGesture:)];
     recognizer.cancelsTouchesInView = NO;
@@ -187,16 +168,6 @@ static void kayokoSetManualSwipeUpActive(UIWindow *window, BOOL active) {
     objc_setAssociatedObject(window, &kayokoManualSwipeUpActiveKey, @(active), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-static NSSet<UITouch *> *kayokoTouchesForWindow(UIWindow *window, UIEvent *event) {
-    NSMutableSet<UITouch *> *touches = [NSMutableSet set];
-    for (UITouch *touch in [event allTouches]) {
-        if (touch.window == window) {
-            [touches addObject:touch];
-        }
-    }
-    return touches;
-}
-
 static NSSet<UITouch *> *kayokoTouchesForWindowWithPhase(UIWindow *window, UIEvent *event, UITouchPhase phase) {
     NSMutableSet<UITouch *> *touches = [NSMutableSet set];
     for (UITouch *touch in [event allTouches]) {
@@ -207,66 +178,79 @@ static NSSet<UITouch *> *kayokoTouchesForWindowWithPhase(UIWindow *window, UIEve
     return touches;
 }
 
-static void kayokoManuallyFeedSwipeUpRecognizerInKeyboardWindow(UIWindow *window, UIEvent *event) {
+CHOptimizedMethod1(self, void, _UIHostedWindow, sendEvent, UIEvent *, event) {
     if (event.type != UIEventTypeTouches) {
+        CHSuper1(_UIHostedWindow, sendEvent, event);
         return;
     }
 
-    NSSet<UITouch *> *windowTouches = kayokoTouchesForWindow(window, event);
-    if (windowTouches.count > 1) {
-        if (kayokoManualSwipeUpIsActive(window)) {
-            UIGestureRecognizer *recognizer = objc_getAssociatedObject(window, &kayokoSwipeUpGestureRecognizerKey);
-            [recognizer touchesCancelled:windowTouches withEvent:event];
-            kayokoSetManualSwipeUpActive(window, NO);
-            kayokoDiscardSwipeUpGestureRecognizer(window);
+    NSMutableSet<UITouch *> *windowTouches = [NSMutableSet set];
+    for (UITouch *touch in [event allTouches]) {
+        if (touch.window == self) {
+            [windowTouches addObject:touch];
         }
+    }
+
+    if (windowTouches.count > 1) {
+        if (kayokoManualSwipeUpIsActive(self)) {
+            UIGestureRecognizer *recognizer = objc_getAssociatedObject(self, &kayokoSwipeUpGestureRecognizerKey);
+            [recognizer touchesCancelled:windowTouches withEvent:event];
+            kayokoSetManualSwipeUpActive(self, NO);
+            kayokoDiscardSwipeUpGestureRecognizer(self);
+        }
+        CHSuper1(_UIHostedWindow, sendEvent, event);
         return;
     }
 
-    NSSet<UITouch *> *beganTouches = kayokoTouchesForWindowWithPhase(window, event, UITouchPhaseBegan);
+    NSSet<UITouch *> *beganTouches = kayokoTouchesForWindowWithPhase(self, event, UITouchPhaseBegan);
     if (beganTouches.count > 0) {
         UITouch *touch = [beganTouches anyObject];
         BOOL active =
-            beganTouches.count == 1 && kayokoPointIsInsideAllowedSwipeRegion(window, [touch locationInView:window]);
-        kayokoSetManualSwipeUpActive(window, active);
+            beganTouches.count == 1 && kayokoPointIsInsideAllowedSwipeRegion(self, [touch locationInView:self]);
+        kayokoSetManualSwipeUpActive(self, active);
         HBLogDebug(@"Kayoko: manual swipe recognizer began active=%@", active ? @"YES" : @"NO");
         if (active) {
-            kayokoDiscardSwipeUpGestureRecognizer(window);
-            UIGestureRecognizer *recognizer = kayokoEnsureSwipeUpGestureRecognizer(window, YES);
+            kayokoDiscardSwipeUpGestureRecognizer(self);
+            UIGestureRecognizer *recognizer = kayokoEnsureSwipeUpGestureRecognizer(self, YES);
             HBLogDebug(@"Kayoko: installed manual-feed swipe recognizer on _UIHostedWindow from began");
             [recognizer touchesBegan:beganTouches withEvent:event];
         }
+        CHSuper1(_UIHostedWindow, sendEvent, event);
         return;
     }
 
-    if (!kayokoManualSwipeUpIsActive(window)) {
+    if (!kayokoManualSwipeUpIsActive(self)) {
+        CHSuper1(_UIHostedWindow, sendEvent, event);
         return;
     }
 
-    UIGestureRecognizer *recognizer = objc_getAssociatedObject(window, &kayokoSwipeUpGestureRecognizerKey);
+    UIGestureRecognizer *recognizer = objc_getAssociatedObject(self, &kayokoSwipeUpGestureRecognizerKey);
     if (!recognizer) {
-        kayokoSetManualSwipeUpActive(window, NO);
+        kayokoSetManualSwipeUpActive(self, NO);
+        CHSuper1(_UIHostedWindow, sendEvent, event);
         return;
     }
 
-    NSSet<UITouch *> *movedTouches = kayokoTouchesForWindowWithPhase(window, event, UITouchPhaseMoved);
+    NSSet<UITouch *> *movedTouches = kayokoTouchesForWindowWithPhase(self, event, UITouchPhaseMoved);
     if (movedTouches.count > 0) {
         [recognizer touchesMoved:movedTouches withEvent:event];
     }
 
-    NSSet<UITouch *> *endedTouches = kayokoTouchesForWindowWithPhase(window, event, UITouchPhaseEnded);
+    NSSet<UITouch *> *endedTouches = kayokoTouchesForWindowWithPhase(self, event, UITouchPhaseEnded);
     if (endedTouches.count > 0) {
         [recognizer touchesEnded:endedTouches withEvent:event];
-        kayokoSetManualSwipeUpActive(window, NO);
-        kayokoDiscardSwipeUpGestureRecognizer(window);
+        kayokoSetManualSwipeUpActive(self, NO);
+        kayokoDiscardSwipeUpGestureRecognizer(self);
     }
 
-    NSSet<UITouch *> *cancelledTouches = kayokoTouchesForWindowWithPhase(window, event, UITouchPhaseCancelled);
+    NSSet<UITouch *> *cancelledTouches = kayokoTouchesForWindowWithPhase(self, event, UITouchPhaseCancelled);
     if (cancelledTouches.count > 0) {
         [recognizer touchesCancelled:cancelledTouches withEvent:event];
-        kayokoSetManualSwipeUpActive(window, NO);
-        kayokoDiscardSwipeUpGestureRecognizer(window);
+        kayokoSetManualSwipeUpActive(self, NO);
+        kayokoDiscardSwipeUpGestureRecognizer(self);
     }
+
+    CHSuper1(_UIHostedWindow, sendEvent, event);
 }
 
 CHOptimizedMethod0(self, void, UIInputSetHostView, didMoveToWindow) {
@@ -279,12 +263,9 @@ CHOptimizedMethod0(self, void, UIInputSetHostView, didMoveToWindow) {
     kayokoEnsureSwipeUpGestureRecognizer(self, NO);
 }
 
-CHOptimizedMethod1(self, void, _UIHostedWindow, sendEvent, UIEvent *, event) {
-    kayokoManuallyFeedSwipeUpRecognizerInKeyboardWindow(self, event);
-    CHSuper1(_UIHostedWindow, sendEvent, event);
-}
+@implementation KayokoHelperHookInstaller (SwipeUp)
 
-void EnableKayokoActivationSwipeUp(void) {
++ (void)installSwipeUpHooks {
     static dispatch_once_t sOnceToken;
     dispatch_once(&sOnceToken, ^{
       CHLoadClass_(&UIInputSetHostView$, NSClassFromString(@"UIInputSetHostView"));
@@ -293,7 +274,7 @@ void EnableKayokoActivationSwipeUp(void) {
     });
 }
 
-void EnableKayokoActivationSwipeUpForKeyboardExtension(void) {
++ (void)installKeyboardExtensionSwipeUpHooks {
     static dispatch_once_t sOnceToken;
     dispatch_once(&sOnceToken, ^{
       CHLoadClass_(&_UIHostedWindow$, NSClassFromString(@"_UIHostedWindow"));
@@ -301,3 +282,5 @@ void EnableKayokoActivationSwipeUpForKeyboardExtension(void) {
       CHHook1(_UIHostedWindow, sendEvent);
     });
 }
+
+@end

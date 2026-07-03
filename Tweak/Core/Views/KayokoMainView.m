@@ -8,7 +8,7 @@
 #import "KayokoMainView.h"
 
 #import "KayokoHeaderButtonStyle.h"
-#import "PasteboardManager.h"
+#import "KayokoPasteboardManager.h"
 #import <QuartzCore/QuartzCore.h>
 
 static CGFloat const kKayokoTitleTapControlHeight = 44;
@@ -173,9 +173,9 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
         ]];
 
         [self setTitleLabel:[[UILabel alloc] init]];
-        [[self titleLabel] setText:[[PasteboardManager localizationBundle] localizedStringForKey:@"History"
-                                                                                           value:nil
-                                                                                           table:@"Tweak"]];
+        [[self titleLabel] setText:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"History"
+                                                                                                 value:nil
+                                                                                                 table:@"Tweak"]];
         [[self titleLabel] setFont:[UIFont systemFontOfSize:26 weight:UIFontWeightSemibold]];
         [[self titleLabel] setTextColor:[UIColor labelColor]];
         [[self headerView] addSubview:[self titleLabel]];

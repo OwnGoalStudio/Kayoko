@@ -6,18 +6,19 @@
 #import <UIKit/UIKit.h>
 
 @class KayokoTableViewCellContent;
-@class PasteboardItem;
+@class KayokoPasteboardItem;
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoTableViewCellContentProvider : NSObject
 
-- (KayokoTableViewCellContent *)cellContentForItem:(PasteboardItem *)item previewLineCount:(NSUInteger)previewLineCount;
-- (KayokoTableViewCellContent *)cellContentForItem:(PasteboardItem *)item
+- (KayokoTableViewCellContent *)cellContentForItem:(KayokoPasteboardItem *)item
+                                  previewLineCount:(NSUInteger)previewLineCount;
+- (KayokoTableViewCellContent *)cellContentForItem:(KayokoPasteboardItem *)item
                                   previewLineCount:(NSUInteger)previewLineCount
                                         searchText:(nullable NSString *)searchText;
 
-- (void)loadThumbnailForItem:(PasteboardItem *)item
+- (void)loadThumbnailForItem:(KayokoPasteboardItem *)item
                   targetSize:(CGSize)targetSize
                   completion:(void (^)(UIImage *_Nullable image))completion;
 

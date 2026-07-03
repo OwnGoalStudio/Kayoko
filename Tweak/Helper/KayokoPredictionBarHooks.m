@@ -5,10 +5,10 @@
 
 #define CHUseSubstrate
 
-#import "KayokoHelper.h"
-
-#import "NotificationKeys.h"
-#import "PasteboardManager.h"
+#import "KayokoHelperHookInstaller.h"
+#import "KayokoHelperLocalization.h"
+#import "KayokoHelperRuntime.h"
+#import "KayokoNotificationKeys.h"
 
 #import <CaptainHook/CaptainHook.h>
 #import <UIKit/UIKit.h>
@@ -71,9 +71,7 @@ static TIAutocorrectionList *kayokoCreateAutocorrectionList(void) {
     NSMutableArray<TIZephyrCandidate *> *candidates = [[NSMutableArray alloc] init];
     for (NSString *label in labels) {
         TIZephyrCandidate *candidate = [[objc_getClass("TIZephyrCandidate") alloc] init];
-        [candidate setLabel:[[PasteboardManager localizationBundle] localizedStringForKey:label
-                                                                                    value:nil
-                                                                                    table:@"Tweak"]];
+        [candidate setLabel:KayokoHelperLocalizedString(label)];
         [candidate setCandidate:[NSString stringWithFormat:@"{kayoko-%@}", label]];
         [candidate setFromBundleId:@"com.82flex.kayoko"];
         [candidates addObject:candidate];
@@ -105,28 +103,25 @@ CHOptimizedMethod2(self, void, UIPredictionViewController, predictionView, TUIPr
     if ([candidate respondsToSelector:@selector(fromBundleId)] &&
         [[candidate fromBundleId] isEqualToString:@"com.82flex.kayoko"]) {
         if ([[candidate candidate] isEqualToString:@"{kayoko-History}"]) {
-            KayokoHelperPostCoreShow();
+            [[KayokoHelperRuntime sharedRuntime] activateKayoko];
         } else if ([[candidate candidate] isEqualToString:@"{kayoko-Copy}"]) {
+            NSString *text = nil;
             if (@available(iOS 15.0, *)) {
                 UIKBInputDelegateManager *delegateManager =
                     [[objc_getClass("UIKeyboardImpl") activeInstance] inputDelegateManager];
                 UITextRange *range = [delegateManager selectedTextRange];
-                NSString *text = [delegateManager textInRange:range];
-
-                if (![text isEqualToString:@""]) {
-                    [[UIPasteboard generalPasteboard] setString:text];
-                }
+                text = [delegateManager textInRange:range];
             } else {
                 id delegate = [[objc_getClass("UIKeyboardImpl") activeInstance] inputDelegate];
                 UITextRange *range = [delegate selectedTextRange];
-                NSString *text = [delegate textInRange:range];
+                text = [delegate textInRange:range];
+            }
 
-                if (![text isEqualToString:@""]) {
-                    [[UIPasteboard generalPasteboard] setString:text];
-                }
+            if (text.length > 0) {
+                [[UIPasteboard generalPasteboard] setString:text];
             }
         } else if ([[candidate candidate] isEqualToString:@"{kayoko-Paste}"]) {
-            KayokoHelperPaste();
+            [[KayokoHelperRuntime sharedRuntime] pasteFromPredictionBar];
         }
     } else {
         CHSuper2(UIPredictionViewController, predictionView, predictionView, didSelectCandidate, candidate);
@@ -151,7 +146,9 @@ CHOptimizedMethod1(self, void, UIKeyboardLayoutStar, setKeyplaneName, NSString *
     }
 }
 
-void EnableKayokoPredictionBar(void) {
+@implementation KayokoHelperHookInstaller (PredictionBar)
+
++ (void)installPredictionBarHooks {
     static dispatch_once_t sOnceToken;
     dispatch_once(&sOnceToken, ^{
       CHLoadClass_(&UIKeyboardAutocorrectionController$, NSClassFromString(@"UIKeyboardAutocorrectionController"));
@@ -167,3 +164,5 @@ void EnableKayokoPredictionBar(void) {
       CHHook2(UIPredictionViewController, predictionView, didSelectCandidate);
     });
 }
+
+@end

@@ -5,12 +5,12 @@
 
 #import "KayokoHistoryItemActionHandler.h"
 
-#import "PasteboardItem.h"
-#import "PasteboardManager.h"
+#import "KayokoPasteboardItem.h"
+#import "KayokoPasteboardManager.h"
 
 @implementation KayokoHistoryItemActionHandler
 
-- (void)performDirectPasteWithItem:(PasteboardItem *)item
+- (void)performDirectPasteWithItem:(KayokoPasteboardItem *)item
                         historyKey:(NSString *)historyKey
                         completion:(void (^)(BOOL success))completion {
     if (!item || [historyKey length] == 0) {
@@ -20,24 +20,24 @@
         return;
     }
 
-    [[PasteboardManager sharedInstance] performDirectPasteWithPasteboardItem:item
-                                                                 historyItem:item
-                                                          fromHistoryWithKey:historyKey
-                                                             shouldAutoPaste:YES];
+    [[KayokoPasteboardManager sharedInstance] performDirectPasteWithPasteboardItem:item
+                                                                       historyItem:item
+                                                                fromHistoryWithKey:historyKey
+                                                                   shouldAutoPaste:YES];
     if (completion) {
         completion(YES);
     }
 }
 
-- (void)copyItem:(PasteboardItem *)item completion:(void (^)(BOOL success))completion {
-    BOOL copied = item && [[PasteboardManager sharedInstance] copyPasteboardItemToPasteboard:item];
+- (void)copyItem:(KayokoPasteboardItem *)item completion:(void (^)(BOOL success))completion {
+    BOOL copied = item && [[KayokoPasteboardManager sharedInstance] copyPasteboardItemToPasteboard:item];
     if (completion) {
         completion(copied);
     }
 }
 
-- (void)saveImageForItem:(PasteboardItem *)item completion:(void (^)(BOOL success))completion {
-    UIImage *image = item ? [[PasteboardManager sharedInstance] getImageForItem:item] : nil;
+- (void)saveImageForItem:(KayokoPasteboardItem *)item completion:(void (^)(BOOL success))completion {
+    UIImage *image = item ? [[KayokoPasteboardManager sharedInstance] getImageForItem:item] : nil;
     if (image) {
         UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil);
     }
@@ -46,7 +46,7 @@
     }
 }
 
-- (void)openLinkForItem:(PasteboardItem *)item completion:(void (^)(BOOL success))completion {
+- (void)openLinkForItem:(KayokoPasteboardItem *)item completion:(void (^)(BOOL success))completion {
     NSURL *URL = [NSURL URLWithString:[item content] ?: @""];
     if (!URL) {
         if (completion) {
@@ -64,7 +64,7 @@
                              }];
 }
 
-- (void)deleteItem:(PasteboardItem *)item
+- (void)deleteItem:(KayokoPasteboardItem *)item
         historyKey:(NSString *)historyKey
         completion:(void (^)(BOOL success))completion {
     if (!item || [historyKey length] == 0) {
@@ -74,13 +74,13 @@
         return;
     }
 
-    [[PasteboardManager sharedInstance] removePasteboardItem:item
-                                          fromHistoryWithKey:historyKey
-                                           shouldRemoveImage:YES
-                                                  completion:completion];
+    [[KayokoPasteboardManager sharedInstance] removePasteboardItem:item
+                                                fromHistoryWithKey:historyKey
+                                                 shouldRemoveImage:YES
+                                                        completion:completion];
 }
 
-- (void)moveItem:(PasteboardItem *)item
+- (void)moveItem:(KayokoPasteboardItem *)item
          sourceHistoryKey:(NSString *)sourceHistoryKey
     destinationHistoryKey:(NSString *)destinationHistoryKey
                completion:(void (^)(BOOL success))completion {
@@ -91,10 +91,10 @@
         return;
     }
 
-    [[PasteboardManager sharedInstance] movePasteboardItem:item
-                                        fromHistoryWithKey:sourceHistoryKey
-                                          toHistoryWithKey:destinationHistoryKey
-                                                completion:completion];
+    [[KayokoPasteboardManager sharedInstance] movePasteboardItem:item
+                                              fromHistoryWithKey:sourceHistoryKey
+                                                toHistoryWithKey:destinationHistoryKey
+                                                      completion:completion];
 }
 
 @end

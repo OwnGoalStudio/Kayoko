@@ -10,6 +10,7 @@
 #import <objc/runtime.h>
 
 #import "KayokoCore.h"
+#import "KayokoCoreRuntime.h"
 
 CHDeclareClass(DRPasteAnnouncer);
 CHDeclareClass(PBDruidRemotePasteAnnouncer);
@@ -38,52 +39,43 @@ typedef void (^KayokoPasteAuthorizationReply)(BOOL allowed);
 @interface SBAlertItem : NSObject
 @end
 
-static id kayokoObjectIvar(id object, const char *name) {
-    Ivar ivar = class_getInstanceVariable(object_getClass(object), name);
-    if (!ivar) {
-        return nil;
-    }
-
-    return object_getIvar(object, ivar);
-}
-
 CHOptimizedMethod0(self, void, DRPasteAnnouncer, announceDeniedPaste) {
-    if (KayokoCorePasteTipsDisabled()) {
+    if ([[KayokoCoreRuntime sharedRuntime] pasteTipsDisabled]) {
         return;
     }
     CHSuper0(DRPasteAnnouncer, announceDeniedPaste);
 }
 
 CHOptimizedMethod1(self, void, DRPasteAnnouncer, announcePaste, id, arg1) {
-    if (KayokoCorePasteTipsDisabled()) {
+    if ([[KayokoCoreRuntime sharedRuntime] pasteTipsDisabled]) {
         return;
     }
     CHSuper1(DRPasteAnnouncer, announcePaste, arg1);
 }
 
 CHOptimizedClassMethod0(self, void, PBDruidRemotePasteAnnouncer, announceDeniedPaste) {
-    if (KayokoCorePasteTipsDisabled()) {
+    if ([[KayokoCoreRuntime sharedRuntime] pasteTipsDisabled]) {
         return;
     }
     CHSuper0(PBDruidRemotePasteAnnouncer, announceDeniedPaste);
 }
 
 CHOptimizedClassMethod1(self, void, PBDruidRemotePasteAnnouncer, announcePaste, id, arg1) {
-    if (KayokoCorePasteTipsDisabled()) {
+    if ([[KayokoCoreRuntime sharedRuntime] pasteTipsDisabled]) {
         return;
     }
     CHSuper1(PBDruidRemotePasteAnnouncer, announcePaste, arg1);
 }
 
 CHOptimizedClassMethod0(self, void, PBCFUserNotificationPasteAnnouncer, announceDeniedPaste) {
-    if (KayokoCorePasteTipsDisabled()) {
+    if ([[KayokoCoreRuntime sharedRuntime] pasteTipsDisabled]) {
         return;
     }
     CHSuper0(PBCFUserNotificationPasteAnnouncer, announceDeniedPaste);
 }
 
 CHOptimizedClassMethod1(self, void, PBCFUserNotificationPasteAnnouncer, announcePaste, id, arg1) {
-    if (KayokoCorePasteTipsDisabled()) {
+    if ([[KayokoCoreRuntime sharedRuntime] pasteTipsDisabled]) {
         return;
     }
     CHSuper1(PBCFUserNotificationPasteAnnouncer, announcePaste, arg1);
@@ -104,8 +96,9 @@ CHOptimizedMethod2(self, void, PBCFUserNotificationPasteAnnouncer, announcePaste
 CHOptimizedClassMethod1(self, void, SBAlertItem, activateAlertItem, id, arg1) {
     id alertItem = arg1;
     if ([alertItem isKindOfClass:NSClassFromString(@"SBUserNotificationAlert")]) {
-        NSString *str = kayokoObjectIvar(alertItem, "_alertSource");
-        if ([str isEqualToString:@"pasted"]) {
+        Ivar alertSourceIvar = class_getInstanceVariable(object_getClass(alertItem), "_alertSource");
+        NSString *alertSource = alertSourceIvar ? object_getIvar(alertItem, alertSourceIvar) : nil;
+        if ([alertSource isEqualToString:@"pasted"]) {
             [alertItem _setActivated:NO];
             if ([alertItem respondsToSelector:@selector(_sendResponseAndCleanUp:)]) {
                 [alertItem _sendResponseAndCleanUp:YES];
@@ -116,14 +109,16 @@ CHOptimizedClassMethod1(self, void, SBAlertItem, activateAlertItem, id, arg1) {
     CHSuper1(SBAlertItem, activateAlertItem, alertItem);
 }
 
-static void kayokoInstallDruidUIHooks(void) {
+@implementation KayokoPasteTipHookInstaller
+
++ (void)installDruidUIHooks {
     CHLoadClass_(&DRPasteAnnouncer$, NSClassFromString(@"DRPasteAnnouncer"));
 
     CHHook0(DRPasteAnnouncer, announceDeniedPaste);
     CHHook1(DRPasteAnnouncer, announcePaste);
 }
 
-static void kayokoInstallPasteboardHooks(void) {
++ (void)installPasteboardHooks {
     CHLoadClass_(&PBDruidRemotePasteAnnouncer$, NSClassFromString(@"PBDruidRemotePasteAnnouncer"));
     CHLoadClass_(&PBCFUserNotificationPasteAnnouncer$, NSClassFromString(@"PBCFUserNotificationPasteAnnouncer"));
 
@@ -135,19 +130,21 @@ static void kayokoInstallPasteboardHooks(void) {
     CHHook2(PBCFUserNotificationPasteAnnouncer, announcePaste, replyHandler);
 }
 
-static void kayokoInstallNoPasteAlerts16Hooks(void) {
++ (void)installNoPasteAlerts16Hooks {
     CHLoadClass_(&SBAlertItem$, NSClassFromString(@"SBAlertItem"));
 
     CHClassHook1(SBAlertItem, activateAlertItem);
 }
 
-void EnableKayokoDisablePasteTips(void) {
++ (void)installHooks {
     static dispatch_once_t sOnceToken;
     dispatch_once(&sOnceToken, ^{
-      kayokoInstallDruidUIHooks();
+      [self installDruidUIHooks];
       if (@available(iOS 16, *)) {
-          kayokoInstallPasteboardHooks();
-          kayokoInstallNoPasteAlerts16Hooks();
+          [self installPasteboardHooks];
+          [self installNoPasteAlerts16Hooks];
       }
     });
 }
+
+@end

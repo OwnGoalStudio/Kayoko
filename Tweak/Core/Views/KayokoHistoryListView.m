@@ -7,7 +7,7 @@
 
 #import "KayokoHistoryListView.h"
 
-#import "PasteboardManager.h"
+#import "KayokoPasteboardManager.h"
 
 static CGFloat const kKayokoHistoryListViewBaseRowHeight = 65;
 static CGFloat const kKayokoHistoryListViewAdditionalPreviewLineHeight = 18;
@@ -37,9 +37,9 @@ NS_ASSUME_NONNULL_END
         [[self label] setTextColor:[UIColor secondaryLabelColor]];
         [[self label] setTextAlignment:NSTextAlignmentCenter];
         [[self label] setNumberOfLines:0];
-        [[self label] setText:[[PasteboardManager localizationBundle] localizedStringForKey:@"No Search Results"
-                                                                                      value:nil
-                                                                                      table:@"Tweak"]];
+        [[self label] setText:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"No Search Results"
+                                                                                            value:nil
+                                                                                            table:@"Tweak"]];
         [self addSubview:[self label]];
 
         [[self label] setTranslatesAutoresizingMaskIntoConstraints:NO];

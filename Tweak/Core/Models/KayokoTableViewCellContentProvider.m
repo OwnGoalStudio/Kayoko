@@ -5,9 +5,9 @@
 
 #import "KayokoTableViewCellContentProvider.h"
 #import "KayokoApplicationMetadataProvider.h"
+#import "KayokoPasteboardItem.h"
+#import "KayokoPasteboardManager.h"
 #import "KayokoTableViewCellContent.h"
-#import "PasteboardItem.h"
-#import "PasteboardManager.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -58,12 +58,12 @@ NS_ASSUME_NONNULL_END
     return attributedText;
 }
 
-- (KayokoTableViewCellContent *)cellContentForItem:(PasteboardItem *)item
+- (KayokoTableViewCellContent *)cellContentForItem:(KayokoPasteboardItem *)item
                                   previewLineCount:(NSUInteger)previewLineCount {
     return [self cellContentForItem:item previewLineCount:previewLineCount searchText:nil];
 }
 
-- (KayokoTableViewCellContent *)cellContentForItem:(PasteboardItem *)item
+- (KayokoTableViewCellContent *)cellContentForItem:(KayokoPasteboardItem *)item
                                   previewLineCount:(NSUInteger)previewLineCount
                                         searchText:(nullable NSString *)searchText {
     KayokoTableViewCellContent *content = [[KayokoTableViewCellContent alloc] init];
@@ -79,10 +79,10 @@ NS_ASSUME_NONNULL_END
     return content;
 }
 
-- (void)loadThumbnailForItem:(PasteboardItem *)item
+- (void)loadThumbnailForItem:(KayokoPasteboardItem *)item
                   targetSize:(CGSize)targetSize
                   completion:(void (^)(UIImage *_Nullable image))completion {
-    [[PasteboardManager sharedInstance] getThumbnailForItem:item targetSize:targetSize completion:completion];
+    [[KayokoPasteboardManager sharedInstance] getThumbnailForItem:item targetSize:targetSize completion:completion];
 }
 
 @end

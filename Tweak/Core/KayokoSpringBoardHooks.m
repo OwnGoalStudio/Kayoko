@@ -9,6 +9,7 @@
 #import <UIKit/UIKit.h>
 
 #import "KayokoCoreRuntime.h"
+#import "KayokoSpringBoardHooks.h"
 
 CHDeclareClass(UIStatusBarWindow);
 CHDeclareClass(SpringBoard);
@@ -16,11 +17,10 @@ CHDeclareClass(UIViewController);
 CHDeclareClass(SBCoverSheetPrimarySlidingViewController);
 CHDeclareClass(SBHIconManager);
 CHDeclareClass(SBSpotlightMultiplexingViewController);
+CHDeclareClass(SBHLibrarySearchController);
 CHDeclareClass(SBMainDisplaySystemGestureManager);
 CHDeclareClass(SBMainSwitcherViewController);
 CHDeclareClass(SBMainSwitcherControllerCoordinator);
-
-NS_ASSUME_NONNULL_BEGIN
 
 @interface UIStatusBarWindow : UIWindow
 @end
@@ -47,27 +47,121 @@ NS_ASSUME_NONNULL_BEGIN
 @interface SBSpotlightMultiplexingViewController : UIViewController
 @end
 
+@interface SBHLibrarySearchController : NSObject
+- (void)_willDismissSearchAnimated:(BOOL)animated;
+- (void)_willPresentSearchAnimated:(BOOL)animated;
+- (void)_didDismissSearch;
+- (void)_didPresentSearch;
+- (void)beginEditingForSearchField;
+- (void)endEditingForSearchField;
+- (BOOL)isSearchFieldEditing;
+@end
+
 @interface SBMainDisplaySystemGestureManager : NSObject
 - (BOOL)_isGestureWithTypeAllowed:(NSInteger)type;
 @end
 
-NS_ASSUME_NONNULL_END
-
 static const NSInteger kKayokoSystemGestureTypeCoverSheet = 0x1;
 static const NSInteger kKayokoSystemGestureTypeControlCenter = 0x6;
 
+NS_ASSUME_NONNULL_BEGIN
+
+@interface KayokoSpringBoardHookInstaller ()
+
++ (void)hideForHomeScreenIfVisible:(id)controller;
++ (void)hideForLayoutStateTransition;
++ (void)hideForAppSwitcherIfVisible:(id)switcher;
+
+@end
+
+NS_ASSUME_NONNULL_END
+
 CHOptimizedMethod1(self, id, UIStatusBarWindow, initWithFrame, CGRect, frame) {
     UIStatusBarWindow *window = CHSuper1(UIStatusBarWindow, initWithFrame, frame);
-    KayokoCoreInstallPanelInStatusBarWindow(window);
+    [[KayokoCoreRuntime sharedRuntime] installPanelInStatusBarWindow:window];
     return window;
 }
 
 CHOptimizedMethod1(self, void, SpringBoard, applicationDidFinishLaunching, id, application) {
     CHSuper1(SpringBoard, applicationDidFinishLaunching, application);
-    KayokoCorePreloadInitialHistory();
+    [[KayokoCoreRuntime sharedRuntime] preloadInitialHistory];
 }
 
-static BOOL kayokoIsHomeScreenController(id controller) {
+CHOptimizedMethod1(self, void, UIViewController, viewWillAppear, BOOL, animated) {
+    CHSuper1(UIViewController, viewWillAppear, animated);
+    [KayokoSpringBoardHookInstaller hideForHomeScreenIfVisible:self];
+}
+
+CHOptimizedMethod1(self, void, SBHIconManager, rootFolderControllerViewWillAppear, id, controller) {
+    CHSuper1(SBHIconManager, rootFolderControllerViewWillAppear, controller);
+    [[KayokoCoreRuntime sharedRuntime] hide];
+}
+
+CHOptimizedMethod1(self, void, SBCoverSheetPrimarySlidingViewController, _endTransitionToAppeared, BOOL, appeared) {
+    CHSuper1(SBCoverSheetPrimarySlidingViewController, _endTransitionToAppeared, appeared);
+    if (appeared) {
+        [[KayokoCoreRuntime sharedRuntime] hideImmediately];
+    }
+}
+
+CHOptimizedMethod1(self, void, SBSpotlightMultiplexingViewController, viewWillDisappear, BOOL, animated) {
+    CHSuper1(SBSpotlightMultiplexingViewController, viewWillDisappear, animated);
+    if (animated) {
+        [[KayokoCoreRuntime sharedRuntime] hide];
+    } else {
+        [[KayokoCoreRuntime sharedRuntime] hideImmediately];
+    }
+}
+
+CHOptimizedMethod1(self, void, SBHLibrarySearchController, _willDismissSearchAnimated, BOOL, animated) {
+    CHSuper1(SBHLibrarySearchController, _willDismissSearchAnimated, animated);
+    if (animated) {
+        [[KayokoCoreRuntime sharedRuntime] hide];
+    } else {
+        [[KayokoCoreRuntime sharedRuntime] hideImmediately];
+    }
+}
+
+CHOptimizedMethod1(self, BOOL, SBMainDisplaySystemGestureManager, _isGestureWithTypeAllowed, NSInteger, type) {
+    if ((type == kKayokoSystemGestureTypeCoverSheet || type == kKayokoSystemGestureTypeControlCenter) &&
+        [[KayokoCoreRuntime sharedRuntime] fullscreenSearchActive]) {
+        return NO;
+    }
+
+    return CHSuper1(SBMainDisplaySystemGestureManager, _isGestureWithTypeAllowed, type);
+}
+
+CHOptimizedMethod2(self, void, SBMainSwitcherViewController, layoutStateTransitionCoordinator, id, coordinator,
+                   transitionDidBeginWithTransitionContext, id, context) {
+    CHSuper2(SBMainSwitcherViewController, layoutStateTransitionCoordinator, coordinator,
+             transitionDidBeginWithTransitionContext, context);
+    [KayokoSpringBoardHookInstaller hideForLayoutStateTransition];
+}
+
+CHOptimizedMethod2(self, void, SBMainSwitcherViewController, layoutStateTransitionCoordinator, id, coordinator,
+                   transitionDidEndWithTransitionContext, id, context) {
+    CHSuper2(SBMainSwitcherViewController, layoutStateTransitionCoordinator, coordinator,
+             transitionDidEndWithTransitionContext, context);
+    [KayokoSpringBoardHookInstaller hideForAppSwitcherIfVisible:self];
+}
+
+CHOptimizedMethod2(self, void, SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator, id, coordinator,
+                   transitionDidBeginWithTransitionContext, id, context) {
+    CHSuper2(SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator, coordinator,
+             transitionDidBeginWithTransitionContext, context);
+    [KayokoSpringBoardHookInstaller hideForLayoutStateTransition];
+}
+
+CHOptimizedMethod2(self, void, SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator, id, coordinator,
+                   transitionDidEndWithTransitionContext, id, context) {
+    CHSuper2(SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator, coordinator,
+             transitionDidEndWithTransitionContext, context);
+    [KayokoSpringBoardHookInstaller hideForAppSwitcherIfVisible:self];
+}
+
+@implementation KayokoSpringBoardHookInstaller
+
++ (BOOL)isHomeScreenController:(id)controller {
     static Class iconControllerClass = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -76,59 +170,26 @@ static BOOL kayokoIsHomeScreenController(id controller) {
     return iconControllerClass && [controller isKindOfClass:iconControllerClass];
 }
 
-static void kayokoHideForHomeScreenIfVisible(id controller) {
-    if (!kayokoIsHomeScreenController(controller)) {
++ (void)hideForHomeScreenIfVisible:(id)controller {
+    if (![self isHomeScreenController:controller]) {
         return;
     }
 
-    KayokoCoreHide();
+    [[KayokoCoreRuntime sharedRuntime] hide];
 }
 
-CHOptimizedMethod1(self, void, UIViewController, viewWillAppear, BOOL, animated) {
-    CHSuper1(UIViewController, viewWillAppear, animated);
-    kayokoHideForHomeScreenIfVisible(self);
-}
-
-CHOptimizedMethod1(self, void, SBHIconManager, rootFolderControllerViewWillAppear, id, controller) {
-    CHSuper1(SBHIconManager, rootFolderControllerViewWillAppear, controller);
-    KayokoCoreHide();
-}
-
-CHOptimizedMethod1(self, void, SBCoverSheetPrimarySlidingViewController, _endTransitionToAppeared, BOOL, appeared) {
-    CHSuper1(SBCoverSheetPrimarySlidingViewController, _endTransitionToAppeared, appeared);
-    if (appeared) {
-        KayokoCoreHideImmediately();
-    }
-}
-
-CHOptimizedMethod1(self, void, SBSpotlightMultiplexingViewController, viewWillDisappear, BOOL, animated) {
-    CHSuper1(SBSpotlightMultiplexingViewController, viewWillDisappear, animated);
-    if (animated) {
-        KayokoCoreHide();
-    } else {
-        KayokoCoreHideImmediately();
-    }
-}
-
-CHOptimizedMethod1(self, BOOL, SBMainDisplaySystemGestureManager, _isGestureWithTypeAllowed, NSInteger, type) {
-    if ((type == kKayokoSystemGestureTypeCoverSheet || type == kKayokoSystemGestureTypeControlCenter) &&
-        KayokoCoreFullscreenSearchActive()) {
-        return NO;
-    }
-
-    return CHSuper1(SBMainDisplaySystemGestureManager, _isGestureWithTypeAllowed, type);
-}
-
-static void kayokoHideForLayoutStateTransition(void) {
-    if (!KayokoCorePanelVisible()) {
++ (void)hideForLayoutStateTransition {
+    KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];
+    if (![runtime panelVisible]) {
         return;
     }
 
-    KayokoCoreHide();
+    [runtime hide];
 }
 
-static void kayokoHideForAppSwitcherIfVisible(id switcher) {
-    if (!KayokoCorePanelVisible()) {
++ (void)hideForAppSwitcherIfVisible:(id)switcher {
+    KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];
+    if (![runtime panelVisible]) {
         return;
     }
 
@@ -140,39 +201,11 @@ static void kayokoHideForAppSwitcherIfVisible(id switcher) {
     }
 
     if (switcherVisible) {
-        KayokoCoreHide();
+        [runtime hide];
     }
 }
 
-CHOptimizedMethod2(self, void, SBMainSwitcherViewController, layoutStateTransitionCoordinator, id, coordinator,
-                   transitionDidBeginWithTransitionContext, id, context) {
-    CHSuper2(SBMainSwitcherViewController, layoutStateTransitionCoordinator, coordinator,
-             transitionDidBeginWithTransitionContext, context);
-    kayokoHideForLayoutStateTransition();
-}
-
-CHOptimizedMethod2(self, void, SBMainSwitcherViewController, layoutStateTransitionCoordinator, id, coordinator,
-                   transitionDidEndWithTransitionContext, id, context) {
-    CHSuper2(SBMainSwitcherViewController, layoutStateTransitionCoordinator, coordinator,
-             transitionDidEndWithTransitionContext, context);
-    kayokoHideForAppSwitcherIfVisible(self);
-}
-
-CHOptimizedMethod2(self, void, SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator, id, coordinator,
-                   transitionDidBeginWithTransitionContext, id, context) {
-    CHSuper2(SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator, coordinator,
-             transitionDidBeginWithTransitionContext, context);
-    kayokoHideForLayoutStateTransition();
-}
-
-CHOptimizedMethod2(self, void, SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator, id, coordinator,
-                   transitionDidEndWithTransitionContext, id, context) {
-    CHSuper2(SBMainSwitcherControllerCoordinator, layoutStateTransitionCoordinator, coordinator,
-             transitionDidEndWithTransitionContext, context);
-    kayokoHideForAppSwitcherIfVisible(self);
-}
-
-static void kayokoInstallStatusBarHooks(void) {
++ (void)installStatusBarHooks {
     Class statusBarWindowCls = objc_getClass("UIStatusBarWindow");
     if (@available(iOS 17, *)) {
         statusBarWindowCls = objc_getClass("SBStatusBarWindow");
@@ -182,7 +215,7 @@ static void kayokoInstallStatusBarHooks(void) {
     CHHook1(UIStatusBarWindow, initWithFrame);
 }
 
-static void kayokoInstallHomeScreenHooks(void) {
++ (void)installHomeScreenHooks {
     Class iconControllerClass = NSClassFromString(@"SBIconController");
     CHLoadClass(UIViewController);
     SEL viewWillAppearSelector = @selector(viewWillAppear:);
@@ -198,7 +231,7 @@ static void kayokoInstallHomeScreenHooks(void) {
     }
 }
 
-static void kayokoInstallLockScreenTransitionHooks(void) {
++ (void)installLockScreenTransitionHooks {
     Class coverSheetClass = NSClassFromString(@"SBCoverSheetPrimarySlidingViewController");
     CHLoadClass_(&SBCoverSheetPrimarySlidingViewController$, coverSheetClass);
     SEL transitionEndSelector = @selector(_endTransitionToAppeared:);
@@ -207,7 +240,7 @@ static void kayokoInstallLockScreenTransitionHooks(void) {
     }
 }
 
-static void kayokoInstallSpotlightHooks(void) {
++ (void)installSpotlightHooks {
     Class spotlightClass = NSClassFromString(@"SBSpotlightMultiplexingViewController");
     CHLoadClass_(&SBSpotlightMultiplexingViewController$, spotlightClass);
     SEL viewWillDisappearSelector = @selector(viewWillDisappear:);
@@ -216,7 +249,16 @@ static void kayokoInstallSpotlightHooks(void) {
     }
 }
 
-static void kayokoInstallSystemGestureHooks(void) {
++ (void)installLibrarySearchHooks {
+    Class librarySearchControllerClass = NSClassFromString(@"SBHLibrarySearchController");
+    CHLoadClass_(&SBHLibrarySearchController$, librarySearchControllerClass);
+    SEL willDismissSearchSelector = @selector(_willDismissSearchAnimated:);
+    if ([librarySearchControllerClass instancesRespondToSelector:willDismissSearchSelector]) {
+        CHHook1(SBHLibrarySearchController, _willDismissSearchAnimated);
+    }
+}
+
++ (void)installSystemGestureHooks {
     Class gestureManagerClass = NSClassFromString(@"SBMainDisplaySystemGestureManager");
     CHLoadClass_(&SBMainDisplaySystemGestureManager$, gestureManagerClass);
     SEL gestureAllowedSelector = @selector(_isGestureWithTypeAllowed:);
@@ -225,7 +267,7 @@ static void kayokoInstallSystemGestureHooks(void) {
     }
 }
 
-static void kayokoInstallAppSwitcherHooks(void) {
++ (void)installAppSwitcherHooks {
     SEL transitionBeginSelector = @selector(layoutStateTransitionCoordinator:transitionDidBeginWithTransitionContext:);
     SEL transitionEndSelector = @selector(layoutStateTransitionCoordinator:transitionDidEndWithTransitionContext:);
 
@@ -251,13 +293,16 @@ static void kayokoInstallAppSwitcherHooks(void) {
     }
 }
 
-void KayokoInstallSpringBoardHooks(void) {
-    kayokoInstallStatusBarHooks();
++ (void)installHooks {
+    [self installStatusBarHooks];
     CHLoadClass_(&SpringBoard$, NSClassFromString(@"SpringBoard"));
     CHHook1(SpringBoard, applicationDidFinishLaunching);
-    kayokoInstallHomeScreenHooks();
-    kayokoInstallAppSwitcherHooks();
-    kayokoInstallLockScreenTransitionHooks();
-    kayokoInstallSpotlightHooks();
-    kayokoInstallSystemGestureHooks();
+    [self installHomeScreenHooks];
+    [self installAppSwitcherHooks];
+    [self installLockScreenTransitionHooks];
+    [self installSpotlightHooks];
+    [self installLibrarySearchHooks];
+    [self installSystemGestureHooks];
 }
+
+@end

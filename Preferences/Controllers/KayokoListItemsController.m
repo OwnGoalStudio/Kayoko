@@ -4,8 +4,8 @@
 //
 
 #import "KayokoListItemsController.h"
-#import "NotificationKeys.h"
-#import "PreferenceKeys.h"
+#import "KayokoNotificationKeys.h"
+#import "KayokoPreferenceKeys.h"
 
 #import <Preferences/PSSpecifier.h>
 

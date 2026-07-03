@@ -6,9 +6,9 @@
 #import "KayokoPreviewViewController.h"
 
 #import "KayokoHeaderButtonStyle.h"
+#import "KayokoPasteboardItem.h"
+#import "KayokoPasteboardManager.h"
 #import "KayokoPreviewView.h"
-#import "PasteboardItem.h"
-#import "PasteboardManager.h"
 
 static NSString *kayokoPreviewTextByTrimmingBoundaryNewlines(NSString *text) {
     return [(text ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
@@ -22,7 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak) UIButton *backButton;
 @property(nonatomic, weak) UIButton *clearButton;
 @property(nonatomic, copy, nullable, readwrite) NSString *sourceHistoryKey;
-@property(nonatomic, strong, nullable, readwrite) PasteboardItem *previewItem;
+@property(nonatomic, strong, nullable, readwrite) KayokoPasteboardItem *previewItem;
 
 - (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey;
 @end
@@ -37,9 +37,9 @@ NS_ASSUME_NONNULL_END
     self = [super init];
     if (self) {
         _previewView = [[KayokoPreviewView alloc]
-            initWithName:[[PasteboardManager localizationBundle] localizedStringForKey:@"Preview"
-                                                                                 value:nil
-                                                                                 table:@"Tweak"]];
+            initWithName:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Preview"
+                                                                                       value:nil
+                                                                                       table:@"Tweak"]];
         _favoritesButton = favoritesButton;
         _backButton = backButton;
         _clearButton = clearButton;
@@ -59,14 +59,14 @@ NS_ASSUME_NONNULL_END
     [button setTintColor:color];
 }
 
-- (void)showPreviewWithItem:(PasteboardItem *)item sourceHistoryKey:(NSString *)sourceHistoryKey {
+- (void)showPreviewWithItem:(KayokoPasteboardItem *)item sourceHistoryKey:(NSString *)sourceHistoryKey {
     [self setPreviewItem:item];
     [self setSourceHistoryKey:sourceHistoryKey];
 
     if (![[item imageName] isEqualToString:@""]) {
         NSData *imageData = [[NSFileManager defaultManager]
-            contentsAtPath:[NSString
-                               stringWithFormat:@"%@/%@", [PasteboardManager historyImagesPath], [item imageName]]];
+            contentsAtPath:[NSString stringWithFormat:@"%@/%@", [KayokoPasteboardManager historyImagesPath],
+                                                      [item imageName]]];
         [[self previewView] reset];
         [[[self previewView] imageView] setImage:[UIImage imageWithData:imageData]];
         [[[self previewView] imageView] setHidden:NO];
@@ -84,12 +84,13 @@ NS_ASSUME_NONNULL_END
                         andImageSize:kKayokoBackButtonImageSize
                         andTintColor:[UIColor labelColor]];
     [[self favoritesButton]
-        setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Back"
-                                                                                      value:nil
-                                                                                      table:@"Tweak"]];
-    [[self backButton] setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Copy"
-                                                                                                     value:nil
-                                                                                                     table:@"Tweak"]];
+        setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Back"
+                                                                                            value:nil
+                                                                                            table:@"Tweak"]];
+    [[self backButton]
+        setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Copy"
+                                                                                            value:nil
+                                                                                            table:@"Tweak"]];
     [[self clearButton] setHidden:YES];
     [[self backButton] setHidden:YES];
 }
@@ -101,9 +102,9 @@ NS_ASSUME_NONNULL_END
     [[self backButton] setAlpha:1.0];
     [self restoreHeaderButtonsForSourceHistoryKey:[self sourceHistoryKey]];
     [[self favoritesButton]
-        setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
-                                                                                      value:nil
-                                                                                      table:@"Tweak"]];
+        setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
+                                                                                            value:nil
+                                                                                            table:@"Tweak"]];
 }
 
 - (void)hidePreview {
@@ -123,9 +124,9 @@ NS_ASSUME_NONNULL_END
     [[self backButton] setAlpha:1.0];
     [self restoreHeaderButtonsForSourceHistoryKey:[self sourceHistoryKey]];
     [[self favoritesButton]
-        setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
-                                                                                      value:nil
-                                                                                      table:@"Tweak"]];
+        setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
+                                                                                            value:nil
+                                                                                            table:@"Tweak"]];
     [self setPreviewItem:nil];
     [self setSourceHistoryKey:nil];
 }

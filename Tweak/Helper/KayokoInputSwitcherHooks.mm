@@ -5,9 +5,9 @@
 
 #define CHUseSubstrate
 
-#import "KayokoHelper.h"
-
-#import "PasteboardManager.h"
+#import "KayokoHelperHookInstaller.h"
+#import "KayokoHelperLocalization.h"
+#import "KayokoHelperRuntime.h"
 
 #import <CaptainHook/CaptainHook.h>
 #import <UIKit/UIKit.h>
@@ -43,9 +43,7 @@ CHOptimizedMethod0(self, void, UIInputSwitcherView, _reloadInputSwitcherItems) {
     NSMutableArray *newItems = [NSMutableArray arrayWithArray:items];
     UIInputSwitcherItem *item =
         [[NSClassFromString(@"UIInputSwitcherItem") alloc] initWithIdentifier:kKayokoInputSwitcherItemIdentifier];
-    [item setLocalizedTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"Kayoko"
-                                                                                    value:nil
-                                                                                    table:@"Tweak"]];
+    [item setLocalizedTitle:KayokoHelperLocalizedString(@"Kayoko")];
     if (item) {
         [newItems insertObject:item atIndex:newItems.count - 1];
     }
@@ -56,13 +54,14 @@ CHOptimizedMethod1(self, void, UIInputSwitcherView, didSelectItemAtIndex, unsign
     NSArray *items = MSHookIvar<NSArray *>(self, "m_inputSwitcherItems");
     UIInputSwitcherItem *item = items[index];
     if ([item.identifier isEqualToString:kKayokoInputSwitcherItemIdentifier]) {
-        KayokoHelperCaptureCurrentFirstResponder();
-        KayokoHelperPostCoreShow();
+        [[KayokoHelperRuntime sharedRuntime] activateKayokoAfterCapturingCurrentFocus];
     }
     CHSuper1(UIInputSwitcherView, didSelectItemAtIndex, index);
 }
 
-void EnableKayokoActivationGlobe(void) {
+@implementation KayokoHelperHookInstaller (InputSwitcher)
+
++ (void)installInputSwitcherHooks {
     static dispatch_once_t sOnceToken;
     dispatch_once(&sOnceToken, ^{
       CHLoadClass_(&UIInputSwitcherView$, NSClassFromString(@"UIInputSwitcherView"));
@@ -71,3 +70,5 @@ void EnableKayokoActivationGlobe(void) {
       CHHook1(UIInputSwitcherView, didSelectItemAtIndex);
     });
 }
+
+@end

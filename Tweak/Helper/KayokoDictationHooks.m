@@ -5,7 +5,8 @@
 
 #define CHUseSubstrate
 
-#import "KayokoHelper.h"
+#import "KayokoHelperHookInstaller.h"
+#import "KayokoHelperRuntime.h"
 
 #import <CaptainHook/CaptainHook.h>
 #import <UIKit/UIKit.h>
@@ -42,14 +43,30 @@ CHDeclareClass(UIKeyboardLayoutStar);
 
 static const void *kKayokoScaledDockImageAssociatedKey = &kKayokoScaledDockImageAssociatedKey;
 
-static CGFloat KayokoDockIconScaleFactor(void) {
-    if (@available(iOS 16, *)) {
-        return 0.92;
+CHOptimizedMethod2(self, id, UIKeyboardDockItem, initWithImageName, id, arg1, identifier, id, arg2) {
+    if ([arg1 isEqualToString:@"mic"]) {
+        if (@available(iOS 16, *)) {
+            arg1 = @"list.clipboard";
+        } else {
+            arg1 = @"doc.on.clipboard";
+        }
     }
-    return 0.88;
+    return CHSuper2(UIKeyboardDockItem, initWithImageName, arg1, identifier, arg2);
 }
 
-static UIImage *KayokoScaledDockImageIfNeeded(UIImage *image) {
+CHOptimizedMethod1(self, void, UIKeyboardDockItem, setImageName, NSString *, arg1) {
+    if ([arg1 isEqualToString:@"mic"]) {
+        if (@available(iOS 16, *)) {
+            arg1 = @"list.clipboard";
+        } else {
+            arg1 = @"doc.on.clipboard";
+        }
+    }
+    CHSuper1(UIKeyboardDockItem, setImageName, arg1);
+}
+
+CHOptimizedMethod1(self, UIImage *, UIKeyboardDockItem, imageWithRenderConfig, id, arg1) {
+    UIImage *image = CHSuper1(UIKeyboardDockItem, imageWithRenderConfig, arg1);
     if (!image) {
         return image;
     }
@@ -64,7 +81,10 @@ static UIImage *KayokoScaledDockImageIfNeeded(UIImage *image) {
         return cachedImage;
     }
 
-    CGFloat scaleFactor = KayokoDockIconScaleFactor();
+    CGFloat scaleFactor = 0.88;
+    if (@available(iOS 16, *)) {
+        scaleFactor = 0.92;
+    }
     CGSize scaledSize = CGSizeMake(originalSize.width * scaleFactor, originalSize.height * scaleFactor);
     if (scaledSize.width <= 0.0 || scaledSize.height <= 0.0) {
         return image;
@@ -103,33 +123,6 @@ static UIImage *KayokoScaledDockImageIfNeeded(UIImage *image) {
     return result;
 }
 
-CHOptimizedMethod2(self, id, UIKeyboardDockItem, initWithImageName, id, arg1, identifier, id, arg2) {
-    if ([arg1 isEqualToString:@"mic"]) {
-        if (@available(iOS 16, *)) {
-            arg1 = @"list.clipboard";
-        } else {
-            arg1 = @"doc.on.clipboard";
-        }
-    }
-    return CHSuper2(UIKeyboardDockItem, initWithImageName, arg1, identifier, arg2);
-}
-
-CHOptimizedMethod1(self, void, UIKeyboardDockItem, setImageName, NSString *, arg1) {
-    if ([arg1 isEqualToString:@"mic"]) {
-        if (@available(iOS 16, *)) {
-            arg1 = @"list.clipboard";
-        } else {
-            arg1 = @"doc.on.clipboard";
-        }
-    }
-    CHSuper1(UIKeyboardDockItem, setImageName, arg1);
-}
-
-CHOptimizedMethod1(self, UIImage *, UIKeyboardDockItem, imageWithRenderConfig, id, arg1) {
-    UIImage *image = CHSuper1(UIKeyboardDockItem, imageWithRenderConfig, arg1);
-    return KayokoScaledDockImageIfNeeded(image);
-}
-
 CHOptimizedMethod1(self, CGRect, UIKeyboardDockItemButton, imageRectForContentRect, CGRect, arg1) {
     CGRect origRect = CHSuper1(UIKeyboardDockItemButton, imageRectForContentRect, arg1);
     if (@available(iOS 16, *)) {
@@ -152,13 +145,12 @@ CHOptimizedMethod1(self, CGRect, UIKeyboardDockItemButton, imageRectForContentRe
 
 CHOptimizedMethod3(self, void, UISystemKeyboardDockController, dictationItemButtonWasPressed, id, arg1, withEvent, id,
                    arg2, isRunningButton, BOOL, arg3) {
-    KayokoHelperCaptureCurrentFirstResponder();
-    KayokoHelperPostCoreShow();
+    [[KayokoHelperRuntime sharedRuntime] activateKayokoAfterCapturingCurrentFocus];
 }
 
 CHOptimizedMethod2(self, void, UISystemKeyboardDockController, dictationItemButtonWasPressed, id, arg1, withEvent,
                    UIEvent *, event) {
-    KayokoHelperPostCoreShow();
+    [[KayokoHelperRuntime sharedRuntime] activateKayoko];
 }
 
 CHOptimizedMethod0(self, BOOL, UIKeyboardImpl, shouldShowDictationKey) { return YES; }
@@ -168,13 +160,15 @@ CHOptimizedMethod1(self, UIKBTree *, UIKeyboardLayoutStar, keyHitTest, CGPoint, 
 
     if ([[orig name] isEqualToString:@"Dictation-Key"]) {
         [[orig properties] setValue:@(0) forKey:@"KBinteractionType"];
-        KayokoHelperPostCoreShow();
+        [[KayokoHelperRuntime sharedRuntime] activateKayoko];
     }
 
     return orig;
 }
 
-void EnableKayokoActivationDictation(void) {
+@implementation KayokoHelperHookInstaller (Dictation)
+
++ (void)installDictationHooks {
     static dispatch_once_t sOnceToken;
     dispatch_once(&sOnceToken, ^{
       Class dockItemClass = CHLoadClass_(&UIKeyboardDockItem$, NSClassFromString(@"UIKeyboardDockItem"));
@@ -196,3 +190,5 @@ void EnableKayokoActivationDictation(void) {
       CHHook1(UIKeyboardLayoutStar, keyHitTest);
     });
 }
+
+@end

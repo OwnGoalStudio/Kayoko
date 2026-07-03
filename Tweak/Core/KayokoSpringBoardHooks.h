@@ -2,6 +2,13 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-OBJC_EXTERN void KayokoInstallSpringBoardHooks(void);
+@interface KayokoSpringBoardHookInstaller : NSObject
+
++ (void)installHooks;
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
+@end
 
 NS_ASSUME_NONNULL_END

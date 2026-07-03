@@ -6,7 +6,7 @@
 #import <UIKit/UIKit.h>
 
 @class KayokoPreviewView;
-@class PasteboardItem;
+@class KayokoPasteboardItem;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -14,13 +14,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, strong, readonly) KayokoPreviewView *previewView;
 @property(nonatomic, copy, nullable, readonly) NSString *sourceHistoryKey;
-@property(nonatomic, strong, nullable, readonly) PasteboardItem *previewItem;
+@property(nonatomic, strong, nullable, readonly) KayokoPasteboardItem *previewItem;
 
 - (instancetype)initWithFavoritesButton:(UIButton *)favoritesButton
                              backButton:(UIButton *)backButton
                             clearButton:(UIButton *)clearButton;
 
-- (void)showPreviewWithItem:(PasteboardItem *)item sourceHistoryKey:(NSString *)sourceHistoryKey;
+- (void)showPreviewWithItem:(KayokoPasteboardItem *)item sourceHistoryKey:(NSString *)sourceHistoryKey;
 - (void)prepareToHidePreview;
 - (void)hidePreview;
 - (void)resetPreviewState;

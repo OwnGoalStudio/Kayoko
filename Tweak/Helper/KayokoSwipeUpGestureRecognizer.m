@@ -7,15 +7,15 @@
 
 #include <math.h>
 
-static CGFloat const kKayokoSwipeUpDefaultMinimumPrimaryMovement = 180.0;
-static CGFloat const kKayokoSwipeUpDefaultMinimumPrimaryMovementRate = 0.0;
+static CGFloat const kKayokoSwipeUpDefaultMinimumPrimaryMovement = 240.0;
+static CGFloat const kKayokoSwipeUpDefaultMinimumPrimaryMovementRate = 440.0;
 static CGFloat const kKayokoSwipeUpDefaultMinimumSecondaryMovement = 0.0;
 static CGFloat const kKayokoSwipeUpDefaultMaximumPrimaryMovement = CGFLOAT_MAX;
 static CGFloat const kKayokoSwipeUpDefaultMaximumSecondaryMovement = 64.0;
 static CGFloat const kKayokoSwipeUpDefaultMaximumOppositeMovement = 6.0;
-static CGFloat const kKayokoSwipeUpDefaultRateOfMinimumMovementDecay = 0.2;
+static CGFloat const kKayokoSwipeUpDefaultRateOfMinimumMovementDecay = 0.28;
 static CGFloat const kKayokoSwipeUpDefaultRateOfMaximumMovementDecay = 0.12;
-static NSTimeInterval const kKayokoSwipeUpDefaultMaximumDuration = 0.55;
+static NSTimeInterval const kKayokoSwipeUpDefaultMaximumDuration = 0.5;
 static NSTimeInterval const kKayokoSwipeUpMovementDecayDuration = 0.5;
 static NSTimeInterval const kKayokoSwipeUpMinimumTimeDelta = 0.01;
 
@@ -150,9 +150,12 @@ typedef NS_ENUM(NSUInteger, KayokoSwipeUpCheckResult) {
         return KayokoSwipeUpCheckResultPending;
     }
 
+    NSTimeInterval averageDuration = MAX(time, kKayokoSwipeUpMinimumTimeDelta);
+    CGFloat averagePrimaryMovementRate = primaryMovement / averageDuration;
     NSTimeInterval movementDuration = MAX(currentTimeChange, kKayokoSwipeUpMinimumTimeDelta);
-    CGFloat primaryMovementRate = fabs(currentPositionChange.y / movementDuration);
-    if (primaryMovementRate < self.minimumPrimaryMovementRate) {
+    CGFloat currentPrimaryMovementRate = fabs(currentPositionChange.y / movementDuration);
+    if (averagePrimaryMovementRate < self.minimumPrimaryMovementRate ||
+        currentPrimaryMovementRate < self.minimumPrimaryMovementRate) {
         return KayokoSwipeUpCheckResultPending;
     }
 

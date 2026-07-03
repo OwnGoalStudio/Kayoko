@@ -4,7 +4,7 @@
 //
 
 #import "KayokoClearConfirmationView.h"
-#import "PasteboardManager.h"
+#import "KayokoPasteboardManager.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -63,9 +63,9 @@ NS_ASSUME_NONNULL_END
         ]];
 
         [self setCancelButton:[UIButton buttonWithType:UIButtonTypeSystem]];
-        [[self cancelButton] setTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"Cancel"
-                                                                                              value:nil
-                                                                                              table:@"Tweak"]
+        [[self cancelButton] setTitle:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Cancel"
+                                                                                                    value:nil
+                                                                                                    table:@"Tweak"]
                              forState:UIControlStateNormal];
         [[self cancelButton] setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
         [[[self cancelButton] titleLabel] setFont:[UIFont systemFontOfSize:16 weight:UIFontWeightMedium]];
@@ -75,9 +75,9 @@ NS_ASSUME_NONNULL_END
         [buttonStackView addArrangedSubview:[self cancelButton]];
 
         [self setConfirmButton:[UIButton buttonWithType:UIButtonTypeSystem]];
-        [[self confirmButton] setTitle:[[PasteboardManager localizationBundle] localizedStringForKey:@"Clear"
-                                                                                               value:nil
-                                                                                               table:@"Tweak"]
+        [[self confirmButton] setTitle:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Clear"
+                                                                                                     value:nil
+                                                                                                     table:@"Tweak"]
                               forState:UIControlStateNormal];
         [[self confirmButton] setTitleColor:[UIColor systemRedColor] forState:UIControlStateNormal];
         [[[self confirmButton] titleLabel] setFont:[UIFont systemFontOfSize:16 weight:UIFontWeightSemibold]];
@@ -105,9 +105,10 @@ NS_ASSUME_NONNULL_END
     NSString *localizationKey = [historyKey isEqualToString:kKayokoHistoryKeyFavorites]
                                     ? @"Clear Favorites Confirmation"
                                     : @"Clear History Confirmation";
-    [[self confirmationLabel] setText:[[PasteboardManager localizationBundle] localizedStringForKey:localizationKey
-                                                                                              value:nil
-                                                                                              table:@"Tweak"]];
+    [[self confirmationLabel]
+        setText:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:localizationKey
+                                                                              value:nil
+                                                                              table:@"Tweak"]];
 }
 
 @end

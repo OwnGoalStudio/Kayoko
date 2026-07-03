@@ -5,7 +5,7 @@
 
 #import "KayokoTableDataStore.h"
 
-#import "PasteboardItem.h"
+#import "KayokoPasteboardItem.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

@@ -1,5 +1,5 @@
 //
-//  NotificationKeys.h
+//  KayokoNotificationKeys.h
 //  Kayoko
 //
 //  Created by Alexandra Aurora Göttlicher

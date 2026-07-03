@@ -5,7 +5,7 @@
 
 #import "KayokoHistoryMigrator.h"
 #import "KayokoHistoryStore.h"
-#import "PasteboardItem.h"
+#import "KayokoPasteboardItem.h"
 
 #import <roothide.h>
 

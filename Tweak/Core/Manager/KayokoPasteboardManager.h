@@ -1,5 +1,5 @@
 //
-//  PasteboardManager.h
+//  KayokoPasteboardManager.h
 //  Kayoko
 //
 //  Created by Alexandra Aurora Göttlicher
@@ -7,7 +7,7 @@
 
 #import <UIKit/UIKit.h>
 
-@class PasteboardItem;
+@class KayokoPasteboardItem;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -23,7 +23,7 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeUpsertTop = @"up
 static NSString *const kKayokoPasteboardManagerHistoryChangeTypeRemove = @"remove";
 static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear";
 
-@interface PasteboardManager : NSObject
+@interface KayokoPasteboardManager : NSObject
 
 @property(nonatomic, assign) NSUInteger maximumHistoryAmount;
 @property(nonatomic, assign) BOOL saveText;
@@ -43,23 +43,23 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
 
 - (void)pullPasteboardChanges;
 - (void)pullPasteboardChangesWithCompletion:(nullable void (^)(BOOL didSaveAnyItem))completion;
-- (BOOL)addPasteboardItem:(PasteboardItem *)item toHistoryWithKey:(NSString *)historyKey;
-- (void)performDirectPasteWithPasteboardItem:(PasteboardItem *)pasteboardItem
-                                 historyItem:(PasteboardItem *)historyItem
+- (BOOL)addPasteboardItem:(KayokoPasteboardItem *)item toHistoryWithKey:(NSString *)historyKey;
+- (void)performDirectPasteWithPasteboardItem:(KayokoPasteboardItem *)pasteboardItem
+                                 historyItem:(KayokoPasteboardItem *)historyItem
                           fromHistoryWithKey:(NSString *)historyKey
                              shouldAutoPaste:(BOOL)shouldAutoPaste;
-- (BOOL)copyPasteboardItemToPasteboard:(PasteboardItem *)item;
-- (void)updatePasteboardWithItem:(PasteboardItem *)item
+- (BOOL)copyPasteboardItemToPasteboard:(KayokoPasteboardItem *)item;
+- (void)updatePasteboardWithItem:(KayokoPasteboardItem *)item
               fromHistoryWithKey:(NSString *)historyKey
                  shouldAutoPaste:(BOOL)shouldAutoPaste;
-- (void)removePasteboardItem:(PasteboardItem *)item
+- (void)removePasteboardItem:(KayokoPasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage;
-- (void)removePasteboardItem:(PasteboardItem *)item
+- (void)removePasteboardItem:(KayokoPasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage
                   completion:(nullable void (^)(BOOL success))completion;
-- (void)movePasteboardItem:(PasteboardItem *)item
+- (void)movePasteboardItem:(KayokoPasteboardItem *)item
         fromHistoryWithKey:(NSString *)sourceHistoryKey
           toHistoryWithKey:(NSString *)destinationHistoryKey
                 completion:(nullable void (^)(BOOL success))completion;
@@ -74,9 +74,9 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
 - (NSMutableArray<NSDictionary<NSString *, id> *> *)getItemsFromHistoryWithKey:(NSString *)historyKey;
 - (void)getItemsFromHistoryWithKey:(NSString *)historyKey
                         completion:(nullable void (^)(NSMutableArray<NSDictionary<NSString *, id> *> *items))completion;
-- (nullable PasteboardItem *)getLatestHistoryItem;
-- (nullable UIImage *)getImageForItem:(PasteboardItem *)item;
-- (void)getThumbnailForItem:(PasteboardItem *)item
+- (nullable KayokoPasteboardItem *)getLatestHistoryItem;
+- (nullable UIImage *)getImageForItem:(KayokoPasteboardItem *)item;
+- (void)getThumbnailForItem:(KayokoPasteboardItem *)item
                  targetSize:(CGSize)targetSize
                  completion:(void (^)(UIImage *_Nullable image))completion;
 

@@ -1,5 +1,5 @@
 //
-//  PreferenceKeys.h
+//  KayokoPreferenceKeys.h
 //  Kayoko
 //
 //  Created by Alexandra Aurora Göttlicher

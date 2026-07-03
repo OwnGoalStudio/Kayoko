@@ -4,8 +4,8 @@
 //
 
 #import "KayokoHistoryChangeNotifier.h"
-#import "NotificationKeys.h"
-#import "PasteboardManager.h"
+#import "KayokoNotificationKeys.h"
+#import "KayokoPasteboardManager.h"
 
 @implementation KayokoHistoryChangeNotifier
 

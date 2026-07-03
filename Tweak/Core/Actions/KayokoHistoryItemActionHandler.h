@@ -5,22 +5,22 @@
 
 #import <UIKit/UIKit.h>
 
-@class PasteboardItem;
+@class KayokoPasteboardItem;
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoHistoryItemActionHandler : NSObject
 
-- (void)performDirectPasteWithItem:(PasteboardItem *)item
+- (void)performDirectPasteWithItem:(KayokoPasteboardItem *)item
                         historyKey:(NSString *)historyKey
                         completion:(nullable void (^)(BOOL success))completion;
-- (void)copyItem:(PasteboardItem *)item completion:(nullable void (^)(BOOL success))completion;
-- (void)saveImageForItem:(PasteboardItem *)item completion:(nullable void (^)(BOOL success))completion;
-- (void)openLinkForItem:(PasteboardItem *)item completion:(nullable void (^)(BOOL success))completion;
-- (void)deleteItem:(PasteboardItem *)item
+- (void)copyItem:(KayokoPasteboardItem *)item completion:(nullable void (^)(BOOL success))completion;
+- (void)saveImageForItem:(KayokoPasteboardItem *)item completion:(nullable void (^)(BOOL success))completion;
+- (void)openLinkForItem:(KayokoPasteboardItem *)item completion:(nullable void (^)(BOOL success))completion;
+- (void)deleteItem:(KayokoPasteboardItem *)item
         historyKey:(NSString *)historyKey
         completion:(nullable void (^)(BOOL success))completion;
-- (void)moveItem:(PasteboardItem *)item
+- (void)moveItem:(KayokoPasteboardItem *)item
          sourceHistoryKey:(NSString *)sourceHistoryKey
     destinationHistoryKey:(NSString *)destinationHistoryKey
                completion:(nullable void (^)(BOOL success))completion;

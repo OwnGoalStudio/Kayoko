@@ -2,24 +2,35 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-OBJC_EXTERN BOOL KayokoCoreEnabled(void);
-OBJC_EXTERN NSUInteger KayokoCoreActivationMethod(void);
-OBJC_EXTERN BOOL KayokoCorePanelVisible(void);
-OBJC_EXTERN BOOL KayokoCoreFullscreenSearchActive(void);
+@interface KayokoCoreRuntime : NSObject
 
-OBJC_EXTERN void KayokoCoreLoadPreferences(void);
-OBJC_EXTERN BOOL KayokoCoreRefreshPasteTipPreferences(void);
-OBJC_EXTERN void KayokoCoreLoadHeightPreference(void);
-OBJC_EXTERN void KayokoCoreInstallPanelInStatusBarWindow(UIWindow *window);
-OBJC_EXTERN void KayokoCorePreloadInitialHistory(void);
-OBJC_EXTERN void KayokoCoreStartLockStateObserver(void);
+@property(nonatomic, assign, readonly, getter=isEnabled) BOOL enabled;
+@property(nonatomic, assign, readonly) NSUInteger activationMethod;
+@property(nonatomic, assign, readonly) BOOL pasteTipsDisabled;
+@property(nonatomic, assign, readonly) BOOL panelVisible;
+@property(nonatomic, assign, readonly) BOOL fullscreenSearchActive;
 
-OBJC_EXTERN void KayokoCoreShow(void);
-OBJC_EXTERN void KayokoCoreHide(void);
-OBJC_EXTERN void KayokoCoreHideImmediately(void);
-OBJC_EXTERN void KayokoCoreReload(void);
-OBJC_EXTERN void KayokoCoreCopy(void);
-OBJC_EXTERN void KayokoCorePaste(void);
-OBJC_EXTERN void KayokoCorePasteWillStart(void);
++ (instancetype)sharedRuntime;
+
+- (void)loadPreferences;
+- (BOOL)refreshPasteTipPreferences;
+- (void)loadHeightPreference;
+
+- (void)installPanelInStatusBarWindow:(UIWindow *)window;
+- (void)preloadInitialHistory;
+- (void)startLockStateObserver;
+
+- (void)show;
+- (void)hide;
+- (void)hideImmediately;
+- (void)reloadHistory;
+- (void)capturePasteboardChange;
+- (void)markPasteWillStart;
+- (void)playPasteFeedback;
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
+@end
 
 NS_ASSUME_NONNULL_END

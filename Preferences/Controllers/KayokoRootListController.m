@@ -6,10 +6,8 @@
 //
 
 #import "KayokoRootListController.h"
-
-#import "NotificationKeys.h"
-#import "PasteboardManager.h"
-#import "PreferenceKeys.h"
+#import "KayokoNotificationKeys.h"
+#import "KayokoPreferenceKeys.h"
 
 #import <Preferences/PSSpecifier.h>
 #import <UIKit/UIKit.h>

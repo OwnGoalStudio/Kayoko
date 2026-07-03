@@ -6,7 +6,7 @@
 #import "KayokoClearConfirmationViewController.h"
 
 #import "KayokoClearConfirmationView.h"
-#import "PasteboardManager.h"
+#import "KayokoPasteboardManager.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -52,7 +52,7 @@ NS_ASSUME_NONNULL_END
 
     [[[self confirmationView] cancelButton] setEnabled:NO];
     [[[self confirmationView] confirmButton] setEnabled:NO];
-    [[PasteboardManager sharedInstance]
+    [[KayokoPasteboardManager sharedInstance]
         removeAllPasteboardItemsFromHistoryWithKey:historyKey
                                 shouldRemoveImages:YES
                            postsChangeNotification:NO

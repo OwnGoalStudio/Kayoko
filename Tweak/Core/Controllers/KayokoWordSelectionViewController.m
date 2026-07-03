@@ -6,9 +6,9 @@
 #import "KayokoWordSelectionViewController.h"
 
 #import "KayokoHeaderButtonStyle.h"
+#import "KayokoPasteboardItem.h"
+#import "KayokoPasteboardManager.h"
 #import "KayokoWordSelectionView.h"
-#import "PasteboardItem.h"
-#import "PasteboardManager.h"
 
 // Word selection creates one button per token; CJK text can approach one token per character.
 static NSUInteger const kKayokoWordSelectionMaximumTextLength = 5000;
@@ -26,7 +26,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak) UIButton *backButton;
 @property(nonatomic, weak) UIButton *clearButton;
 @property(nonatomic, copy, nullable, readwrite) NSString *sourceHistoryKey;
-@property(nonatomic, strong, nullable, readwrite) PasteboardItem *sourceItem;
+@property(nonatomic, strong, nullable, readwrite) KayokoPasteboardItem *sourceItem;
 
 - (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey;
 - (void)resetHeaderState;
@@ -96,7 +96,7 @@ NS_ASSUME_NONNULL_END
     [button setTintColor:color];
 }
 
-- (void)showWordSelectionWithItem:(PasteboardItem *)item
+- (void)showWordSelectionWithItem:(KayokoPasteboardItem *)item
                  sourceHistoryKey:(NSString *)sourceHistoryKey
                automaticallyPaste:(BOOL)automaticallyPaste {
     [self setSourceItem:item];
@@ -115,10 +115,10 @@ NS_ASSUME_NONNULL_END
                                     :kKayokoBackButtonImageSize
                         andTintColor:[UIColor labelColor]];
     [[self favoritesButton]
-        setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Back"
-                                                                                      value:nil
-                                                                                      table:@"Tweak"]];
-    [[self backButton] setAccessibilityLabel:[[PasteboardManager localizationBundle]
+        setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Back"
+                                                                                            value:nil
+                                                                                            table:@"Tweak"]];
+    [[self backButton] setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle]
                                                  localizedStringForKey:(automaticallyPaste ? @"Paste" : @"Copy")
                                                                  value:nil
                                                                  table:@"Tweak"]];
@@ -136,29 +136,30 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)handleActionButtonWithAutomaticallyPaste:(BOOL)automaticallyPaste {
-    PasteboardItem *sourceItem = [self sourceItem];
+    KayokoPasteboardItem *sourceItem = [self sourceItem];
     if (!sourceItem || ![self isShowingWordSelection] || ![self hasSelectedText]) {
         return;
     }
 
     NSString *text = [self selectedText];
-    PasteboardItem *selectedItem = [[PasteboardItem alloc] initWithBundleIdentifier:[sourceItem bundleIdentifier]
-                                                                         andContent:text
-                                                                     withImageNamed:@""];
+    KayokoPasteboardItem *selectedItem =
+        [[KayokoPasteboardItem alloc] initWithBundleIdentifier:[sourceItem bundleIdentifier]
+                                                    andContent:text
+                                                withImageNamed:@""];
     NSString *historyKey = [self sourceHistoryKey] ?: kKayokoHistoryKeyHistory;
     if (automaticallyPaste) {
-        [[PasteboardManager sharedInstance] performDirectPasteWithPasteboardItem:selectedItem
-                                                                     historyItem:sourceItem
-                                                              fromHistoryWithKey:historyKey
-                                                                 shouldAutoPaste:YES];
+        [[KayokoPasteboardManager sharedInstance] performDirectPasteWithPasteboardItem:selectedItem
+                                                                           historyItem:sourceItem
+                                                                    fromHistoryWithKey:historyKey
+                                                                       shouldAutoPaste:YES];
     } else {
-        PasteboardManager *pasteboardManager = [PasteboardManager sharedInstance];
+        KayokoPasteboardManager *pasteboardManager = [KayokoPasteboardManager sharedInstance];
         if ([pasteboardManager copyPasteboardItemToPasteboard:selectedItem]) {
             [pasteboardManager addPasteboardItem:selectedItem toHistoryWithKey:kKayokoHistoryKeyHistory];
         }
     }
 
-    [[self delegate] wordSelectionViewControllerDidRequestHideContainer:self];
+    [[self delegate] wordSelectionViewController:self didRequestHideContainerAfterDirectPaste:automaticallyPaste];
     [[self delegate] wordSelectionViewController:self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
 }
 
@@ -169,9 +170,9 @@ NS_ASSUME_NONNULL_END
     [[self backButton] setAlpha:1.0];
     [self restoreHeaderButtonsForSourceHistoryKey:[self sourceHistoryKey]];
     [[self favoritesButton]
-        setAccessibilityLabel:[[PasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
-                                                                                      value:nil
-                                                                                      table:@"Tweak"]];
+        setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
+                                                                                            value:nil
+                                                                                            table:@"Tweak"]];
 }
 
 - (void)resetWordSelectionState {
