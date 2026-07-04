@@ -32,7 +32,7 @@
 			<key>label</key>
 			<string>Current Maintainer</string>
 			<key>footerText</key>
-			<string>This maintained fork is developed and distributed by Lessica under GPLv3.</string>
+			<string>This maintained fork is developed and distributed by OwnGoal Studio under GPLv3.</string>
 		</dict>
 		<dict>
 			<key>cellClass</key>
@@ -80,6 +80,6 @@
 		</dict>
 	</array>
 	<key>title</key>
-	<string>Credits</string>
+	<string>Acknowledgments &amp; Licenses</string>
 </dict>
 </plist>

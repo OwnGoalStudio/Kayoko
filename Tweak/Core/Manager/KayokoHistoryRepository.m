@@ -7,6 +7,8 @@
 #import "KayokoHistoryMigrator.h"
 #import "KayokoHistoryStore.h"
 
+#import <HBLog.h>
+
 static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
 
 @implementation KayokoHistoryRepository {
@@ -49,6 +51,16 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
     }];
 }
 
+- (void)checkpointWriteAheadLog {
+    [self performAsync:^{
+      NSError *error = nil;
+      BOOL success = [[self historyStoreOnQueue] checkpointWriteAheadLogWithError:&error];
+      if (!success) {
+          HBLogDebug(@"Kayoko: Failed to checkpoint history database: %@", error);
+      }
+    }];
+}
+
 - (BOOL)addItemDictionary:(NSDictionary<NSString *, id> *)dictionary
              toHistoryKey:(NSString *)historyKey
                     error:(NSError **)error {
@@ -79,7 +91,7 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
                                                                  limit:[self limitForHistoryKey:historyKey]
                                                                  error:&error];
           if (!success) {
-              NSLog(@"Kayoko: Failed to add history item: %@", error);
+              HBLogDebug(@"Kayoko: Failed to add history item: %@", error);
               continue;
           }
           [savedDictionaries addObject:dictionary];
@@ -140,7 +152,7 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
                                                     shouldRemoveImage:shouldRemoveImage
                                                                 error:&error];
       if (!success) {
-          NSLog(@"Kayoko: Failed to remove history item: %@", error);
+          HBLogDebug(@"Kayoko: Failed to remove history item: %@", error);
       }
       [self dispatchCompletion:completion success:success];
     }];
@@ -158,7 +170,7 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
                                                    destinationLimit:[self limitForHistoryKey:destinationHistoryKey]
                                                               error:&error];
       if (!success) {
-          NSLog(@"Kayoko: Failed to move history item: %@", error);
+          HBLogDebug(@"Kayoko: Failed to move history item: %@", error);
       }
       [self dispatchCompletion:completion success:success];
     }];
@@ -173,7 +185,7 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
                                                         shouldRemoveImages:shouldRemoveImages
                                                                      error:&error];
       if (!success) {
-          NSLog(@"Kayoko: Failed to remove history items: %@", error);
+          HBLogDebug(@"Kayoko: Failed to remove history items: %@", error);
       }
       [self dispatchCompletion:completion success:success];
     }];
@@ -198,7 +210,7 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
       NSMutableArray<NSDictionary<NSString *, id> *> *history =
           [[self historyStoreOnQueue] itemsForHistoryKey:historyKey error:&error];
       if (error) {
-          NSLog(@"Kayoko: Failed to load history items: %@", error);
+          HBLogDebug(@"Kayoko: Failed to load history items: %@", error);
       }
       NSMutableArray<NSDictionary<NSString *, id> *> *items = history ?: [[NSMutableArray alloc] init];
       if (!completion) {
@@ -288,7 +300,7 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
         [[KayokoHistoryMigrator alloc] initWithHistoryStore:_historyStore
                                            migrationSources:[KayokoHistoryMigrator defaultMigrationSources]];
     if (![migrator migrateIfNeededWithError:&error]) {
-        NSLog(@"Kayoko: Failed to prepare v4 history store: %@", error);
+        HBLogDebug(@"Kayoko: Failed to prepare v4 history store: %@", error);
     }
     _didPrepareHistoryStore = YES;
 }

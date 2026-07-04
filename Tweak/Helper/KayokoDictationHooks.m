@@ -110,10 +110,8 @@ CHOptimizedMethod1(self, UIImage *, UIKeyboardDockItem, imageWithRenderConfig, i
 
     UIImage *result = [scaledImage imageWithRenderingMode:image.renderingMode];
     result = [result imageWithAlignmentRectInsets:alignmentInsets];
-    if (@available(iOS 13, *)) {
-        if (image.hasBaseline) {
-            result = [result imageWithBaselineOffsetFromBottom:image.baselineOffsetFromBottom];
-        }
+    if (image.hasBaseline) {
+        result = [result imageWithBaselineOffsetFromBottom:image.baselineOffsetFromBottom];
     }
     if (image.flipsForRightToLeftLayoutDirection) {
         result = [result imageFlippedForRightToLeftLayoutDirection];

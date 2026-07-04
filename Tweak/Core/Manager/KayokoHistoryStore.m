@@ -102,6 +102,20 @@ NS_ASSUME_NONNULL_END
     return YES;
 }
 
+- (BOOL)checkpointWriteAheadLogWithError:(NSError **)error {
+    if (![self openDatabaseWithError:error]) {
+        return NO;
+    }
+
+    int result = sqlite3_wal_checkpoint_v2(_database, NULL, SQLITE_CHECKPOINT_TRUNCATE, NULL, NULL);
+    if (result != SQLITE_OK) {
+        [self populateError:error code:result message:@"Unable to checkpoint history database"];
+        return NO;
+    }
+
+    return YES;
+}
+
 - (BOOL)isMigrationCompletedWithError:(NSError **)error {
     NSString *value = [self metadataValueForKey:kKayokoHistoryStoreMigrationKey error:error];
     return [value boolValue];

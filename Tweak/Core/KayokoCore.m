@@ -107,6 +107,16 @@ static void kayokoCoreReloadCallback(CFNotificationCenterRef center, void *obser
     [[KayokoCoreRuntime sharedRuntime] reloadHistory];
 }
 
+static void kayokoCoreCheckpointHistoryCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                                const void *object, CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] checkpointHistoryDatabase];
+}
+
 static void kayokoCorePreferencesReloadCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
                                                 const void *object, CFDictionaryRef userInfo) {
     (void)center;
@@ -129,6 +139,16 @@ static void kayokoCoreHeightPreferenceReloadCallback(CFNotificationCenterRef cen
 
 static void kayokoCoreHelperPasteCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
                                           const void *object, CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] playPasteFeedback];
+}
+
+static void kayokoCorePasteFeedbackCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                            const void *object, CFDictionaryRef userInfo) {
     (void)center;
     (void)observer;
     (void)name;
@@ -169,6 +189,8 @@ static void kayokoCorePasteTipPreferencesReloadCallback(CFNotificationCenterRef 
 + (void)installForSpringBoard {
     KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];
     [runtime loadPreferences];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCoreCheckpointHistory
+                          callback:kayokoCoreCheckpointHistoryCallback];
     if (![runtime isEnabled]) {
         return;
     }
@@ -195,6 +217,8 @@ static void kayokoCorePasteTipPreferencesReloadCallback(CFNotificationCenterRef 
                           callback:kayokoCoreHeightPreferenceReloadCallback];
     [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyHelperPaste
                           callback:kayokoCoreHelperPasteCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyPasteFeedback
+                          callback:kayokoCorePasteFeedbackCallback];
     [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyPasteWillStart
                           callback:kayokoCorePasteWillStartCallback];
 }

@@ -20,11 +20,9 @@ static CGFloat const kKayokoSearchFullscreenCollapseProgress = 0.32;
 
 static CGRect kayokoStatusBarFrameForWindow(UIWindow *window) {
     CGRect statusBarFrame = CGRectZero;
-    if (@available(iOS 13.0, *)) {
-        UIWindowScene *windowScene = [window windowScene];
-        if (windowScene) {
-            statusBarFrame = [[windowScene statusBarManager] statusBarFrame];
-        }
+    UIWindowScene *windowScene = [window windowScene];
+    if (windowScene) {
+        statusBarFrame = [[windowScene statusBarManager] statusBarFrame];
     }
 
     if (CGRectIsEmpty(statusBarFrame)) {
@@ -479,14 +477,7 @@ NS_ASSUME_NONNULL_END
     [tableView setContentInset:contentInset];
 
     UIEdgeInsets indicatorInsets = UIEdgeInsetsMake(0, 0, bottomInset, 0);
-    if (@available(iOS 13.0, *)) {
-        [tableView setVerticalScrollIndicatorInsets:indicatorInsets];
-    } else {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        [tableView setScrollIndicatorInsets:indicatorInsets];
-#pragma clang diagnostic pop
-    }
+    [tableView setVerticalScrollIndicatorInsets:indicatorInsets];
 }
 
 - (void)applyBottomInsetsToTableViews {

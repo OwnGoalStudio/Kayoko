@@ -24,6 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)hide;
 - (void)hideImmediately;
 - (void)reloadHistory;
+- (void)checkpointHistoryDatabase;
 - (void)capturePasteboardChange;
 - (void)markPasteWillStart;
 - (void)playPasteFeedback;

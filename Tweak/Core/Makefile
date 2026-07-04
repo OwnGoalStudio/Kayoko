@@ -23,6 +23,7 @@ KayokoCore_FRAMEWORKS += AudioToolbox
 KayokoCore_FRAMEWORKS += AVFoundation
 KayokoCore_FRAMEWORKS += CoreGraphics
 KayokoCore_FRAMEWORKS += ImageIO
+KayokoCore_FRAMEWORKS += IOKit
 KayokoCore_FRAMEWORKS += QuartzCore
 KayokoCore_FRAMEWORKS += UIKit
 

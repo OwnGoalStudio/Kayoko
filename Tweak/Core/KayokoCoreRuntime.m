@@ -63,6 +63,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL saveImages;
 @property(nonatomic, assign) BOOL swipeToSelectWords;
 @property(nonatomic, assign) BOOL automaticallyPaste;
+@property(nonatomic, assign) KayokoAutomaticPasteMode automaticPasteMode;
 @property(nonatomic, assign) BOOL dismissOnOutsideTouch;
 @property(nonatomic, assign) BOOL playSoundEffects;
 @property(nonatomic, assign) BOOL playHapticFeedback;
@@ -229,6 +230,7 @@ NS_ASSUME_NONNULL_END
         kKayokoPreferenceKeySaveImages : @(kKayokoPreferenceKeySaveImagesDefaultValue),
         kKayokoPreferenceKeySwipeToSelectWords : @(kKayokoPreferenceKeySwipeToSelectWordsDefaultValue),
         kKayokoPreferenceKeyAutomaticallyPaste : @(kKayokoPreferenceKeyAutomaticallyPasteDefaultValue),
+        kKayokoPreferenceKeyAutomaticPasteMode : @(kKayokoPreferenceKeyAutomaticPasteModeDefaultValue),
         kKayokoPreferenceKeyDismissOnOutsideTouch : @(kKayokoPreferenceKeyDismissOnOutsideTouchDefaultValue),
         kKayokoPreferenceKeyDisablePasteTips : @(kKayokoPreferenceKeyDisablePasteTipsDefaultValue),
         kKayokoPreferenceKeyIgnoreRemoteReplication : @(kKayokoPreferenceKeyIgnoreRemoteReplicationDefaultValue),
@@ -247,6 +249,12 @@ NS_ASSUME_NONNULL_END
     self.saveImages = [[self.preferences objectForKey:kKayokoPreferenceKeySaveImages] boolValue];
     self.swipeToSelectWords = [[self.preferences objectForKey:kKayokoPreferenceKeySwipeToSelectWords] boolValue];
     self.automaticallyPaste = [[self.preferences objectForKey:kKayokoPreferenceKeyAutomaticallyPaste] boolValue];
+    self.automaticPasteMode =
+        [[self.preferences objectForKey:kKayokoPreferenceKeyAutomaticPasteMode] unsignedIntegerValue];
+    if (self.automaticPasteMode != kKayokoAutomaticPasteModeClassic &&
+        self.automaticPasteMode != kKayokoAutomaticPasteModeSimulated) {
+        self.automaticPasteMode = kKayokoPreferenceKeyAutomaticPasteModeDefaultValue;
+    }
     self.dismissOnOutsideTouch = [[self.preferences objectForKey:kKayokoPreferenceKeyDismissOnOutsideTouch] boolValue];
     BOOL ignoreRemoteReplication =
         [[self.preferences objectForKey:kKayokoPreferenceKeyIgnoreRemoteReplication] boolValue];
@@ -267,6 +275,9 @@ NS_ASSUME_NONNULL_END
     }
     if ([pasteboardManager automaticallyPaste] != self.automaticallyPaste) {
         [pasteboardManager setAutomaticallyPaste:self.automaticallyPaste];
+    }
+    if ([pasteboardManager automaticPasteMode] != self.automaticPasteMode) {
+        [pasteboardManager setAutomaticPasteMode:self.automaticPasteMode];
     }
     if ([pasteboardManager ignoreRemoteReplication] != ignoreRemoteReplication) {
         [pasteboardManager setIgnoreRemoteReplication:ignoreRemoteReplication];
@@ -513,6 +524,10 @@ NS_ASSUME_NONNULL_END
           [self.mainViewController handleHistoryChanged];
         });
     }
+}
+
+- (void)checkpointHistoryDatabase {
+    [[KayokoPasteboardManager sharedInstance] checkpointHistoryDatabase];
 }
 
 @end

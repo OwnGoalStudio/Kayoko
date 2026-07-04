@@ -4,6 +4,13 @@
 <dict>
 	<key>items</key>
 	<array>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string></string>
+		</dict>
 		<dict>
 			<key>cellClass</key>
 			<string>KayokoHeaderCell</string>
@@ -12,7 +19,7 @@
 			<key>headerSubtitle</key>
 			<string>Feature-rich clipboard manager for iOS.</string>
 			<key>detail</key>
-			<string>v4.0.4</string>
+			<string>v4.0.5</string>
 			<key>height</key>
 			<integer>92</integer>
 		</dict>
@@ -227,6 +234,37 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
+			<string>Automatic Paste Mode</string>
+			<key>footerText</key>
+			<string>If Classic mode does not paste automatically in some apps, try Simulated mode. It uses a simpler fallback to complete the paste.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSegmentCell</string>
+			<key>default</key>
+			<integer>0</integer>
+			<key>defaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>key</key>
+			<string>AutomaticPasteMode</string>
+			<key>validValues</key>
+			<array>
+				<integer>0</integer>
+				<integer>1</integer>
+			</array>
+			<key>validTitles</key>
+			<array>
+				<string>Classic</string>
+				<string>Simulated</string>
+			</array>
+			<key>PostNotification</key>
+			<string>com.82flex.kayoko.preferences.reload</string>
+		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
 			<string>Feedbacks</string>
 		</dict>
 		<dict>
@@ -325,14 +363,24 @@
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
-			<key>footerText</key>
-			<string>Try out your changes by typing, copying and pasting text.</string>
+			<key>label</key>
+			<string>Supports</string>
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSEditTextCell</string>
-			<key>placeholder</key>
-			<string>Wishing on a star…</string>
+			<string>PSLinkCell</string>
+			<key>label</key>
+			<string>Advanced Options</string>
+			<key>detail</key>
+			<string>KayokoAdvancedOptionsListController</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkCell</string>
+			<key>label</key>
+			<string>Acknowledgments &amp; Licenses</string>
+			<key>detail</key>
+			<string>KayokoCreditsListController</string>
 		</dict>
 
 		<dict>
@@ -340,42 +388,33 @@
 			<string>PSGroupCell</string>
 			<key>label</key>
 			<string></string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSButtonCell</string>
-			<key>label</key>
-			<string>Respring</string>
-			<key>action</key>
-			<string>respringPrompt</string>
-			<key>isDestructive</key>
-			<true/>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSButtonCell</string>
-			<key>label</key>
-			<string>Reset Preferences</string>
-			<key>action</key>
-			<string>resetPrompt</string>
-			<key>isDestructive</key>
-			<true/>
-		</dict>
-
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
 			<key>footerText</key>
-			<string>Thanks to you and everyone who has helped in any way.</string>
+			<string>Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.
+
+Made with ♥ by OwnGoal Studio</string>
+			<key>condensedFooterText</key>
+			<string>Made with ♥ by OwnGoal Studio</string>
+			<key>hideFooterTextAfterPreferenceDefaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>hideFooterTextAfterPreferenceKey</key>
+			<string>DidOpenHavocLink</string>
 		</dict>
 		<dict>
- 			<key>cell</key>
- 			<string>PSLinkCell</string>
- 			<key>label</key>
- 			<string>Credits</string>
- 			<key>detail</key>
- 			<string>KayokoCreditsListController</string>
- 		</dict>
+			<key>cellClass</key>
+			<string>KayokoLinkCell</string>
+			<key>label</key>
+			<string>Purchase Kayoko</string>
+			<key>subtitle</key>
+			<string>Purchase Kayoko on Havoc Marketplace and support future maintenance.</string>
+			<key>url</key>
+			<string>https://havoc.app/package/kayoko</string>
+			<key>height</key>
+			<integer>54</integer>
+			<key>markOpenedDefaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>markOpenedKey</key>
+			<string>DidOpenHavocLink</string>
+		</dict>
 
 	</array>
 	<key>title</key>

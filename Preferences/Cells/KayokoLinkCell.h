@@ -18,6 +18,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy) NSString *title;
 @property(nonatomic, copy) NSString *subtitle;
 @property(nonatomic, copy) NSString *url;
+@property(nonatomic, copy, nullable) NSString *markOpenedDefaults;
+@property(nonatomic, copy, nullable) NSString *markOpenedKey;
 @end
 
 NS_ASSUME_NONNULL_END

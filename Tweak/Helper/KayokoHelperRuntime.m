@@ -604,28 +604,20 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
         return nil;
     }
 
-    if (@available(iOS 13.0, *)) {
-        for (UIScene *scene in [application connectedScenes]) {
-            if ([scene activationState] != UISceneActivationStateForegroundActive ||
-                ![scene isKindOfClass:[UIWindowScene class]]) {
-                continue;
-            }
-
-            for (UIWindow *window in [(UIWindowScene *)scene windows]) {
-                if ([window isKeyWindow]) {
-                    return window;
-                }
-            }
+    for (UIScene *scene in [application connectedScenes]) {
+        if ([scene activationState] != UISceneActivationStateForegroundActive ||
+            ![scene isKindOfClass:[UIWindowScene class]]) {
+            continue;
         }
 
-        return nil;
+        for (UIWindow *window in [(UIWindowScene *)scene windows]) {
+            if ([window isKeyWindow]) {
+                return window;
+            }
+        }
     }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    UIWindow *keyWindow = [application keyWindow];
-#pragma clang diagnostic pop
-    return [keyWindow isKeyWindow] ? keyWindow : nil;
+    return nil;
 }
 
 - (BOOL)applicationHasActiveKeyWindow:(UIApplication *)application {

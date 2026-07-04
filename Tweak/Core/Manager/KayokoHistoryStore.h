@@ -19,6 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)init NS_UNAVAILABLE;
 
 - (BOOL)prepareStoreWithError:(NSError **)error;
+- (BOOL)checkpointWriteAheadLogWithError:(NSError **)error;
 - (BOOL)isMigrationCompletedWithError:(NSError **)error;
 - (BOOL)markMigrationCompletedWithError:(NSError **)error;
 

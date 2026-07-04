@@ -29,6 +29,7 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
 @property(nonatomic, assign) BOOL saveText;
 @property(nonatomic, assign) BOOL saveImages;
 @property(nonatomic, assign) BOOL automaticallyPaste;
+@property(nonatomic, assign) NSUInteger automaticPasteMode;
 @property(nonatomic, assign) BOOL ignoreRemoteReplication;
 
 + (instancetype)sharedInstance;
@@ -41,6 +42,7 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
 + (NSBundle *)localizationBundle;
 + (NSUInteger)normalizedMaximumHistoryAmountForValue:(NSUInteger)value;
 
+- (void)checkpointHistoryDatabase;
 - (void)pullPasteboardChanges;
 - (void)pullPasteboardChangesWithCompletion:(nullable void (^)(BOOL didSaveAnyItem))completion;
 - (BOOL)addPasteboardItem:(KayokoPasteboardItem *)item toHistoryWithKey:(NSString *)historyKey;

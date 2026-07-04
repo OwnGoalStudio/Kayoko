@@ -110,7 +110,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)setupConstraints {
-    UILayoutGuide *margins = [[self contentView] layoutMarginsGuide];
+    UILayoutGuide *margins = [self layoutMarginsGuide];
     [NSLayoutConstraint activateConstraints:@[
         [_slider.leadingAnchor constraintEqualToAnchor:[margins leadingAnchor]],
         [_slider.trailingAnchor constraintEqualToAnchor:[_valueLabel leadingAnchor] constant:-12],

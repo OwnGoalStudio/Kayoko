@@ -62,7 +62,7 @@
 }
 
 - (void)setupConstraints {
-    UILayoutGuide *margins = self.contentView.layoutMarginsGuide;
+    UILayoutGuide *margins = self.layoutMarginsGuide;
 
     if (_valueLabel) {
         // Slider + Value Label layout

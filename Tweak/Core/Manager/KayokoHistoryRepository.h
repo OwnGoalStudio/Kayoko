@@ -21,6 +21,7 @@ typedef NSUInteger (^KayokoHistoryLimitProvider)(NSString *historyKey);
 
 - (void)prepareStore;
 - (void)ensureStorePrepared;
+- (void)checkpointWriteAheadLog;
 
 - (BOOL)addItemDictionary:(NSDictionary<NSString *, id> *)dictionary
              toHistoryKey:(NSString *)historyKey

@@ -11,8 +11,8 @@
 #import "KayokoCoreRuntime.h"
 #import "KayokoSpringBoardHooks.h"
 
-CHDeclareClass(UIStatusBarWindow);
 CHDeclareClass(SpringBoard);
+CHDeclareClass(UIWindowScene);
 CHDeclareClass(UIViewController);
 CHDeclareClass(SBCoverSheetPrimarySlidingViewController);
 CHDeclareClass(SBHIconManager);
@@ -21,9 +21,6 @@ CHDeclareClass(SBHLibrarySearchController);
 CHDeclareClass(SBMainDisplaySystemGestureManager);
 CHDeclareClass(SBMainSwitcherViewController);
 CHDeclareClass(SBMainSwitcherControllerCoordinator);
-
-@interface UIStatusBarWindow : UIWindow
-@end
 
 @interface SpringBoard : UIApplication
 - (void)applicationDidFinishLaunching:(id)application;
@@ -68,6 +65,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSpringBoardHookInstaller ()
 
++ (BOOL)isStatusBarWindow:(UIWindow *)window;
 + (void)hideForHomeScreenIfVisible:(id)controller;
 + (void)hideForLayoutStateTransition;
 + (void)hideForAppSwitcherIfVisible:(id)switcher;
@@ -76,10 +74,17 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
-CHOptimizedMethod1(self, id, UIStatusBarWindow, initWithFrame, CGRect, frame) {
-    UIStatusBarWindow *window = CHSuper1(UIStatusBarWindow, initWithFrame, frame);
-    [[KayokoCoreRuntime sharedRuntime] installPanelInStatusBarWindow:window];
-    return window;
+CHOptimizedMethod1(self, void, UIWindowScene, _delegate_windowDidBecomeVisible, UIWindow *, window) {
+    CHSuper1(UIWindowScene, _delegate_windowDidBecomeVisible, window);
+    if (![KayokoSpringBoardHookInstaller isStatusBarWindow:window]) {
+        return;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if ([KayokoSpringBoardHookInstaller isStatusBarWindow:window]) {
+          [[KayokoCoreRuntime sharedRuntime] installPanelInStatusBarWindow:window];
+      }
+    });
 }
 
 CHOptimizedMethod1(self, void, SpringBoard, applicationDidFinishLaunching, id, application) {
@@ -161,6 +166,16 @@ CHOptimizedMethod2(self, void, SBMainSwitcherControllerCoordinator, layoutStateT
 
 @implementation KayokoSpringBoardHookInstaller
 
++ (BOOL)isStatusBarWindow:(UIWindow *)window {
+    Class statusBarWindowClass = NSClassFromString(@"UIStatusBarWindow");
+    if (statusBarWindowClass && [window isKindOfClass:statusBarWindowClass]) {
+        return YES;
+    }
+
+    Class springBoardStatusBarWindowClass = NSClassFromString(@"SBStatusBarWindow");
+    return springBoardStatusBarWindowClass && [window isKindOfClass:springBoardStatusBarWindowClass];
+}
+
 + (BOOL)isHomeScreenController:(id)controller {
     static Class iconControllerClass = nil;
     static dispatch_once_t onceToken;
@@ -206,13 +221,14 @@ CHOptimizedMethod2(self, void, SBMainSwitcherControllerCoordinator, layoutStateT
 }
 
 + (void)installStatusBarHooks {
-    Class statusBarWindowCls = objc_getClass("UIStatusBarWindow");
-    if (@available(iOS 17, *)) {
-        statusBarWindowCls = objc_getClass("SBStatusBarWindow");
+    Class windowSceneClass = NSClassFromString(@"UIWindowScene");
+    SEL windowDidBecomeVisibleSelector = @selector(_delegate_windowDidBecomeVisible:);
+    if (!windowSceneClass || ![windowSceneClass instancesRespondToSelector:windowDidBecomeVisibleSelector]) {
+        return;
     }
 
-    CHLoadClass_(&UIStatusBarWindow$, statusBarWindowCls);
-    CHHook1(UIStatusBarWindow, initWithFrame);
+    CHLoadClass_(&UIWindowScene$, windowSceneClass);
+    CHHook1(UIWindowScene, _delegate_windowDidBecomeVisible);
 }
 
 + (void)installHomeScreenHooks {

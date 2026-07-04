@@ -63,15 +63,13 @@ NS_ASSUME_NONNULL_END
     [searchBar setBackgroundImage:[[UIImage alloc] init]];
     [searchBar setTintColor:[UIColor labelColor]];
     [searchBar setDelegate:self];
-    if (@available(iOS 13.0, *)) {
-        [[searchBar searchTextField] addTarget:self
-                                        action:@selector(handleSearchTextFieldEditingChanged:)
-                              forControlEvents:UIControlEventEditingChanged];
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(handleSearchTextFieldTextDidChangeNotification:)
-                                                     name:UITextFieldTextDidChangeNotification
-                                                   object:[searchBar searchTextField]];
-    }
+    [[searchBar searchTextField] addTarget:self
+                                    action:@selector(handleSearchTextFieldEditingChanged:)
+                          forControlEvents:UIControlEventEditingChanged];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleSearchTextFieldTextDidChangeNotification:)
+                                                 name:UITextFieldTextDidChangeNotification
+                                               object:[searchBar searchTextField]];
     return searchBar;
 }
 

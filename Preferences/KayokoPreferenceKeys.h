@@ -15,6 +15,11 @@ typedef NS_OPTIONS(NSUInteger, ActivationMethod) {
     kActivationMethodSwipeUp = 1 << 4
 };
 
+typedef NS_ENUM(NSUInteger, KayokoAutomaticPasteMode) {
+    kKayokoAutomaticPasteModeClassic = 0,
+    kKayokoAutomaticPasteModeSimulated = 1
+};
+
 static NSString *const kKayokoPreferencesIdentifier = @"com.82flex.kayoko.preferences";
 
 static NSString *const kKayokoPreferenceKeyEnabled = @"Enabled";
@@ -24,6 +29,7 @@ static NSString *const kKayokoPreferenceKeySaveImages = @"SaveImages";
 static NSString *const kKayokoPreferenceKeySwipeToSelectWords = @"SwipeToSelectWords";
 static NSString *const kKayokoPreferenceKeyActivationMethod = @"ActivationMethod";
 static NSString *const kKayokoPreferenceKeyAutomaticallyPaste = @"AutomaticallyPaste";
+static NSString *const kKayokoPreferenceKeyAutomaticPasteMode = @"AutomaticPasteMode";
 static NSString *const kKayokoPreferenceKeyDismissOnOutsideTouch = @"DismissOnOutsideTouch";
 static NSString *const kKayokoPreferenceKeyDisablePasteTips = @"DisablePasteTips";
 static NSString *const kKayokoPreferenceKeyIgnoreRemoteReplication = @"IgnoreRemoteReplication";
@@ -40,6 +46,8 @@ static BOOL const kKayokoPreferenceKeySwipeToSelectWordsDefaultValue = YES;
 static ActivationMethod const kKayokoPreferenceKeyActivationMethodDefaultValue =
     kActivationMethodDictationKey | kActivationMethodInputSwitcher;
 static BOOL const kKayokoPreferenceKeyAutomaticallyPasteDefaultValue = YES;
+static KayokoAutomaticPasteMode const kKayokoPreferenceKeyAutomaticPasteModeDefaultValue =
+    kKayokoAutomaticPasteModeClassic;
 static BOOL const kKayokoPreferenceKeyDismissOnOutsideTouchDefaultValue = YES;
 static BOOL const kKayokoPreferenceKeyDisablePasteTipsDefaultValue = NO;
 static BOOL const kKayokoPreferenceKeyIgnoreRemoteReplicationDefaultValue = NO;

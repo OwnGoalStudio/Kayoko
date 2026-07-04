@@ -17,6 +17,7 @@
         [self setSelectionStyle:UITableViewCellSelectionStyleNone];
         [[self contentView] setBackgroundColor:[UIColor clearColor]];
         [self setBackgroundColor:[UIColor clearColor]];
+        UILayoutGuide *margins = [self layoutMarginsGuide];
 
         UIImage *icon = [UIImage imageNamed:@"KayokoIcon" inBundle:bundle compatibleWithTraitCollection:nil];
         [self setIconImageView:[[UIImageView alloc] initWithImage:icon]];
@@ -29,8 +30,7 @@
 
         [[self iconImageView] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self iconImageView] leadingAnchor] constraintEqualToAnchor:[[self contentView] leadingAnchor]
-                                                                 constant:18],
+            [[[self iconImageView] leadingAnchor] constraintEqualToAnchor:[margins leadingAnchor]],
             [[[self iconImageView] centerYAnchor] constraintEqualToAnchor:[[self contentView] centerYAnchor]],
             [[[self iconImageView] widthAnchor] constraintEqualToConstant:46],
             [[[self iconImageView] heightAnchor] constraintEqualToConstant:46]
@@ -78,8 +78,7 @@
             [[[self versionLabel] leadingAnchor] constraintEqualToAnchor:[[self headerTitleLabel] trailingAnchor]
                                                                 constant:8],
             [[[self versionLabel] centerYAnchor] constraintEqualToAnchor:[[self headerTitleLabel] centerYAnchor]],
-            [[[self versionLabel] trailingAnchor] constraintLessThanOrEqualToAnchor:[[self contentView] trailingAnchor]
-                                                                           constant:-18],
+            [[[self versionLabel] trailingAnchor] constraintLessThanOrEqualToAnchor:[margins trailingAnchor]],
             [[[self versionLabel] widthAnchor] constraintGreaterThanOrEqualToConstant:MAX(32.0, versionBadgeWidth)],
             [[[self versionLabel] heightAnchor] constraintEqualToConstant:18]
         ]];
@@ -96,8 +95,7 @@
         [[self subtitleLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
             [[[self subtitleLabel] leadingAnchor] constraintEqualToAnchor:[[self headerTitleLabel] leadingAnchor]],
-            [[[self subtitleLabel] trailingAnchor] constraintEqualToAnchor:[[self contentView] trailingAnchor]
-                                                                  constant:-18],
+            [[[self subtitleLabel] trailingAnchor] constraintEqualToAnchor:[margins trailingAnchor]],
             [[[self subtitleLabel] topAnchor] constraintEqualToAnchor:[[self headerTitleLabel] bottomAnchor]
                                                              constant:4],
             [[[self subtitleLabel] bottomAnchor] constraintLessThanOrEqualToAnchor:[[self iconImageView] bottomAnchor]

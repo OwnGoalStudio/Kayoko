@@ -326,14 +326,10 @@ NS_ASSUME_NONNULL_END
                                   alpha:(CGFloat)lightAlpha
                               darkWhite:(CGFloat)darkWhite
                                   alpha:(CGFloat)darkAlpha {
-    if (@available(iOS 13, *)) {
-        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
-          BOOL dark = [traitCollection userInterfaceStyle] == UIUserInterfaceStyleDark;
-          return [UIColor colorWithWhite:(dark ? darkWhite : lightWhite) alpha:(dark ? darkAlpha : lightAlpha)];
-        }];
-    }
-
-    return [UIColor colorWithWhite:lightWhite alpha:lightAlpha];
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+      BOOL dark = [traitCollection userInterfaceStyle] == UIUserInterfaceStyleDark;
+      return [UIColor colorWithWhite:(dark ? darkWhite : lightWhite) alpha:(dark ? darkAlpha : lightAlpha)];
+    }];
 }
 
 - (void)updateSelectedText {

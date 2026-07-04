@@ -421,18 +421,18 @@ NS_ASSUME_NONNULL_END
     [[tableView cellForRowAtIndexPath:indexPath] setSelected:NO animated:YES];
 
     KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:[self itemDictionaryAtIndexPath:indexPath]];
-    [[self actionHandler] performDirectPasteWithItem:item
-                                          historyKey:[self historyKey]
-                                          completion:^(BOOL success) {
-                                            if (success) {
-                                                if ([self automaticallyPaste]) {
-                                                    [[self delegate]
-                                                        historyListViewControllerDidRequestHideAfterDirectPaste:self];
-                                                } else {
-                                                    [[self delegate] historyListViewControllerDidRequestHide:self];
-                                                }
-                                            }
-                                          }];
+    [[self actionHandler]
+        performDirectPasteWithItem:item
+                        historyKey:[self historyKey]
+                        completion:^(BOOL success) {
+                          if (success) {
+                              if ([self automaticallyPaste]) {
+                                  [[self delegate] historyListViewControllerDidRequestHideAfterDirectPaste:self];
+                              } else {
+                                  [[self delegate] historyListViewControllerDidRequestHide:self];
+                              }
+                          }
+                        }];
 }
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
