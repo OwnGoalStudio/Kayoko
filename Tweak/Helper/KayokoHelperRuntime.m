@@ -7,6 +7,7 @@
 
 #import "KayokoHelperRuntime.h"
 #import "KayokoNotificationKeys.h"
+#import "KayokoSceneSettingKeys.h"
 
 #import <AudioToolbox/AudioToolbox.h>
 #import <CaptainHook/CaptainHook.h>
@@ -18,6 +19,7 @@
 CHDeclareClass(UIKeyboardLayoutStar);
 CHDeclareClass(UIKBInputBackdropView);
 CHDeclareClass(UIKeyboardImpl);
+CHDeclareClass(FBSScene);
 CHDeclareClass(UISearchBar);
 CHDeclareClass(UITextField);
 
@@ -36,6 +38,18 @@ static const NSTimeInterval kKayokoKeyboardHideSuppressionInterval = 1.0;
 + (instancetype)activeInstance;
 @property(nonatomic, strong, readonly) id inputDelegate;
 @end
+
+@class BSMutableSettings;
+
+@interface FBSMutableSceneClientSettings : NSObject
+- (BSMutableSettings *)otherSettings;
+@end
+
+@interface BSMutableSettings : NSObject
+- (void)setFlag:(long long)flag forSetting:(unsigned long long)setting;
+@end
+
+typedef void (^FBSSceneClientSettingsUpdateBlock)(FBSMutableSceneClientSettings *mutableClientSettings);
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -273,6 +287,7 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma mark - Installation
 
 - (void)installRuntimeHooks;
+- (void)installSceneClientSettingsHooks;
 - (void)installSpringBoardInputIsolationHooks;
 - (void)installRuntimeObserversObservingWindowResign:(BOOL)observesWindowResign;
 
@@ -334,6 +349,26 @@ CHOptimizedMethod3(self, void, UIKeyboardImpl, setDelegate, id, delegate, force,
     [[KayokoHelperRuntime sharedRuntime] keyboardImplDidSetDelegate:delegate];
 }
 
+CHOptimizedMethod1(self, void, FBSScene, updateClientSettingsWithBlock, FBSSceneClientSettingsUpdateBlock, block) {
+    FBSSceneClientSettingsUpdateBlock wrappedBlock = ^(FBSMutableSceneClientSettings *mutableClientSettings) {
+      if (block) {
+          block(mutableClientSettings);
+      }
+
+      if (![mutableClientSettings respondsToSelector:@selector(otherSettings)]) {
+          return;
+      }
+
+      BSMutableSettings *otherSettings = [mutableClientSettings otherSettings];
+      if (![otherSettings respondsToSelector:@selector(setFlag:forSetting:)]) {
+          return;
+      }
+
+      [otherSettings setFlag:1 forSetting:kKayokoSceneClientSettingHelperInjected];
+    };
+    CHSuper1(FBSScene, updateClientSettingsWithBlock, wrappedBlock);
+}
+
 CHOptimizedMethod0(self, BOOL, UISearchBar, resignFirstResponder) {
     [[KayokoHelperRuntime sharedRuntime] rememberResponderWillResign:self];
     return CHSuper0(UISearchBar, resignFirstResponder);
@@ -373,6 +408,7 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
     self.springBoardRuntime = NO;
     self.automaticallyPasteEnabled = configuration.automaticallyPasteEnabled;
     self.hapticFeedbackEnabled = configuration.hapticFeedbackEnabled;
+    [self installSceneClientSettingsHooks];
     [self installRuntimeHooks];
     [self installRuntimeObserversObservingWindowResign:YES];
 }
@@ -691,29 +727,21 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
 #pragma mark - Keyboard State
 
 - (UIKeyboardImpl *)activeKeyboardImpl {
-    Class keyboardImplClass = NSClassFromString(@"UIKeyboardImpl");
-    SEL activeInstanceSelector = @selector(activeInstance);
-    if (![keyboardImplClass respondsToSelector:activeInstanceSelector]) {
+    id keyboardImplClass = NSClassFromString(@"UIKeyboardImpl");
+    if (![keyboardImplClass respondsToSelector:@selector(activeInstance)]) {
         return nil;
     }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-    return [keyboardImplClass performSelector:activeInstanceSelector];
-#pragma clang diagnostic pop
+    return [keyboardImplClass activeInstance];
 }
 
 - (UIResponder *)activeKeyboardInputDelegate {
     UIKeyboardImpl *keyboardImpl = [self activeKeyboardImpl];
-    SEL inputDelegateSelector = @selector(inputDelegate);
-    if (![keyboardImpl respondsToSelector:inputDelegateSelector]) {
+    if (![keyboardImpl respondsToSelector:@selector(inputDelegate)]) {
         return nil;
     }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-    id inputDelegate = [keyboardImpl performSelector:inputDelegateSelector];
-#pragma clang diagnostic pop
+    id inputDelegate = [keyboardImpl inputDelegate];
     if (![inputDelegate isKindOfClass:[UIResponder class]]) {
         return nil;
     }
@@ -1327,6 +1355,14 @@ CHOptimizedMethod0(self, BOOL, UITextField, resignFirstResponder) {
       CHHook1(UIKeyboardImpl, applicationWillResignActive);
       CHHook1(UIKeyboardImpl, applicationWillSuspend);
       CHHook3(UIKeyboardImpl, setDelegate, force, fromBecomeFirstResponder);
+    });
+}
+
+- (void)installSceneClientSettingsHooks {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+      CHLoadClass_(&FBSScene$, NSClassFromString(@"FBSScene"));
+      CHHook1(FBSScene, updateClientSettingsWithBlock);
     });
 }
 

@@ -36,6 +36,10 @@ static CGFloat const kKayokoSwipeUpAdditionalBottomSafetyInset = 0.0;
 @interface _UIHostedWindow : UIWindow
 @end
 
+@interface UIApplication (KayokoPrivateTouches)
+- (void)_cancelAllTouches;
+@end
+
 static BOOL kayokoPointIsInsideAllowedSwipeRegion(UIView *view, CGPoint point) {
     UIEdgeInsets safeAreaInsets = view.safeAreaInsets;
     safeAreaInsets.bottom += kKayokoSwipeUpAdditionalBottomSafetyInset;
@@ -103,25 +107,12 @@ NS_ASSUME_NONNULL_END
     }
 
     if ([[KayokoHelperRuntime sharedRuntime] activateKayokoAfterCapturingCurrentFocus]) {
-        Class applicationClass = NSClassFromString(@"UIApplication");
-        SEL sharedApplicationSelector = NSSelectorFromString(@"sharedApplication");
-        if (![applicationClass respondsToSelector:sharedApplicationSelector]) {
+        UIApplication *application = [UIApplication sharedApplication];
+        if (![application respondsToSelector:@selector(_cancelAllTouches)]) {
             return;
         }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-        id application = [applicationClass performSelector:sharedApplicationSelector];
-#pragma clang diagnostic pop
-        SEL cancelAllTouchesSelector = NSSelectorFromString(@"_cancelAllTouches");
-        if (![application respondsToSelector:cancelAllTouchesSelector]) {
-            return;
-        }
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-        [application performSelector:cancelAllTouchesSelector];
-#pragma clang diagnostic pop
+        [application _cancelAllTouches];
     }
 }
 

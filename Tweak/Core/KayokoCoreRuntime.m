@@ -252,7 +252,8 @@ NS_ASSUME_NONNULL_END
     self.automaticPasteMode =
         [[self.preferences objectForKey:kKayokoPreferenceKeyAutomaticPasteMode] unsignedIntegerValue];
     if (self.automaticPasteMode != kKayokoAutomaticPasteModeClassic &&
-        self.automaticPasteMode != kKayokoAutomaticPasteModeSimulated) {
+        self.automaticPasteMode != kKayokoAutomaticPasteModeSimulated &&
+        self.automaticPasteMode != kKayokoAutomaticPasteModeAutomatic) {
         self.automaticPasteMode = kKayokoPreferenceKeyAutomaticPasteModeDefaultValue;
     }
     self.dismissOnOutsideTouch = [[self.preferences objectForKey:kKayokoPreferenceKeyDismissOnOutsideTouch] boolValue];

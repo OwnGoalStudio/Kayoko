@@ -21,7 +21,8 @@
 "Disable Paste Tips" = "禁用粘贴提示";
 "Ignore Remote Copy" = "忽略远程拷贝";
 "Automatic Paste Mode" = "自动粘贴模式";
-"If Classic mode does not paste automatically in some apps, try Simulated mode. It uses a simpler fallback to complete the paste." = "如果某些 App 中「经典」模式无法自动粘贴，可以尝试「模拟」模式。它会用更简单的方式完成粘贴，适合作为基础兜底。";
+"“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed." = "“模拟” 模式会通过硬件组合键模拟粘贴快捷键。“自动” 模式会在当前 App 可配合时使用 “经典”，需要时再退回 “模拟”。";
+"Auto" = "自动";
 "Classic" = "经典";
 "Simulated" = "模拟";
 "Feedbacks" = "反馈";

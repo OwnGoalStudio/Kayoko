@@ -19,7 +19,7 @@
 			<key>headerSubtitle</key>
 			<string>Feature-rich clipboard manager for iOS.</string>
 			<key>detail</key>
-			<string>v4.0.5</string>
+			<string>v4.0.6</string>
 			<key>height</key>
 			<integer>92</integer>
 		</dict>
@@ -236,7 +236,7 @@
 			<key>label</key>
 			<string>Automatic Paste Mode</string>
 			<key>footerText</key>
-			<string>If Classic mode does not paste automatically in some apps, try Simulated mode. It uses a simpler fallback to complete the paste.</string>
+			<string>“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed.</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -249,11 +249,13 @@
 			<string>AutomaticPasteMode</string>
 			<key>validValues</key>
 			<array>
+				<integer>2</integer>
 				<integer>0</integer>
 				<integer>1</integer>
 			</array>
 			<key>validTitles</key>
 			<array>
+				<string>Auto</string>
 				<string>Classic</string>
 				<string>Simulated</string>
 			</array>

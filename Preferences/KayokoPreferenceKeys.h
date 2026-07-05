@@ -17,7 +17,8 @@ typedef NS_OPTIONS(NSUInteger, ActivationMethod) {
 
 typedef NS_ENUM(NSUInteger, KayokoAutomaticPasteMode) {
     kKayokoAutomaticPasteModeClassic = 0,
-    kKayokoAutomaticPasteModeSimulated = 1
+    kKayokoAutomaticPasteModeSimulated = 1,
+    kKayokoAutomaticPasteModeAutomatic = 2
 };
 
 static NSString *const kKayokoPreferencesIdentifier = @"com.82flex.kayoko.preferences";

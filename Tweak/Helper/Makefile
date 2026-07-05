@@ -16,25 +16,13 @@ KayokoHelper_FILES += KayokoSwipeUpGestureRecognizer.m
 KayokoHelper_FILES += KayokoSwipeUpHooks.m
 
 KayokoHelper_CFLAGS += -fobjc-arc
-KayokoHelper_CFLAGS += -I../../Headers
 KayokoHelper_CFLAGS += -I../../Preferences
-
-ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
-KayokoHelper_LDFLAGS += -L../../Libraries/_roothide
-else
-ifeq ($(THEOS_PACKAGE_SCHEME),rootless)
-KayokoHelper_LDFLAGS += -L../../Libraries/_rootless
-else
-KayokoHelper_LDFLAGS += -L../../Libraries
-endif
-endif
 
 KayokoHelper_FRAMEWORKS += CoreGraphics
 KayokoHelper_FRAMEWORKS += QuartzCore
 KayokoHelper_FRAMEWORKS += UIKit
 KayokoHelper_FRAMEWORKS += AudioToolbox
 
-KayokoHelper_LIBRARIES += sandy
 KayokoHelper_LIBRARIES += substrate
 ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
 KayokoHelper_LIBRARIES += roothide

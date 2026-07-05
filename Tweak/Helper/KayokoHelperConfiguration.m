@@ -6,8 +6,6 @@
 #import "KayokoHelperConfiguration.h"
 #import "KayokoPreferenceKeys.h"
 
-#import <libSandy.h>
-
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoHelperConfiguration ()
@@ -29,12 +27,6 @@ NS_ASSUME_NONNULL_END
     NSUserDefaults *preferences = [[NSUserDefaults alloc]
         initWithSuiteName:[NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist",
                                                      kKayokoPreferencesIdentifier]];
-
-#if THEOS_PACKAGE_SCHEME_ROOTHIDE
-    libSandy_applyProfile("Kayoko_RootHide");
-#else
-    libSandy_applyProfile("Kayoko");
-#endif
 
     [preferences registerDefaults:@{
         kKayokoPreferenceKeyEnabled : @(kKayokoPreferenceKeyEnabledDefaultValue),

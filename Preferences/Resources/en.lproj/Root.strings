@@ -21,7 +21,8 @@
 "Disable Paste Tips" = "Disable Paste Tips";
 "Ignore Remote Copy" = "Ignore Remote Copy";
 "Automatic Paste Mode" = "Automatic Paste Mode";
-"If Classic mode does not paste automatically in some apps, try Simulated mode. It uses a simpler fallback to complete the paste." = "If Classic mode does not paste automatically in some apps, try Simulated mode. It uses a simpler fallback to complete the paste.";
+"“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed." = "“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed.";
+"Auto" = "Auto";
 "Classic" = "Classic";
 "Simulated" = "Simulated";
 "Feedbacks" = "Feedbacks";
