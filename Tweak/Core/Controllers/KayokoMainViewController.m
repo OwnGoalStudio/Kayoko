@@ -4,7 +4,6 @@
 //
 
 #import "KayokoMainViewController.h"
-
 #import "KayokoClearConfirmationView.h"
 #import "KayokoClearConfirmationViewController.h"
 #import "KayokoEmptyStateView.h"
@@ -38,6 +37,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) KayokoHistoryListViewController *favoritesListViewController;
 @property(nonatomic, strong) KayokoEmptyStateView *historyEmptyStateView;
 @property(nonatomic, strong) KayokoEmptyStateView *favoritesEmptyStateView;
+@property(nonatomic, strong) KayokoEmptyStateView *storageErrorView;
+@property(nonatomic, strong, nullable) NSError *storageError;
 @property(nonatomic, strong) KayokoPanelPresentationController *panelPresentationController;
 @property(nonatomic, strong) KayokoClearConfirmationViewController *clearConfirmationViewController;
 @property(nonatomic, strong) KayokoPreviewViewController *previewViewController;
@@ -71,6 +72,7 @@ NS_ASSUME_NONNULL_BEGIN
                           toHistoryKey:(NSString *)destinationHistoryKey;
 - (void)updateContentState;
 - (void)updateContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility;
+- (void)showStorageError:(NSError *)error;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -141,6 +143,9 @@ NS_ASSUME_NONNULL_END
         [_favoritesEmptyStateView updateWithHistoryKey:kKayokoHistoryKeyFavorites];
         [_mainView installContentView:_favoritesEmptyStateView hidden:YES];
 
+        _storageErrorView = [[KayokoEmptyStateView alloc] init];
+        [_mainView installContentView:_storageErrorView hidden:YES];
+
         _previewViewController =
             [[KayokoPreviewViewController alloc] initWithFavoritesButton:[_mainView favoritesButton]
                                                               backButton:[_mainView backButton]
@@ -191,6 +196,7 @@ NS_ASSUME_NONNULL_END
 
     [[self historyEmptyStateView] setOverrideUserInterfaceStyle:style];
     [[self favoritesEmptyStateView] setOverrideUserInterfaceStyle:style];
+    [[self storageErrorView] setOverrideUserInterfaceStyle:style];
 }
 
 - (void)setDismissOnOutsideTouch:(BOOL)dismissOnOutsideTouch {
@@ -250,6 +256,7 @@ NS_ASSUME_NONNULL_END
     [[[self clearConfirmationViewController] confirmationView] setKeyboardBottomInset:keyboardBottomInset];
     [[self historyEmptyStateView] setKeyboardBottomInset:keyboardBottomInset];
     [[self favoritesEmptyStateView] setKeyboardBottomInset:keyboardBottomInset];
+    [[self storageErrorView] setKeyboardBottomInset:keyboardBottomInset];
 }
 
 - (void)panelPresentationControllerDidRequestDismiss:(KayokoPanelPresentationController *)controller {
@@ -291,7 +298,16 @@ NS_ASSUME_NONNULL_END
 
 - (void)historyController:(KayokoHistoryController *)controller
     didUpdateActiveTableView:(KayokoHistoryListView *)tableView {
+    [self setStorageError:nil];
     [self updateActiveTableViewState:tableView];
+}
+
+- (void)historyController:(KayokoHistoryController *)controller didFailLoadingHistoryWithError:(NSError *)error {
+    [self showStorageError:error];
+}
+
+- (void)searchController:(KayokoSearchController *)searchController didFailLoadingSearchWithError:(NSError *)error {
+    [self showStorageError:error];
 }
 
 - (void)historyListViewControllerDidRequestHide:(KayokoHistoryListViewController *)controller {
@@ -331,6 +347,12 @@ NS_ASSUME_NONNULL_END
 }
 
 - (UIView *)contentViewForHistoryKey:(NSString *)historyKey {
+    if ([self storageError]) {
+        [[self storageErrorView] updateWithStorageError:[self storageError]];
+        [[self storageErrorView] setKeyboardBottomInset:[[self searchController] keyboardBottomInset]];
+        return [self storageErrorView];
+    }
+
     KayokoHistoryListViewController *listViewController = [self listViewControllerForHistoryKey:historyKey];
     if ([[listViewController items] count] > 0) {
         return [listViewController tableView];
@@ -356,6 +378,10 @@ NS_ASSUME_NONNULL_END
 
     if (![[self favoritesEmptyStateView] isHidden]) {
         return [self favoritesEmptyStateView];
+    }
+
+    if (![[self storageErrorView] isHidden]) {
+        return [self storageErrorView];
     }
 
     return [self emptyStateViewForHistoryKey:[self effectiveActiveHistoryKey]];
@@ -390,6 +416,10 @@ NS_ASSUME_NONNULL_END
         return [[self favoritesEmptyStateView] name];
     }
 
+    if (view == [self storageErrorView]) {
+        return [[self storageErrorView] name];
+    }
+
     return nil;
 }
 
@@ -402,6 +432,7 @@ NS_ASSUME_NONNULL_END
         setHidden:contentView != [[self favoritesListViewController] tableView]];
     [[self historyEmptyStateView] setHidden:contentView != [self historyEmptyStateView]];
     [[self favoritesEmptyStateView] setHidden:contentView != [self favoritesEmptyStateView]];
+    [[self storageErrorView] setHidden:contentView != [self storageErrorView]];
     [contentView setAlpha:1];
     [contentView setTransform:CGAffineTransformIdentity];
     [[self searchController] attachToListViewController:[self listViewControllerForHistoryKey:historyKey]
@@ -534,11 +565,41 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateClearButtonState {
+    if ([self storageError]) {
+        [[self mainView] setClearButtonEnabledForItemCount:0];
+        return;
+    }
     [[self mainView] setClearButtonEnabledForItemCount:[[[self activeListViewController] items] count]];
 }
 
 - (void)updateContentState {
     [self updateContentStateMaintainingSearchBarVisibility:YES];
+}
+
+- (void)showStorageError:(NSError *)error {
+    if (!error) {
+        return;
+    }
+
+    [self setStorageError:error];
+    [[self storageErrorView] updateWithStorageError:error];
+    [[self storageErrorView] setKeyboardBottomInset:[[self searchController] keyboardBottomInset]];
+    [[self mainView] setClearButtonEnabledForItemCount:0];
+
+    if ([self isHidden]) {
+        return;
+    }
+
+    UIView *viewToHide = [self activeHistoryContentView];
+    UIView *viewToShow = [self storageErrorView];
+    if (viewToHide == viewToShow) {
+        [[self mainView] setTitleText:[self titleForContentView:viewToShow]];
+        return;
+    }
+    [[self mainView] showContentView:viewToShow
+                     hideContentView:viewToHide
+                               title:[self titleForContentView:viewToShow]
+                           direction:KayokoContentTransitionDirectionForward];
 }
 
 - (BOOL)isPreviewActive {

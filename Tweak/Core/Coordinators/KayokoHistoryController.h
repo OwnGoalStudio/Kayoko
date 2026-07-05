@@ -18,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)historyControllerNeedsVisibleReload:(KayokoHistoryController *)controller;
 - (void)historyController:(KayokoHistoryController *)controller
     didUpdateActiveTableView:(KayokoHistoryListView *)tableView;
+- (void)historyController:(KayokoHistoryController *)controller didFailLoadingHistoryWithError:(NSError *)error;
 
 @end
 

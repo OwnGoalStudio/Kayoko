@@ -6,12 +6,15 @@
 #import "KayokoTableDataStore.h"
 
 #import "KayokoPasteboardItem.h"
+#import "KayokoSearchCriteria.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoTableDataStore ()
 @property(nonatomic, copy) NSArray<NSDictionary<NSString *, id> *> *displayedItems;
 @property(nonatomic, copy) NSString *searchText;
+@property(nonatomic, strong) KayokoSearchCriteria *searchCriteria;
+@property(nonatomic, assign, getter=isBrowsingSearchTokens) BOOL browsingSearchTokens;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -24,12 +27,13 @@ NS_ASSUME_NONNULL_END
         _items = @[];
         _displayedItems = @[];
         _searchText = @"";
+        _searchCriteria = [KayokoSearchCriteria emptyCriteria];
     }
     return self;
 }
 
 - (BOOL)hasActiveSearch {
-    return [[self searchText] length] > 0;
+    return [[self searchCriteria] hasActiveFilters] || [self isBrowsingSearchTokens];
 }
 
 - (void)refreshDisplayedItems {
@@ -59,11 +63,47 @@ NS_ASSUME_NONNULL_END
 
 - (void)setItems:(NSArray<NSDictionary<NSString *, id> *> *)items {
     _items = [items copy] ?: @[];
-    [self refreshDisplayedItems];
+    if (![self hasActiveSearch]) {
+        [self refreshDisplayedItems];
+    }
 }
 
 - (void)applySearchText:(NSString *)searchText {
-    _searchText = [searchText copy] ?: @"";
+    _searchCriteria = [[self searchCriteria] criteriaByReplacingSearchText:searchText];
+    _searchText = [[self searchCriteria] searchText];
+    [self setBrowsingSearchTokens:NO];
+    [self refreshDisplayedItems];
+}
+
+- (void)beginApplyingSearchCriteria:(KayokoSearchCriteria *)searchCriteria {
+    _searchCriteria = [searchCriteria copy] ?: [KayokoSearchCriteria emptyCriteria];
+    _searchText = [[self searchCriteria] searchText];
+    [self setBrowsingSearchTokens:NO];
+}
+
+- (void)applySearchCriteria:(KayokoSearchCriteria *)searchCriteria
+              filteredItems:(NSArray<NSDictionary<NSString *, id> *> *)filteredItems {
+    _searchCriteria = [searchCriteria copy] ?: [KayokoSearchCriteria emptyCriteria];
+    _searchText = [[self searchCriteria] searchText];
+    [self setBrowsingSearchTokens:NO];
+    if ([[self searchCriteria] hasActiveFilters]) {
+        [self setDisplayedItems:filteredItems ?: @[]];
+        return;
+    }
+    [self refreshDisplayedItems];
+}
+
+- (void)showSearchTokensOnlyWithCriteria:(KayokoSearchCriteria *)searchCriteria {
+    _searchCriteria = [searchCriteria copy] ?: [KayokoSearchCriteria emptyCriteria];
+    _searchText = [[self searchCriteria] searchText];
+    [self setBrowsingSearchTokens:YES];
+    [self setDisplayedItems:@[]];
+}
+
+- (void)clearSearch {
+    _searchCriteria = [KayokoSearchCriteria emptyCriteria];
+    _searchText = @"";
+    [self setBrowsingSearchTokens:NO];
     [self refreshDisplayedItems];
 }
 

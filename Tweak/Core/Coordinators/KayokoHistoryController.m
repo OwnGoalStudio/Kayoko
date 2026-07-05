@@ -17,10 +17,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) NSUInteger pendingLocalHistoryChangeNotificationCount;
 @property(nonatomic, weak) KayokoHistoryListViewController *historyListViewController;
 @property(nonatomic, weak) KayokoHistoryListViewController *favoritesListViewController;
-- (void)loadTableViewForHistoryKey:(NSString *)historyKey
-            animatingTopInsertions:(BOOL)animatingTopInsertions
-                  notifiesDelegate:(BOOL)notifiesDelegate
-                        completion:(nullable void (^)(KayokoHistoryListView *tableView))completion;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -210,7 +206,14 @@ NS_ASSUME_NONNULL_END
 
     [[KayokoPasteboardManager sharedInstance]
         getItemsFromHistoryWithKey:historyKey
-                        completion:^(NSMutableArray<NSDictionary<NSString *, id> *> *items) {
+                        completion:^(NSMutableArray<NSDictionary<NSString *, id> *> *items, NSError *error) {
+                          if (error) {
+                              [[self delegate] historyController:self didFailLoadingHistoryWithError:error];
+                              if (completion) {
+                                  completion(tableView);
+                              }
+                              return;
+                          }
                           [listViewController updateDataWithItems:items animatingTopInsertions:animatingTopInsertions];
                           [self markHistoryKeyLoaded:historyKey];
                           if (notifiesDelegate && [[self activeHistoryKey] isEqualToString:historyKey]) {

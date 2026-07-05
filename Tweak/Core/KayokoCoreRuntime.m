@@ -78,6 +78,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL pendingHeightPreferenceApply;
 @property(nonatomic, assign) BOOL didRequestInitialHistoryPreload;
 @property(nonatomic, assign) int lockStateToken;
+@property(nonatomic, assign, getter=isPackageMaintenanceMode) BOOL packageMaintenanceMode;
 
 @end
 
@@ -142,6 +143,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)preloadInitialHistory {
+    if ([self isPackageMaintenanceMode]) {
+        return;
+    }
+
     self.didRequestInitialHistoryPreload = YES;
 
     KayokoPasteboardManager *pasteboardManager = [KayokoPasteboardManager sharedInstance];
@@ -451,6 +456,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)capturePasteboardChangeNow {
+    if ([self isPackageMaintenanceMode]) {
+        return;
+    }
+
     [[KayokoPasteboardManager sharedInstance] pullPasteboardChangesWithCompletion:^(BOOL didSaveAnyItem) {
       if (self.isPasteInProgress) {
           dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -478,6 +487,10 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Visibility
 
 - (void)show {
+    if ([self isPackageMaintenanceMode]) {
+        return;
+    }
+
     if (!self.mainViewController || ![self.mainViewController isHidden]) {
         return;
     }
@@ -539,6 +552,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)reloadHistory {
+    if ([self isPackageMaintenanceMode]) {
+        return;
+    }
+
     if (self.mainViewController) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self.mainViewController handleHistoryChanged];
@@ -547,16 +564,34 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)checkpointHistoryDatabase {
+    if ([self isPackageMaintenanceMode]) {
+        return;
+    }
+
     [[KayokoPasteboardManager sharedInstance] checkpointHistoryDatabase];
 }
 
+- (void)prepareForPackageMaintenance {
+    [self setPackageMaintenanceMode:YES];
+    [[KayokoPasteboardManager sharedInstance] enterMaintenanceModeUntilProcessExit];
+    [self hideImmediately];
+}
+
 - (void)clearFavorites {
+    if ([self isPackageMaintenanceMode]) {
+        return;
+    }
+
     [[KayokoPasteboardManager sharedInstance] removeAllPasteboardItemsFromHistoryWithKey:kKayokoHistoryKeyFavorites
                                                                       shouldRemoveImages:YES
                                                                               completion:nil];
 }
 
 - (void)clearHistory {
+    if ([self isPackageMaintenanceMode]) {
+        return;
+    }
+
     [[KayokoPasteboardManager sharedInstance] removeAllPasteboardItemsFromHistoryWithKey:kKayokoHistoryKeyHistory
                                                                       shouldRemoveImages:YES
                                                                               completion:nil];

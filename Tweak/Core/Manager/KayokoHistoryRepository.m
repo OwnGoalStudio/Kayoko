@@ -10,6 +10,7 @@
 #import <HBLog.h>
 
 static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
+static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
 
 @implementation KayokoHistoryRepository {
     NSString *_databasePath;
@@ -18,6 +19,7 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
 
     dispatch_queue_t _historyQueue;
     BOOL _didPrepareHistoryStore;
+    NSError *_prepareHistoryStoreError;
     KayokoHistoryStore *_historyStore;
 }
 
@@ -41,24 +43,60 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
 
 - (void)prepareStore {
     [self performAsync:^{
-      [self ensureStorePreparedOnQueue];
+      NSError *error = nil;
+      if (![self ensureStorePreparedOnQueueWithError:&error]) {
+          HBLogDebug(@"Kayoko: Failed to prepare v4 history store: %@", error);
+      }
     }];
 }
 
 - (void)ensureStorePrepared {
     [self performSync:^{
-      [self ensureStorePreparedOnQueue];
+      NSError *error = nil;
+      if (![self ensureStorePreparedOnQueueWithError:&error]) {
+          HBLogDebug(@"Kayoko: Failed to prepare v4 history store: %@", error);
+      }
+    }];
+}
+
+- (void)closeStore {
+    [self performSync:^{
+      [_historyStore closeDatabase];
+      _historyStore = nil;
+      _didPrepareHistoryStore = NO;
+      _prepareHistoryStoreError = nil;
     }];
 }
 
 - (void)checkpointWriteAheadLog {
     [self performAsync:^{
       NSError *error = nil;
-      BOOL success = [[self historyStoreOnQueue] checkpointWriteAheadLogWithError:&error];
+      KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&error];
+      BOOL success = historyStore && [historyStore checkpointWriteAheadLogWithError:&error];
       if (!success) {
           HBLogDebug(@"Kayoko: Failed to checkpoint history database: %@", error);
       }
     }];
+}
+
+- (BOOL)upgradeSearchIndexWithError:(NSError **)error {
+    __block BOOL success = NO;
+    __block NSError *blockError = nil;
+    [self performSync:^{
+      KayokoHistoryStore *historyStore = [self historyStoreOnQueue];
+      success = [historyStore upgradeSearchIndexWithError:&blockError];
+      if (success) {
+          _didPrepareHistoryStore = YES;
+          _prepareHistoryStoreError = nil;
+      } else {
+          _didPrepareHistoryStore = NO;
+          _prepareHistoryStoreError = blockError;
+      }
+    }];
+    if (error) {
+        *error = blockError;
+    }
+    return success;
 }
 
 - (BOOL)addItemDictionary:(NSDictionary<NSString *, id> *)dictionary
@@ -67,10 +105,11 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
     __block BOOL success = NO;
     __block NSError *blockError = nil;
     [self performSync:^{
-      success = [[self historyStoreOnQueue] addItemDictionary:dictionary
-                                                 toHistoryKey:historyKey
-                                                        limit:[self limitForHistoryKey:historyKey]
-                                                        error:&blockError];
+      KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&blockError];
+      success = historyStore && [historyStore addItemDictionary:dictionary
+                                                   toHistoryKey:historyKey
+                                                          limit:[self limitForHistoryKey:historyKey]
+                                                          error:&blockError];
     }];
     if (error) {
         *error = blockError;
@@ -86,10 +125,11 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
           [[NSMutableArray alloc] initWithCapacity:[dictionaries count]];
       for (NSDictionary<NSString *, id> *dictionary in dictionaries) {
           NSError *error = nil;
-          BOOL success = [[self historyStoreOnQueue] addItemDictionary:dictionary
-                                                          toHistoryKey:historyKey
-                                                                 limit:[self limitForHistoryKey:historyKey]
-                                                                 error:&error];
+          KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&error];
+          BOOL success = historyStore && [historyStore addItemDictionary:dictionary
+                                                            toHistoryKey:historyKey
+                                                                   limit:[self limitForHistoryKey:historyKey]
+                                                                   error:&error];
           if (!success) {
               HBLogDebug(@"Kayoko: Failed to add history item: %@", error);
               continue;
@@ -112,10 +152,11 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
     __block BOOL success = NO;
     __block NSError *blockError = nil;
     [self performSync:^{
-      success = [[self historyStoreOnQueue] moveItemDictionaryToTop:dictionary
-                                                       inHistoryKey:historyKey
-                                                              limit:[self limitForHistoryKey:historyKey]
-                                                              error:&blockError];
+      KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&blockError];
+      success = historyStore && [historyStore moveItemDictionaryToTop:dictionary
+                                                         inHistoryKey:historyKey
+                                                                limit:[self limitForHistoryKey:historyKey]
+                                                                error:&blockError];
     }];
     if (error) {
         *error = blockError;
@@ -130,10 +171,11 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
     __block BOOL success = NO;
     __block NSError *blockError = nil;
     [self performSync:^{
-      success = [[self historyStoreOnQueue] removeItemDictionary:dictionary
-                                                  fromHistoryKey:historyKey
-                                               shouldRemoveImage:shouldRemoveImage
-                                                           error:&blockError];
+      KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&blockError];
+      success = historyStore && [historyStore removeItemDictionary:dictionary
+                                                    fromHistoryKey:historyKey
+                                                 shouldRemoveImage:shouldRemoveImage
+                                                             error:&blockError];
     }];
     if (error) {
         *error = blockError;
@@ -147,10 +189,11 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
                   completion:(void (^)(BOOL success))completion {
     [self performAsync:^{
       NSError *error = nil;
-      BOOL success = [[self historyStoreOnQueue] removeItemDictionary:dictionary
-                                                       fromHistoryKey:historyKey
-                                                    shouldRemoveImage:shouldRemoveImage
-                                                                error:&error];
+      KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&error];
+      BOOL success = historyStore && [historyStore removeItemDictionary:dictionary
+                                                         fromHistoryKey:historyKey
+                                                      shouldRemoveImage:shouldRemoveImage
+                                                                  error:&error];
       if (!success) {
           HBLogDebug(@"Kayoko: Failed to remove history item: %@", error);
       }
@@ -164,11 +207,12 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
                 completion:(void (^)(BOOL success))completion {
     [self performAsync:^{
       NSError *error = nil;
-      BOOL success = [[self historyStoreOnQueue] moveItemDictionary:dictionary
-                                                     fromHistoryKey:sourceHistoryKey
-                                                       toHistoryKey:destinationHistoryKey
-                                                   destinationLimit:[self limitForHistoryKey:destinationHistoryKey]
-                                                              error:&error];
+      KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&error];
+      BOOL success = historyStore && [historyStore moveItemDictionary:dictionary
+                                                       fromHistoryKey:sourceHistoryKey
+                                                         toHistoryKey:destinationHistoryKey
+                                                     destinationLimit:[self limitForHistoryKey:destinationHistoryKey]
+                                                                error:&error];
       if (!success) {
           HBLogDebug(@"Kayoko: Failed to move history item: %@", error);
       }
@@ -181,9 +225,10 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
                        completion:(void (^)(BOOL success))completion {
     [self performAsync:^{
       NSError *error = nil;
-      BOOL success = [[self historyStoreOnQueue] removeItemsFromHistoryKey:historyKey
-                                                        shouldRemoveImages:shouldRemoveImages
-                                                                     error:&error];
+      KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&error];
+      BOOL success = historyStore && [historyStore removeItemsFromHistoryKey:historyKey
+                                                          shouldRemoveImages:shouldRemoveImages
+                                                                       error:&error];
       if (!success) {
           HBLogDebug(@"Kayoko: Failed to remove history items: %@", error);
       }
@@ -195,7 +240,29 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
     __block NSMutableArray<NSDictionary<NSString *, id> *> *history = nil;
     __block NSError *blockError = nil;
     [self performSync:^{
-      history = [[self historyStoreOnQueue] itemsForHistoryKey:historyKey error:&blockError];
+      KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&blockError];
+      history = historyStore ? [historyStore itemsForHistoryKey:historyKey error:&blockError] : nil;
+    }];
+    if (error) {
+        *error = blockError;
+    }
+    return history ?: [[NSMutableArray alloc] init];
+}
+
+- (void)itemsForHistoryKey:(NSString *)historyKey completion:(KayokoHistoryItemsCompletion)completion {
+    [self itemsForHistoryKey:historyKey searchCriteria:nil completion:completion];
+}
+
+- (NSMutableArray<NSDictionary<NSString *, id> *> *)itemsForHistoryKey:(NSString *)historyKey
+                                                        searchCriteria:(KayokoSearchCriteria *)searchCriteria
+                                                                 error:(NSError **)error {
+    __block NSMutableArray<NSDictionary<NSString *, id> *> *history = nil;
+    __block NSError *blockError = nil;
+    [self performSync:^{
+      KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&blockError];
+      history = historyStore
+                    ? [historyStore itemsForHistoryKey:historyKey searchCriteria:searchCriteria error:&blockError]
+                    : nil;
     }];
     if (error) {
         *error = blockError;
@@ -204,11 +271,13 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
 }
 
 - (void)itemsForHistoryKey:(NSString *)historyKey
-                completion:(void (^)(NSMutableArray<NSDictionary<NSString *, id> *> *items))completion {
+            searchCriteria:(KayokoSearchCriteria *)searchCriteria
+                completion:(KayokoHistoryItemsCompletion)completion {
     [self performAsync:^{
       NSError *error = nil;
+      KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&error];
       NSMutableArray<NSDictionary<NSString *, id> *> *history =
-          [[self historyStoreOnQueue] itemsForHistoryKey:historyKey error:&error];
+          historyStore ? [historyStore itemsForHistoryKey:historyKey searchCriteria:searchCriteria error:&error] : nil;
       if (error) {
           HBLogDebug(@"Kayoko: Failed to load history items: %@", error);
       }
@@ -217,7 +286,7 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
           return;
       }
       dispatch_async(dispatch_get_main_queue(), ^{
-        completion(items);
+        completion(items, error);
       });
     }];
 }
@@ -226,12 +295,31 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
     __block NSDictionary<NSString *, id> *dictionary = nil;
     __block NSError *blockError = nil;
     [self performSync:^{
-      dictionary = [[self historyStoreOnQueue] latestItemForHistoryKey:historyKey error:&blockError];
+      KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&blockError];
+      dictionary = historyStore ? [historyStore latestItemForHistoryKey:historyKey error:&blockError] : nil;
     }];
     if (error) {
         *error = blockError;
     }
     return dictionary;
+}
+
+- (void)availableSearchAppBundleIdentifiersWithCompletion:(KayokoHistoryAppBundleIdentifiersCompletion)completion {
+    [self performAsync:^{
+      NSError *error = nil;
+      KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&error];
+      NSArray<NSString *> *bundleIdentifiers =
+          historyStore ? [historyStore availableSearchAppBundleIdentifiersWithError:&error] : @[];
+      if (error) {
+          HBLogDebug(@"Kayoko: Failed to load search app tokens: %@", error);
+      }
+      if (!completion) {
+          return;
+      }
+      dispatch_async(dispatch_get_main_queue(), ^{
+        completion(bundleIdentifiers ?: @[], error);
+      });
+    }];
 }
 
 #pragma mark - Queue
@@ -280,29 +368,53 @@ static void *kayokoHistoryQueueSpecificKey = &kayokoHistoryQueueSpecificKey;
 
 - (KayokoHistoryStore *)historyStoreOnQueue {
     if (!_historyStore) {
-        _historyStore = [[KayokoHistoryStore alloc] initWithDatabasePath:_databasePath imagesPath:_imagesPath];
+        _historyStore =
+            [[KayokoHistoryStore alloc] initWithDatabasePath:_databasePath
+                                                  imagesPath:_imagesPath
+                                                 lockingMode:KayokoHistoryStoreLockingModeExclusiveWhileOpen
+                                      busyTimeoutMilliseconds:kKayokoCoreHistoryStoreBusyTimeoutMilliseconds];
     }
-    [self ensureStorePreparedOnQueue];
     return _historyStore;
 }
 
-- (void)ensureStorePreparedOnQueue {
+- (KayokoHistoryStore *)preparedHistoryStoreOnQueueWithError:(NSError **)error {
+    KayokoHistoryStore *historyStore = [self historyStoreOnQueue];
+    if (![self ensureStorePreparedOnQueueWithError:error]) {
+        return nil;
+    }
+    return historyStore;
+}
+
+- (BOOL)ensureStorePreparedOnQueueWithError:(NSError **)error {
     if (_didPrepareHistoryStore) {
-        return;
+        return YES;
     }
 
-    if (!_historyStore) {
-        _historyStore = [[KayokoHistoryStore alloc] initWithDatabasePath:_databasePath imagesPath:_imagesPath];
-    }
-
-    NSError *error = nil;
+    KayokoHistoryStore *historyStore = [self historyStoreOnQueue];
+    NSError *prepareError = nil;
     KayokoHistoryMigrator *migrator =
-        [[KayokoHistoryMigrator alloc] initWithHistoryStore:_historyStore
+        [[KayokoHistoryMigrator alloc] initWithHistoryStore:historyStore
                                            migrationSources:[KayokoHistoryMigrator defaultMigrationSources]];
-    if (![migrator migrateIfNeededWithError:&error]) {
-        HBLogDebug(@"Kayoko: Failed to prepare v4 history store: %@", error);
+    if (![migrator migrateIfNeededWithError:&prepareError]) {
+        _prepareHistoryStoreError = prepareError;
+        _didPrepareHistoryStore = NO;
+        if (error) {
+            *error = prepareError;
+        }
+        return NO;
     }
+    if (![historyStore validateSearchIndexWithError:&prepareError]) {
+        _prepareHistoryStoreError = prepareError;
+        _didPrepareHistoryStore = NO;
+        if (error) {
+            *error = prepareError;
+        }
+        return NO;
+    }
+
+    _prepareHistoryStoreError = nil;
     _didPrepareHistoryStore = YES;
+    return YES;
 }
 
 - (NSUInteger)limitForHistoryKey:(NSString *)historyKey {

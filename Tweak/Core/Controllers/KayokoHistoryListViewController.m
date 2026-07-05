@@ -10,6 +10,7 @@
 #import "KayokoHistoryTableView.h"
 #import "KayokoPasteboardItem.h"
 #import "KayokoPasteboardManager.h"
+#import "KayokoSearchCriteria.h"
 #import "KayokoTableDataStore.h"
 #import "KayokoTableViewCell.h"
 #import "KayokoTableViewCellContent.h"
@@ -66,6 +67,14 @@ NS_ASSUME_NONNULL_END
     return [[self dataStore] searchText];
 }
 
+- (KayokoSearchCriteria *)searchCriteria {
+    return [[self dataStore] searchCriteria];
+}
+
+- (BOOL)isBrowsingSearchTokens {
+    return [[self dataStore] isBrowsingSearchTokens];
+}
+
 - (BOOL)hasActiveSearch {
     return [[self dataStore] hasActiveSearch];
 }
@@ -79,8 +88,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)refreshSearchPlaceholder {
-    BOOL showsNoSearchResults =
-        [self hasActiveSearch] && [[self items] count] > 0 && [[self displayedItems] count] == 0;
+    BOOL showsNoSearchResults = [self hasActiveSearch] && ![self isBrowsingSearchTokens] && [[self items] count] > 0 &&
+                                [[self displayedItems] count] == 0;
     [[self tableView] setShowsNoSearchResultsPlaceholder:showsNoSearchResults];
 }
 
@@ -232,6 +241,27 @@ NS_ASSUME_NONNULL_END
 
 - (void)applySearchText:(NSString *)searchText {
     [[self dataStore] applySearchText:searchText];
+    [self reloadTableView];
+}
+
+- (void)beginApplyingSearchCriteria:(KayokoSearchCriteria *)searchCriteria {
+    [[self dataStore] beginApplyingSearchCriteria:searchCriteria];
+    [self refreshSearchPlaceholder];
+}
+
+- (void)applySearchCriteria:(KayokoSearchCriteria *)searchCriteria
+              filteredItems:(NSArray<NSDictionary<NSString *, id> *> *)filteredItems {
+    [[self dataStore] applySearchCriteria:searchCriteria filteredItems:filteredItems];
+    [self reloadTableView];
+}
+
+- (void)showSearchTokensOnlyWithCriteria:(KayokoSearchCriteria *)searchCriteria {
+    [[self dataStore] showSearchTokensOnlyWithCriteria:searchCriteria];
+    [self reloadTableView];
+}
+
+- (void)clearSearch {
+    [[self dataStore] clearSearch];
     [self reloadTableView];
 }
 

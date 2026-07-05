@@ -8,6 +8,7 @@
 @class KayokoHistoryListViewController;
 @class KayokoHistoryListView;
 @class KayokoPasteboardItem;
+@class KayokoSearchCriteria;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -35,6 +36,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, readonly) NSArray<NSDictionary<NSString *, id> *> *items;
 @property(nonatomic, copy, readonly) NSArray<NSDictionary<NSString *, id> *> *displayedItems;
 @property(nonatomic, copy, readonly) NSString *searchText;
+@property(nonatomic, strong, readonly) KayokoSearchCriteria *searchCriteria;
+@property(nonatomic, assign, readonly, getter=isBrowsingSearchTokens) BOOL browsingSearchTokens;
 @property(nonatomic, assign, readonly) BOOL hasActiveSearch;
 @property(nonatomic, assign) BOOL automaticallyPaste;
 @property(nonatomic, assign) NSUInteger previewLineCount;
@@ -50,6 +53,11 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updateDataWithItems:(NSArray<NSDictionary<NSString *, id> *> *)items
      animatingTopInsertions:(BOOL)animatingTopInsertions;
 - (void)applySearchText:(NSString *)searchText;
+- (void)beginApplyingSearchCriteria:(KayokoSearchCriteria *)searchCriteria;
+- (void)applySearchCriteria:(KayokoSearchCriteria *)searchCriteria
+              filteredItems:(NSArray<NSDictionary<NSString *, id> *> *)filteredItems;
+- (void)showSearchTokensOnlyWithCriteria:(KayokoSearchCriteria *)searchCriteria;
+- (void)clearSearch;
 - (void)clearItems;
 - (void)upsertItemDictionaryAtTop:(NSDictionary<NSString *, id> *)dictionary limit:(NSUInteger)limit;
 - (void)upsertItemDictionaryAtTop:(NSDictionary<NSString *, id> *)dictionary

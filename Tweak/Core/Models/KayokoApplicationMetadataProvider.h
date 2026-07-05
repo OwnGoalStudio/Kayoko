@@ -11,6 +11,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (NSString *)displayNameForBundleIdentifier:(NSString *)bundleIdentifier;
 - (nullable UIImage *)iconForBundleIdentifier:(NSString *)bundleIdentifier;
+- (nullable UIImage *)smallIconForBundleIdentifier:(NSString *)bundleIdentifier;
 
 @end
 

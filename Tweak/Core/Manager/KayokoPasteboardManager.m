@@ -13,6 +13,7 @@
 #import "KayokoPasteboardItem.h"
 #import "KayokoPreferenceKeys.h"
 #import "KayokoSceneSettingKeys.h"
+#import "KayokoSearchCriteria.h"
 
 #import <HBLog.h>
 #import <ImageIO/ImageIO.h>
@@ -20,6 +21,7 @@
 
 static NSTimeInterval const kKayokoPasteboardWriteConfirmationTimeout = 0.25;
 static NSTimeInterval const kKayokoSimulatedAutomaticPasteDelay = 0.2;
+static NSString *const kKayokoPasteboardManagerErrorDomain = @"com.82flex.kayoko.pasteboard-manager";
 
 @interface SBApplication : NSObject
 @property(nonatomic, copy, readonly) NSString *bundleIdentifier;
@@ -143,6 +145,7 @@ NS_ASSUME_NONNULL_END
 
     KayokoHistoryRepository *_historyRepository;
     KayokoHistoryChangeNotifier *_historyChangeNotifier;
+    BOOL _maintenanceMode;
 }
 
 #pragma mark - Lifecycle
@@ -250,10 +253,21 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)warmUpHistoryAccess {
+    if (_maintenanceMode) {
+        return;
+    }
     [_historyRepository prepareStore];
 }
 
+- (void)enterMaintenanceModeUntilProcessExit {
+    _maintenanceMode = YES;
+    [_historyRepository closeStore];
+}
+
 - (void)checkpointHistoryDatabase {
+    if (_maintenanceMode) {
+        return;
+    }
     [_historyRepository checkpointWriteAheadLog];
 }
 
@@ -295,6 +309,13 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)pullPasteboardChangesWithCompletion:(void (^)(BOOL didSaveAnyItem))completion {
+    if (_maintenanceMode) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
+
     void (^complete)(BOOL) = ^(BOOL didSaveAnyItem) {
       if (!completion) {
           return;
@@ -439,6 +460,10 @@ NS_ASSUME_NONNULL_END
 
 - (BOOL)savePasteboardItemsSynchronously:(NSArray<KayokoPasteboardItem *> *)items
                         toHistoryWithKey:(NSString *)historyKey {
+    if (_maintenanceMode) {
+        return NO;
+    }
+
     BOOL didSaveAnyItem = NO;
     for (KayokoPasteboardItem *item in items) {
         if ([self addPasteboardItem:item toHistoryWithKey:historyKey]) {
@@ -451,6 +476,13 @@ NS_ASSUME_NONNULL_END
 - (void)savePasteboardItems:(NSArray<KayokoPasteboardItem *> *)items
            toHistoryWithKey:(NSString *)historyKey
                  completion:(void (^)(BOOL didSaveAnyItem))completion {
+    if (_maintenanceMode) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
+
     NSMutableArray<NSDictionary<NSString *, id> *> *dictionaries =
         [[NSMutableArray alloc] initWithCapacity:[items count]];
     for (KayokoPasteboardItem *item in items) {
@@ -494,6 +526,10 @@ NS_ASSUME_NONNULL_END
 #pragma mark - History Mutations
 
 - (BOOL)addPasteboardItem:(KayokoPasteboardItem *)item toHistoryWithKey:(NSString *)historyKey {
+    if (_maintenanceMode) {
+        return NO;
+    }
+
     if ([[item content] isEqualToString:@""]) {
         return NO;
     }
@@ -517,6 +553,10 @@ NS_ASSUME_NONNULL_END
 - (void)removePasteboardItem:(KayokoPasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage {
+    if (_maintenanceMode) {
+        return;
+    }
+
     NSDictionary<NSString *, id> *dictionary = [item dictionaryRepresentation];
     NSError *error = nil;
     BOOL success = [_historyRepository removeItemDictionary:dictionary
@@ -538,6 +578,13 @@ NS_ASSUME_NONNULL_END
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage
                   completion:(void (^)(BOOL success))completion {
+    if (_maintenanceMode) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
+
     NSDictionary<NSString *, id> *dictionary = [item dictionaryRepresentation];
     [_historyRepository removeItemDictionary:dictionary
                               fromHistoryKey:historyKey
@@ -549,6 +596,13 @@ NS_ASSUME_NONNULL_END
         fromHistoryWithKey:(NSString *)sourceHistoryKey
           toHistoryWithKey:(NSString *)destinationHistoryKey
                 completion:(void (^)(BOOL success))completion {
+    if (_maintenanceMode) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
+
     NSDictionary<NSString *, id> *dictionary = [item dictionaryRepresentation];
     [_historyRepository moveItemDictionary:dictionary
                             fromHistoryKey:sourceHistoryKey
@@ -560,6 +614,13 @@ NS_ASSUME_NONNULL_END
                                 shouldRemoveImages:(BOOL)shouldRemoveImages
                            postsChangeNotification:(BOOL)postsChangeNotification
                                         completion:(void (^)(BOOL success))completion {
+    if (_maintenanceMode) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
+
     [_historyRepository
         removeItemsFromHistoryKey:historyKey
                shouldRemoveImages:shouldRemoveImages
@@ -872,6 +933,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)movePasteboardItemToTop:(KayokoPasteboardItem *)item inHistoryWithKey:(NSString *)historyKey {
+    if (_maintenanceMode) {
+        return;
+    }
+
     if (!item || [[item content] length] == 0 || [[historyKey description] length] == 0) {
         return;
     }
@@ -893,7 +958,18 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - History Reads
 
+- (NSError *)maintenanceModeError {
+    return [NSError
+        errorWithDomain:kKayokoPasteboardManagerErrorDomain
+                   code:1
+               userInfo:@{NSLocalizedDescriptionKey : @"Kayoko history is unavailable during package maintenance"}];
+}
+
 - (NSMutableArray<NSDictionary<NSString *, id> *> *)getItemsFromHistoryWithKey:(NSString *)historyKey {
+    if (_maintenanceMode) {
+        return [[NSMutableArray alloc] init];
+    }
+
     NSError *error = nil;
     NSMutableArray<NSDictionary<NSString *, id> *> *history = [_historyRepository itemsForHistoryKey:historyKey
                                                                                                error:&error];
@@ -903,12 +979,39 @@ NS_ASSUME_NONNULL_END
     return history ?: [[NSMutableArray alloc] init];
 }
 
+- (void)getItemsFromHistoryWithKey:(NSString *)historyKey completion:(KayokoPasteboardItemsCompletion)completion {
+    [self getItemsFromHistoryWithKey:historyKey searchCriteria:nil completion:completion];
+}
+
 - (void)getItemsFromHistoryWithKey:(NSString *)historyKey
-                        completion:(void (^)(NSMutableArray<NSDictionary<NSString *, id> *> *items))completion {
-    [_historyRepository itemsForHistoryKey:historyKey completion:completion];
+                    searchCriteria:(KayokoSearchCriteria *)searchCriteria
+                        completion:(KayokoPasteboardItemsCompletion)completion {
+    if (_maintenanceMode) {
+        if (completion) {
+            completion([[NSMutableArray alloc] init], [self maintenanceModeError]);
+        }
+        return;
+    }
+
+    [_historyRepository itemsForHistoryKey:historyKey searchCriteria:searchCriteria completion:completion];
+}
+
+- (void)availableSearchAppBundleIdentifiersWithCompletion:(KayokoPasteboardAppBundleIdentifiersCompletion)completion {
+    if (_maintenanceMode) {
+        if (completion) {
+            completion(@[], [self maintenanceModeError]);
+        }
+        return;
+    }
+
+    [_historyRepository availableSearchAppBundleIdentifiersWithCompletion:completion];
 }
 
 - (KayokoPasteboardItem *)getLatestHistoryItem {
+    if (_maintenanceMode) {
+        return nil;
+    }
+
     NSError *error = nil;
     NSDictionary<NSString *, id> *dictionary = [_historyRepository latestItemForHistoryKey:kKayokoHistoryKeyHistory
                                                                                      error:&error];

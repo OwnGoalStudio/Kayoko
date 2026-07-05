@@ -8,9 +8,12 @@
 
 #import <objc/runtime.h>
 
+static int const kKayokoApplicationIconFormatListRow = 1;
+static int const kKayokoApplicationIconFormatSearchToken = 5;
+
 NS_ASSUME_NONNULL_BEGIN
 
-@interface UIImage (KayokoApplicationMetadataProviderPrivate)
+@interface UIImage (IconCache)
 + (nullable instancetype)_applicationIconImageForBundleIdentifier:(NSString *)bundleIdentifier
                                                            format:(int)format
                                                             scale:(CGFloat)scale;
@@ -54,39 +57,60 @@ NS_ASSUME_NONNULL_END
     return [displayName length] > 0 ? displayName : bundleIdentifier;
 }
 
-- (UIImage *)iconForBundleIdentifier:(NSString *)bundleIdentifier {
-    NSString *cacheKey = [bundleIdentifier length] > 0 ? bundleIdentifier : @"com.apple.WebSheet";
+- (NSString *)iconCacheKeyForBundleIdentifier:(NSString *)bundleIdentifier format:(int)format scale:(CGFloat)scale {
+    NSString *cacheBundleIdentifier = [bundleIdentifier length] > 0 ? bundleIdentifier : @"com.apple.WebSheet";
+    return [NSString stringWithFormat:@"%@|%d|%.2f", cacheBundleIdentifier, format, scale];
+}
+
+- (nullable UIImage *)applicationIconForBundleIdentifier:(NSString *)bundleIdentifier
+                                                  format:(int)format
+                                                   scale:(CGFloat)scale {
+    NSString *effectiveBundleIdentifier = [bundleIdentifier length] > 0 ? bundleIdentifier : @"com.apple.WebSheet";
+    NSString *cacheKey = [self iconCacheKeyForBundleIdentifier:effectiveBundleIdentifier format:format scale:scale];
     UIImage *cachedIcon = [[self iconCache] objectForKey:cacheKey];
     if (cachedIcon) {
         return cachedIcon;
     }
 
-    UIImage *icon = nil;
-    if ([bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
-        BOOL isPad = [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad;
-        icon = [UIImage imageNamed:isPad ? @"HLS_iPad_Universal" : @"HLS_iPhone_Universal"
-                                 inBundle:[KayokoPasteboardManager localizationBundle]
-            compatibleWithTraitCollection:nil];
-    } else {
-        icon = [UIImage _applicationIconImageForBundleIdentifier:bundleIdentifier
-                                                          format:2
-                                                           scale:[[UIScreen mainScreen] scale]];
-    }
+    UIImage *icon = [UIImage _applicationIconImageForBundleIdentifier:effectiveBundleIdentifier
+                                                               format:format
+                                                                scale:scale];
     if (!icon) {
-        icon = [[self iconCache] objectForKey:@"com.apple.WebSheet"];
+        NSString *fallbackCacheKey = [self iconCacheKeyForBundleIdentifier:@"com.apple.WebSheet"
+                                                                    format:format
+                                                                     scale:scale];
+        icon = [[self iconCache] objectForKey:fallbackCacheKey];
         if (!icon) {
-            icon = [UIImage _applicationIconImageForBundleIdentifier:@"com.apple.WebSheet"
-                                                              format:2
-                                                               scale:[[UIScreen mainScreen] scale]];
+            icon = [UIImage _applicationIconImageForBundleIdentifier:@"com.apple.WebSheet" format:format scale:scale];
             if (icon) {
-                [[self iconCache] setObject:icon forKey:@"com.apple.WebSheet"];
+                [[self iconCache] setObject:icon forKey:fallbackCacheKey];
             }
         }
     }
+
     if (icon) {
         [[self iconCache] setObject:icon forKey:cacheKey];
     }
     return icon;
+}
+
+- (nullable UIImage *)iconForBundleIdentifier:(NSString *)bundleIdentifier {
+    if ([bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
+        BOOL isPad = [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad;
+        return [UIImage imageNamed:isPad ? @"HLS_iPad_Universal" : @"HLS_iPhone_Universal"
+                                 inBundle:[KayokoPasteboardManager localizationBundle]
+            compatibleWithTraitCollection:nil];
+    }
+
+    return [self applicationIconForBundleIdentifier:bundleIdentifier
+                                             format:kKayokoApplicationIconFormatListRow
+                                              scale:[[UIScreen mainScreen] scale]];
+}
+
+- (nullable UIImage *)smallIconForBundleIdentifier:(NSString *)bundleIdentifier {
+    return [self applicationIconForBundleIdentifier:bundleIdentifier
+                                             format:kKayokoApplicationIconFormatSearchToken
+                                              scale:[[UIScreen mainScreen] scale]];
 }
 
 @end

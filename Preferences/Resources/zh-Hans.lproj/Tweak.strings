@@ -14,3 +14,14 @@
 "Search" = "搜索";
 "No Search Results" = "无搜索结果";
 "SpringBoard" = "主屏幕";
+"Categories" = "类别";
+"Applications" = "应用程序";
+"Text" = "文本";
+"Links" = "链接";
+"Phone Numbers" = "电话号码";
+"Dates" = "日期";
+"Flights" = "航班";
+"Addresses" = "地址";
+"Images" = "图片";
+"Unable to Load History" = "无法载入历史记录";
+"%@\n%@" = "%@\n%@";

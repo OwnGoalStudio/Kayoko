@@ -19,6 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)searchControllerDidFinishAnimatingSearchState:(KayokoSearchController *)searchController;
 - (void)searchController:(KayokoSearchController *)searchController
     didUpdateKeyboardBottomInset:(CGFloat)keyboardBottomInset;
+- (void)searchController:(KayokoSearchController *)searchController didFailLoadingSearchWithError:(NSError *)error;
 
 @end
 

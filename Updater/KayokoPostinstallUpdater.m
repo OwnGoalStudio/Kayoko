@@ -6,28 +6,52 @@
 #import "KayokoPostinstallUpdater.h"
 #import "KayokoHistoryMigrator.h"
 #import "KayokoHistoryStore.h"
+#import "KayokoNotificationKeys.h"
 
+#import <CoreFoundation/CoreFoundation.h>
 #import <roothide.h>
+#import <unistd.h>
 
 static NSString *const kKayokoCurrentDataDirectory = @"/var/mobile/Library/com.82flex.kayoko";
 static NSUInteger const kKayokoMobileUserID = 501;
 static NSUInteger const kKayokoMobileGroupID = 501;
+static useconds_t const kKayokoCoreMaintenanceGracePeriodMicroseconds = 300000;
+static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000;
 
 @implementation KayokoPostinstallUpdater
 
 - (BOOL)runPostinstallWithError:(NSError **)error {
+    [self notifyCoreToPrepareForMaintenance];
+
     KayokoHistoryStore *store = [self historyStore];
+    NSError *lockError = nil;
+    if (![store verifyExclusiveAccessWithError:&lockError]) {
+        if (error) {
+            *error = lockError;
+        }
+        return NO;
+    }
+
     KayokoHistoryMigrator *migrator =
         [[KayokoHistoryMigrator alloc] initWithHistoryStore:store
                                            migrationSources:[KayokoHistoryMigrator defaultMigrationSources]];
     NSError *migrationError = nil;
     BOOL migrated = [migrator migrateIfNeededWithError:&migrationError];
 
+    NSError *searchIndexError = nil;
+    BOOL upgradedSearchIndex = migrated && [store upgradeSearchIndexWithError:&searchIndexError];
+
     NSError *ownershipError = nil;
     BOOL repairedOwnership = [self repairCurrentDataDirectoryOwnershipWithError:&ownershipError];
     if (!migrated) {
         if (error) {
             *error = migrationError;
+        }
+        return NO;
+    }
+    if (!upgradedSearchIndex) {
+        if (error) {
+            *error = searchIndexError;
         }
         return NO;
     }
@@ -70,9 +94,18 @@ static NSUInteger const kKayokoMobileGroupID = 501;
 
 #pragma mark - Private
 
+- (void)notifyCoreToPrepareForMaintenance {
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (__bridge CFStringRef)kKayokoNotificationKeyCorePrepareMaintenance, nil, nil,
+                                         YES);
+    usleep(kKayokoCoreMaintenanceGracePeriodMicroseconds);
+}
+
 - (KayokoHistoryStore *)historyStore {
     return [[KayokoHistoryStore alloc] initWithDatabasePath:[KayokoHistoryStore defaultDatabasePath]
-                                                 imagesPath:[self currentImagesPath]];
+                                                 imagesPath:[self currentImagesPath]
+                                                lockingMode:KayokoHistoryStoreLockingModeExclusiveWhileOpen
+                                     busyTimeoutMilliseconds:kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds];
 }
 
 - (NSString *)currentImagesPath {

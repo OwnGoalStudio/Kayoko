@@ -59,7 +59,8 @@
     NSMutableArray<NSTextCheckingResult *> *detectedResults = [[NSMutableArray alloc] init];
     NSDataDetector *detector =
         [NSDataDetector dataDetectorWithTypes:NSTextCheckingTypeLink | NSTextCheckingTypePhoneNumber |
-                                              NSTextCheckingTypeDate | NSTextCheckingTypeAddress
+                                              NSTextCheckingTypeDate | NSTextCheckingTypeAddress |
+                                              NSTextCheckingTypeTransitInformation
                                         error:nil];
     [detector enumerateMatchesInString:text
                                options:0

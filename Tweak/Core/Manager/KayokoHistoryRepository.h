@@ -5,9 +5,15 @@
 
 #import <Foundation/Foundation.h>
 
+@class KayokoSearchCriteria;
+
 NS_ASSUME_NONNULL_BEGIN
 
 typedef NSUInteger (^KayokoHistoryLimitProvider)(NSString *historyKey);
+typedef void (^KayokoHistoryItemsCompletion)(NSMutableArray<NSDictionary<NSString *, id> *> *items,
+                                             NSError *_Nullable error);
+typedef void (^KayokoHistoryAppBundleIdentifiersCompletion)(NSArray<NSString *> *bundleIdentifiers,
+                                                            NSError *_Nullable error);
 
 // Serializes all access to KayokoHistoryStore and owns store preparation/migration.
 @interface KayokoHistoryRepository : NSObject
@@ -21,7 +27,9 @@ typedef NSUInteger (^KayokoHistoryLimitProvider)(NSString *historyKey);
 
 - (void)prepareStore;
 - (void)ensureStorePrepared;
+- (void)closeStore;
 - (void)checkpointWriteAheadLog;
+- (BOOL)upgradeSearchIndexWithError:(NSError *_Nullable *_Nullable)error;
 
 - (BOOL)addItemDictionary:(NSDictionary<NSString *, id> *)dictionary
              toHistoryKey:(NSString *)historyKey
@@ -51,10 +59,17 @@ typedef NSUInteger (^KayokoHistoryLimitProvider)(NSString *historyKey);
 
 - (NSMutableArray<NSDictionary<NSString *, id> *> *)itemsForHistoryKey:(NSString *)historyKey
                                                                  error:(NSError *_Nullable *_Nullable)error;
+- (NSMutableArray<NSDictionary<NSString *, id> *> *)itemsForHistoryKey:(NSString *)historyKey
+                                                        searchCriteria:(nullable KayokoSearchCriteria *)searchCriteria
+                                                                 error:(NSError *_Nullable *_Nullable)error;
+- (void)itemsForHistoryKey:(NSString *)historyKey completion:(nullable KayokoHistoryItemsCompletion)completion;
 - (void)itemsForHistoryKey:(NSString *)historyKey
-                completion:(nullable void (^)(NSMutableArray<NSDictionary<NSString *, id> *> *items))completion;
+            searchCriteria:(nullable KayokoSearchCriteria *)searchCriteria
+                completion:(nullable KayokoHistoryItemsCompletion)completion;
 - (nullable NSDictionary<NSString *, id> *)latestItemForHistoryKey:(NSString *)historyKey
                                                              error:(NSError *_Nullable *_Nullable)error;
+- (void)availableSearchAppBundleIdentifiersWithCompletion:
+    (nullable KayokoHistoryAppBundleIdentifiersCompletion)completion;
 
 @end
 

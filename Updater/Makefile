@@ -8,6 +8,7 @@ kayoko_updater_FILES += KayokoPostinstallUpdater.m
 kayoko_updater_FILES += ../Tweak/Core/Manager/KayokoHistoryStore.m
 kayoko_updater_FILES += ../Tweak/Core/Manager/KayokoHistoryMigrator.m
 kayoko_updater_FILES += ../Tweak/Core/Manager/KayokoPasteboardItem.m
+kayoko_updater_FILES += ../Tweak/Core/Manager/KayokoSearchCriteria.m
 
 kayoko_updater_CFLAGS += -fobjc-arc
 kayoko_updater_CFLAGS += -I../Tweak/Core/Manager

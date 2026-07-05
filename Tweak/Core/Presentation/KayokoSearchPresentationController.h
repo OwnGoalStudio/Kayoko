@@ -29,12 +29,15 @@ NS_ASSUME_NONNULL_BEGIN
                            headerView:(UIView *)headerView
                      historySearchBar:(UISearchBar *)historySearchBar
                    favoritesSearchBar:(UISearchBar *)favoritesSearchBar
+               historySearchTokenView:(UIView *)historySearchTokenView
+             favoritesSearchTokenView:(UIView *)favoritesSearchTokenView
                      historyTableView:(KayokoHistoryListView *)historyTableView
                    favoritesTableView:(KayokoHistoryListView *)favoritesTableView
                  panGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer;
 
 - (CGFloat)searchHeaderHeight;
 - (void)layout;
+- (void)updateSearchTokenViews;
 - (void)attachToTableView:(KayokoHistoryListView *)tableView hidesSearchBar:(BOOL)hidesSearchBar;
 - (void)maintainSearchBarVisibilityForTableView:(KayokoHistoryListView *)tableView;
 - (void)hideSearchBarInTableView:(nullable KayokoHistoryListView *)tableView animated:(BOOL)animated;

@@ -8,8 +8,14 @@
 #import <UIKit/UIKit.h>
 
 @class KayokoPasteboardItem;
+@class KayokoSearchCriteria;
 
 NS_ASSUME_NONNULL_BEGIN
+
+typedef void (^KayokoPasteboardItemsCompletion)(NSMutableArray<NSDictionary<NSString *, id> *> *items,
+                                                NSError *_Nullable error);
+typedef void (^KayokoPasteboardAppBundleIdentifiersCompletion)(NSArray<NSString *> *bundleIdentifiers,
+                                                               NSError *_Nullable error);
 
 static NSString *const kKayokoHistoryKeyHistory = @"history";
 static NSString *const kKayokoHistoryKeyFavorites = @"favorites";
@@ -35,6 +41,7 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
 + (instancetype)sharedInstance;
 - (instancetype)init NS_UNAVAILABLE;
 - (void)warmUpHistoryAccess;
+- (void)enterMaintenanceModeUntilProcessExit;
 
 + (NSString *)historyPath;
 + (NSString *)historyDatabasePath;
@@ -75,7 +82,12 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
 
 - (NSMutableArray<NSDictionary<NSString *, id> *> *)getItemsFromHistoryWithKey:(NSString *)historyKey;
 - (void)getItemsFromHistoryWithKey:(NSString *)historyKey
-                        completion:(nullable void (^)(NSMutableArray<NSDictionary<NSString *, id> *> *items))completion;
+                        completion:(nullable KayokoPasteboardItemsCompletion)completion;
+- (void)getItemsFromHistoryWithKey:(NSString *)historyKey
+                    searchCriteria:(nullable KayokoSearchCriteria *)searchCriteria
+                        completion:(nullable KayokoPasteboardItemsCompletion)completion;
+- (void)availableSearchAppBundleIdentifiersWithCompletion:
+    (nullable KayokoPasteboardAppBundleIdentifiersCompletion)completion;
 - (nullable KayokoPasteboardItem *)getLatestHistoryItem;
 - (nullable UIImage *)getImageForItem:(KayokoPasteboardItem *)item;
 - (void)getThumbnailForItem:(KayokoPasteboardItem *)item

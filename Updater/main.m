@@ -14,7 +14,7 @@ static int runPostinstall(void) {
         if (![updater runPostinstallWithError:&error]) {
             fprintf(stderr, "kayoko_updater: postinst failed: %s\n",
                     [[[error localizedDescription] description] UTF8String]);
-            return 0;
+            return 1;
         }
 
         NSArray<NSString *> *legacyPaths = [updater safelyDeletableLegacyPathsWithError:&error];

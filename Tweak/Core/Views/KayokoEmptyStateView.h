@@ -15,6 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) CGFloat keyboardBottomInset;
 
 - (void)updateWithHistoryKey:(NSString *)historyKey;
+- (void)updateWithStorageError:(NSError *)error;
 
 @end
 

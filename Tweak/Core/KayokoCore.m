@@ -117,6 +117,16 @@ static void kayokoCoreCheckpointHistoryCallback(CFNotificationCenterRef center, 
     [[KayokoCoreRuntime sharedRuntime] checkpointHistoryDatabase];
 }
 
+static void kayokoCorePrepareMaintenanceCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                                                 const void *object, CFDictionaryRef userInfo) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)userInfo;
+    [[KayokoCoreRuntime sharedRuntime] prepareForPackageMaintenance];
+}
+
 static void kayokoCoreClearFavoritesCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
                                              const void *object, CFDictionaryRef userInfo) {
     (void)center;
@@ -211,6 +221,8 @@ static void kayokoCorePasteTipPreferencesReloadCallback(CFNotificationCenterRef 
     [runtime loadPreferences];
     [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCoreCheckpointHistory
                           callback:kayokoCoreCheckpointHistoryCallback];
+    [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCorePrepareMaintenance
+                          callback:kayokoCorePrepareMaintenanceCallback];
     [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCoreClearFavorites
                           callback:kayokoCoreClearFavoritesCallback];
     [self addDarwinObserverForName:(__bridge CFStringRef)kKayokoNotificationKeyCoreClearHistory

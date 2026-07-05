@@ -66,4 +66,13 @@ NS_ASSUME_NONNULL_END
                                                                                                table:@"Tweak"]];
 }
 
+- (void)updateWithStorageError:(NSError *)error {
+    NSBundle *bundle = [KayokoPasteboardManager localizationBundle];
+    [self setName:[bundle localizedStringForKey:@"History" value:nil table:@"Tweak"]];
+    NSString *title = [bundle localizedStringForKey:@"Unable to Load History" value:nil table:@"Tweak"];
+    NSString *format = [bundle localizedStringForKey:@"%@\n%@" value:nil table:@"Tweak"];
+    NSString *detail = [[error localizedDescription] length] > 0 ? [error localizedDescription] : [error description];
+    [[self messageLabel] setText:[NSString stringWithFormat:format, title, detail ?: @""]];
+}
+
 @end

@@ -42,6 +42,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak) UIView *headerView;
 @property(nonatomic, weak) UISearchBar *historySearchBar;
 @property(nonatomic, weak) UISearchBar *favoritesSearchBar;
+@property(nonatomic, weak) UIView *historySearchTokenView;
+@property(nonatomic, weak) UIView *favoritesSearchTokenView;
+@property(nonatomic, strong) UIView *historySearchHeaderView;
+@property(nonatomic, strong) UIView *favoritesSearchHeaderView;
 @property(nonatomic, weak) KayokoHistoryListView *historyTableView;
 @property(nonatomic, weak) KayokoHistoryListView *favoritesTableView;
 @property(nonatomic, weak) UIPanGestureRecognizer *panGestureRecognizer;
@@ -59,6 +63,8 @@ NS_ASSUME_NONNULL_END
                            headerView:(UIView *)headerView
                      historySearchBar:(UISearchBar *)historySearchBar
                    favoritesSearchBar:(UISearchBar *)favoritesSearchBar
+               historySearchTokenView:(UIView *)historySearchTokenView
+             favoritesSearchTokenView:(UIView *)favoritesSearchTokenView
                      historyTableView:(KayokoHistoryListView *)historyTableView
                    favoritesTableView:(KayokoHistoryListView *)favoritesTableView
                  panGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer {
@@ -68,6 +74,8 @@ NS_ASSUME_NONNULL_END
         _headerView = headerView;
         _historySearchBar = historySearchBar;
         _favoritesSearchBar = favoritesSearchBar;
+        _historySearchTokenView = historySearchTokenView;
+        _favoritesSearchTokenView = favoritesSearchTokenView;
         _historyTableView = historyTableView;
         _favoritesTableView = favoritesTableView;
         _panGestureRecognizer = panGestureRecognizer;
@@ -100,24 +108,55 @@ NS_ASSUME_NONNULL_END
     [self applyBottomInsetsToTableViews];
 }
 
+- (void)updateSearchTokenViews {
+    [self layout];
+}
+
 - (void)layoutSearchBarForTableView:(KayokoHistoryListView *)tableView {
     [tableView updateNoSearchResultsPlaceholderLayout];
 
     UISearchBar *searchBar = [self searchBarForTableView:tableView];
-    if ([tableView tableHeaderView] != searchBar) {
+    UIView *headerView = [self searchHeaderViewForTableView:tableView];
+    if ([tableView tableHeaderView] != headerView) {
         return;
     }
 
-    CGRect fullWidthFrame = CGRectMake(0, 0, CGRectGetWidth([tableView bounds]), kKayokoSearchHeaderHeight);
-    CGRect frame = CGRectInset(fullWidthFrame, kKayokoSearchBarHorizontalInset, 0);
-    if (!CGRectEqualToRect([searchBar frame], frame)) {
-        [searchBar setFrame:fullWidthFrame];
-        [tableView setTableHeaderView:searchBar];
+    CGFloat width = CGRectGetWidth([tableView bounds]);
+    UIView *tokenView = [self searchTokenViewForTableView:tableView];
+    CGFloat tokenHeight =
+        ([self isSearchActive] && tokenView && ![tokenView isHidden]) ? CGRectGetHeight([tokenView frame]) : 0;
+    CGFloat headerHeight = kKayokoSearchHeaderHeight + tokenHeight;
+    CGRect headerFrame = CGRectMake(0, 0, width, headerHeight);
+    CGRect searchBarFrame = CGRectMake(0, 0, width, kKayokoSearchHeaderHeight);
+    CGRect tokenFrame = CGRectMake(0, kKayokoSearchHeaderHeight, width, tokenHeight);
+
+    BOOL needsTableHeaderUpdate = !CGRectEqualToRect([headerView frame], headerFrame);
+    [headerView setFrame:headerFrame];
+    [searchBar setFrame:searchBarFrame];
+    [tokenView setFrame:tokenFrame];
+    if (needsTableHeaderUpdate) {
+        [tableView setTableHeaderView:headerView];
     }
 }
 
 - (UISearchBar *)searchBarForTableView:(KayokoHistoryListView *)tableView {
     return tableView == [self favoritesTableView] ? [self favoritesSearchBar] : [self historySearchBar];
+}
+
+- (UIView *)searchTokenViewForTableView:(KayokoHistoryListView *)tableView {
+    return tableView == [self favoritesTableView] ? [self favoritesSearchTokenView] : [self historySearchTokenView];
+}
+
+- (UIView *)searchHeaderViewForTableView:(KayokoHistoryListView *)tableView {
+    return tableView == [self favoritesTableView] ? [self favoritesSearchHeaderView] : [self historySearchHeaderView];
+}
+
+- (void)setSearchHeaderView:(UIView *)headerView forTableView:(KayokoHistoryListView *)tableView {
+    if (tableView == [self favoritesTableView]) {
+        [self setFavoritesSearchHeaderView:headerView];
+    } else {
+        [self setHistorySearchHeaderView:headerView];
+    }
 }
 
 - (void)installSearchBarForTableView:(KayokoHistoryListView *)tableView {
@@ -126,15 +165,29 @@ NS_ASSUME_NONNULL_END
     }
 
     UISearchBar *searchBar = [self searchBarForTableView:tableView];
-    if ([tableView tableHeaderView] == searchBar) {
-        return;
-    }
+    UIView *headerView = [self searchHeaderViewForTableView:tableView];
+    UIView *tokenView = [self searchTokenViewForTableView:tableView];
 
     if ([searchBar respondsToSelector:@selector(setKayokoHorizontalFrameInset:)]) {
         [(KayokoSearchBar *)searchBar setKayokoHorizontalFrameInset:kKayokoSearchBarHorizontalInset];
     }
-    [searchBar setFrame:CGRectMake(0, 0, CGRectGetWidth([tableView bounds]), kKayokoSearchHeaderHeight)];
-    [tableView setTableHeaderView:searchBar];
+
+    if (!headerView) {
+        headerView = [[UIView alloc] initWithFrame:CGRectZero];
+        [headerView setBackgroundColor:[UIColor clearColor]];
+        [self setSearchHeaderView:headerView forTableView:tableView];
+    }
+    if ([searchBar superview] != headerView) {
+        [searchBar removeFromSuperview];
+        [headerView addSubview:searchBar];
+    }
+    if (tokenView && [tokenView superview] != headerView) {
+        [tokenView removeFromSuperview];
+        [headerView addSubview:tokenView];
+    }
+    if ([tableView tableHeaderView] != headerView) {
+        [tableView setTableHeaderView:headerView];
+    }
     [self layoutSearchBarForTableView:tableView];
 }
 
@@ -155,8 +208,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)hideSearchBarInTableView:(KayokoHistoryListView *)tableView animated:(BOOL)animated {
-    UISearchBar *searchBar = [self searchBarForTableView:tableView];
-    if (!tableView || [tableView tableHeaderView] != searchBar || [self isSearchActive]) {
+    UIView *headerView = [self searchHeaderViewForTableView:tableView];
+    if (!tableView || [tableView tableHeaderView] != headerView || [self isSearchActive]) {
         return;
     }
 
@@ -168,8 +221,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)revealSearchBarInTableView:(KayokoHistoryListView *)tableView animated:(BOOL)animated {
-    UISearchBar *searchBar = [self searchBarForTableView:tableView];
-    if (!tableView || [tableView tableHeaderView] != searchBar) {
+    UIView *headerView = [self searchHeaderViewForTableView:tableView];
+    if (!tableView || [tableView tableHeaderView] != headerView) {
         return;
     }
 
