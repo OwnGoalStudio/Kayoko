@@ -34,9 +34,12 @@
     [self installActivationHooksWithActivationMethod:activationMethod];
 }
 
-+ (void)installKeyboardExtensionHooksWithActivationMethod:(NSUInteger)activationMethod {
++ (void)installKeyboardExtensionHooksWithActivationMethod:(NSUInteger)activationMethod
+                                     spotlightSwipeUpOnly:(BOOL)spotlightSwipeUpOnly {
     if (activationMethod & kActivationMethodSwipeUp) {
-        [self installKeyboardExtensionSwipeUpHooks];
+        [self installKeyboardExtensionSwipeUpHooksForSpotlightOnly:NO];
+    } else if (spotlightSwipeUpOnly) {
+        [self installKeyboardExtensionSwipeUpHooksForSpotlightOnly:YES];
     }
 }
 

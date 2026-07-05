@@ -11,7 +11,9 @@ KayokoPreferences_CFLAGS += -I../Preferences
 KayokoPreferences_FRAMEWORKS += CoreGraphics
 KayokoPreferences_FRAMEWORKS += QuartzCore
 KayokoPreferences_FRAMEWORKS += UIKit
+KayokoPreferences_PRIVATE_FRAMEWORKS += FrontBoardServices
 KayokoPreferences_PRIVATE_FRAMEWORKS += Preferences
+KayokoPreferences_PRIVATE_FRAMEWORKS += SpringBoardServices
 
 ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
 KayokoPreferences_LIBRARIES += roothide

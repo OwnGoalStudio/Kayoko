@@ -8,12 +8,10 @@
 #import "KayokoRootListController.h"
 #import "KayokoNotificationKeys.h"
 #import "KayokoPreferenceKeys.h"
+#import "KayokoRespringControllerSupport.h"
 
 #import <Preferences/PSSpecifier.h>
 #import <UIKit/UIKit.h>
-#import <roothide.h>
-
-NS_ASSUME_NONNULL_BEGIN
 
 @interface NSConcreteNotification : NSNotification
 @end
@@ -22,11 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)_returnKeyPressed:(NSConcreteNotification *)notification;
 @end
 
-@interface NSTask : NSObject
-@property(nonatomic, copy) NSArray<NSString *> *arguments;
-@property(nonatomic, copy) NSString *launchPath;
-- (void)launch;
-@end
+NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoRootListController () <UISearchResultsUpdating>
 @end
@@ -148,37 +142,6 @@ NS_ASSUME_NONNULL_END
     [super _returnKeyPressed:notification];
 }
 
-- (void)promptToRespring {
-    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
-
-    UIAlertController *resetAlert = [UIAlertController
-        alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
-                         message:[bundle localizedStringForKey:@"This option requires restarting SpringBoard to apply. "
-                                                               @"Do you want to restart now?"
-                                                         value:nil
-                                                         table:@"Root"]
-                  preferredStyle:UIAlertControllerStyleAlert];
-
-    UIAlertAction *respringAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Respring Now"
-                                                                                           value:nil
-                                                                                           table:@"Root"]
-                                                             style:UIAlertActionStyleDestructive
-                                                           handler:^(UIAlertAction *action) {
-                                                             [self respring];
-                                                           }];
-
-    UIAlertAction *notNowAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Not Now"
-                                                                                         value:nil
-                                                                                         table:@"Root"]
-                                                           style:UIAlertActionStyleCancel
-                                                         handler:nil];
-
-    [resetAlert addAction:respringAction];
-    [resetAlert addAction:notNowAction];
-
-    [self presentViewController:resetAlert animated:YES completion:nil];
-}
-
 - (void)respringPrompt {
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
 
@@ -210,11 +173,9 @@ NS_ASSUME_NONNULL_END
     [self presentViewController:respringAlert animated:YES completion:nil];
 }
 
-- (void)respring {
-    NSTask *task = [[NSTask alloc] init];
-    [task setLaunchPath:jbroot(@"/usr/bin/killall")];
-    [task setArguments:@[ @"backboardd" ]];
-    [task launch];
+- (void)showKayoko {
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (CFStringRef)kKayokoNotificationKeyCoreShow, nil, nil, YES);
 }
 
 - (UISlider *_Nullable)findSliderInView:(UIView *)view {

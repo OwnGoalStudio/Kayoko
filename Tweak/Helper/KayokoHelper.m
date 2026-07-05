@@ -17,17 +17,27 @@ __attribute((constructor)) static void initialize() {
     }
 
     KayokoHelperProcessContext *context = [KayokoHelperProcessContext currentContext];
+    NSUInteger helperActivationMethod = configuration.activationMethod;
+
+    BOOL systemGestureRecognizerMode = configuration.gestureRecognizerMode == kKayokoGestureRecognizerModeSystem;
+    BOOL swipeUpEnabled = (configuration.activationMethod & kActivationMethodSwipeUp) != 0;
+    BOOL spotlightProcess = [[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.Spotlight"];
+    if (systemGestureRecognizerMode && !spotlightProcess) {
+        helperActivationMethod &= ~kActivationMethodSwipeUp;
+    }
+
     switch (context.kind) {
     case KayokoHelperProcessKindKeyboardExtension:
-        [KayokoHelperHookInstaller installKeyboardExtensionHooksWithActivationMethod:configuration.activationMethod];
+        [KayokoHelperHookInstaller
+            installKeyboardExtensionHooksWithActivationMethod:helperActivationMethod
+                                         spotlightSwipeUpOnly:(systemGestureRecognizerMode && swipeUpEnabled)];
         return;
     case KayokoHelperProcessKindSpringBoard:
         [[KayokoHelperRuntime sharedRuntime] installSpringBoardRuntimeWithConfiguration:configuration];
-        [KayokoHelperHookInstaller
-            installSpringBoardActivationHooksWithActivationMethod:configuration.activationMethod];
+        [KayokoHelperHookInstaller installSpringBoardActivationHooksWithActivationMethod:helperActivationMethod];
         return;
     case KayokoHelperProcessKindApplication:
-        [KayokoHelperHookInstaller installApplicationHooksWithActivationMethod:configuration.activationMethod];
+        [KayokoHelperHookInstaller installApplicationHooksWithActivationMethod:helperActivationMethod];
         [[KayokoHelperRuntime sharedRuntime] installApplicationRuntimeWithConfiguration:configuration];
         return;
     case KayokoHelperProcessKindUnsupported:

@@ -6,8 +6,10 @@
 #import "KayokoAdvancedOptionsListController.h"
 #import "KayokoNotificationKeys.h"
 #import "KayokoPreferenceKeys.h"
+#import "KayokoRespringControllerSupport.h"
 
 #import <Preferences/PSSpecifier.h>
+#import <UIKit/UIKit.h>
 #import <roothide.h>
 
 static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82flex.kayoko";
@@ -20,6 +22,14 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
     }
 
     return _specifiers;
+}
+
+- (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
+    [super setPreferenceValue:value specifier:specifier];
+
+    if ([[specifier propertyForKey:@"key"] isEqualToString:kKayokoPreferenceKeyGestureRecognizerMode]) {
+        [self promptToRespring];
+    }
 }
 
 - (void)resetPrompt {
@@ -51,6 +61,50 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
     [resetAlert addAction:cancelAction];
 
     [self presentViewController:resetAlert animated:YES completion:nil];
+}
+
+- (void)clearFavoritesPrompt {
+    [self presentClearConfirmationWithMessageKey:
+              @"Are you sure you want to clear all favorite items? This action cannot be undone."
+                                  actionTitleKey:@"Clear Favorites"
+                                notificationName:kKayokoNotificationKeyCoreClearFavorites];
+}
+
+- (void)clearHistoryPrompt {
+    [self presentClearConfirmationWithMessageKey:
+              @"Are you sure you want to clear all history items? This action cannot be undone."
+                                  actionTitleKey:@"Clear History"
+                                notificationName:kKayokoNotificationKeyCoreClearHistory];
+}
+
+- (void)presentClearConfirmationWithMessageKey:(NSString *)messageKey
+                                actionTitleKey:(NSString *)actionTitleKey
+                              notificationName:(NSString *)notificationName {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+
+    UIAlertController *clearAlert = [UIAlertController
+        alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
+                         message:[bundle localizedStringForKey:messageKey value:nil table:@"AdvancedOptions"]
+                  preferredStyle:UIAlertControllerStyleAlert];
+
+    UIAlertAction *clearAction =
+        [UIAlertAction actionWithTitle:[bundle localizedStringForKey:actionTitleKey value:nil table:@"AdvancedOptions"]
+                                 style:UIAlertActionStyleDestructive
+                               handler:^(UIAlertAction *action) {
+                                 CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                                                      (CFStringRef)notificationName, nil, nil, YES);
+                               }];
+
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
+                                                                                         value:nil
+                                                                                         table:@"AdvancedOptions"]
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
+
+    [clearAlert addAction:clearAction];
+    [clearAlert addAction:cancelAction];
+
+    [self presentViewController:clearAlert animated:YES completion:nil];
 }
 
 - (void)checkDataDirectory {

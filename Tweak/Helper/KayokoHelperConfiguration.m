@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, assign, readwrite, getter=isEnabled) BOOL enabled;
 @property(nonatomic, assign, readwrite) NSUInteger activationMethod;
+@property(nonatomic, assign, readwrite) KayokoGestureRecognizerMode gestureRecognizerMode;
 @property(nonatomic, assign, readwrite, getter=isAutomaticallyPasteEnabled) BOOL automaticallyPasteEnabled;
 @property(nonatomic, assign, readwrite, getter=isHapticFeedbackEnabled) BOOL hapticFeedbackEnabled;
 
@@ -31,6 +32,7 @@ NS_ASSUME_NONNULL_END
     [preferences registerDefaults:@{
         kKayokoPreferenceKeyEnabled : @(kKayokoPreferenceKeyEnabledDefaultValue),
         kKayokoPreferenceKeyActivationMethod : @(kKayokoPreferenceKeyActivationMethodDefaultValue),
+        kKayokoPreferenceKeyGestureRecognizerMode : @(kKayokoPreferenceKeyGestureRecognizerModeDefaultValue),
         kKayokoPreferenceKeyAutomaticallyPaste : @(kKayokoPreferenceKeyAutomaticallyPasteDefaultValue),
         kKayokoPreferenceKeyPlayHapticFeedback : @(kKayokoPreferenceKeyPlayHapticFeedbackDefaultValue)
     }];
@@ -44,6 +46,12 @@ NS_ASSUME_NONNULL_END
     if (self) {
         _enabled = [[preferences objectForKey:kKayokoPreferenceKeyEnabled] boolValue];
         _activationMethod = [[preferences objectForKey:kKayokoPreferenceKeyActivationMethod] unsignedIntegerValue];
+        _gestureRecognizerMode =
+            [[preferences objectForKey:kKayokoPreferenceKeyGestureRecognizerMode] unsignedIntegerValue];
+        if (_gestureRecognizerMode != kKayokoGestureRecognizerModeClassic &&
+            _gestureRecognizerMode != kKayokoGestureRecognizerModeSystem) {
+            _gestureRecognizerMode = kKayokoPreferenceKeyGestureRecognizerModeDefaultValue;
+        }
         _automaticallyPasteEnabled = [[preferences objectForKey:kKayokoPreferenceKeyAutomaticallyPaste] boolValue];
         _hapticFeedbackEnabled = [[preferences objectForKey:kKayokoPreferenceKeyPlayHapticFeedback] boolValue];
     }

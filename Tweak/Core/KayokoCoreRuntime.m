@@ -51,6 +51,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, assign, readwrite, getter=isEnabled) BOOL enabled;
 @property(nonatomic, assign, readwrite) NSUInteger activationMethod;
+@property(nonatomic, assign, readwrite) KayokoGestureRecognizerMode gestureRecognizerMode;
 @property(nonatomic, assign, readwrite) BOOL pasteTipsDisabled;
 
 @property(nonatomic, strong, nullable) KayokoMainViewController *mainViewController;
@@ -64,6 +65,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL swipeToSelectWords;
 @property(nonatomic, assign) BOOL automaticallyPaste;
 @property(nonatomic, assign) KayokoAutomaticPasteMode automaticPasteMode;
+@property(nonatomic, assign) KayokoInitialViewMode initialViewMode;
 @property(nonatomic, assign) BOOL dismissOnOutsideTouch;
 @property(nonatomic, assign) BOOL playSoundEffects;
 @property(nonatomic, assign) BOOL playHapticFeedback;
@@ -190,6 +192,9 @@ NS_ASSUME_NONNULL_END
     if ([self.mainViewController previewLineCount] != self.previewLineCount) {
         [self.mainViewController setPreviewLineCount:self.previewLineCount];
     }
+    if ([self.mainViewController initialViewMode] != self.initialViewMode) {
+        [self.mainViewController setInitialViewMode:self.initialViewMode];
+    }
     if ([self.mainViewController shouldPlayFeedback] != self.playHapticFeedback) {
         [self.mainViewController setShouldPlayFeedback:self.playHapticFeedback];
     }
@@ -225,12 +230,14 @@ NS_ASSUME_NONNULL_END
     [self.preferences registerDefaults:@{
         kKayokoPreferenceKeyEnabled : @(kKayokoPreferenceKeyEnabledDefaultValue),
         kKayokoPreferenceKeyActivationMethod : @(kKayokoPreferenceKeyActivationMethodDefaultValue),
+        kKayokoPreferenceKeyGestureRecognizerMode : @(kKayokoPreferenceKeyGestureRecognizerModeDefaultValue),
         kKayokoPreferenceKeyMaximumHistoryAmount : @(kKayokoPreferenceKeyMaximumHistoryAmountDefaultValue),
         kKayokoPreferenceKeySaveText : @(kKayokoPreferenceKeySaveTextDefaultValue),
         kKayokoPreferenceKeySaveImages : @(kKayokoPreferenceKeySaveImagesDefaultValue),
         kKayokoPreferenceKeySwipeToSelectWords : @(kKayokoPreferenceKeySwipeToSelectWordsDefaultValue),
         kKayokoPreferenceKeyAutomaticallyPaste : @(kKayokoPreferenceKeyAutomaticallyPasteDefaultValue),
         kKayokoPreferenceKeyAutomaticPasteMode : @(kKayokoPreferenceKeyAutomaticPasteModeDefaultValue),
+        kKayokoPreferenceKeyInitialViewMode : @(kKayokoPreferenceKeyInitialViewModeDefaultValue),
         kKayokoPreferenceKeyDismissOnOutsideTouch : @(kKayokoPreferenceKeyDismissOnOutsideTouchDefaultValue),
         kKayokoPreferenceKeyDisablePasteTips : @(kKayokoPreferenceKeyDisablePasteTipsDefaultValue),
         kKayokoPreferenceKeyIgnoreRemoteReplication : @(kKayokoPreferenceKeyIgnoreRemoteReplicationDefaultValue),
@@ -242,6 +249,12 @@ NS_ASSUME_NONNULL_END
 
     [self readPasteTipPreferencesFromPreferences:self.preferences];
     self.activationMethod = [[self.preferences objectForKey:kKayokoPreferenceKeyActivationMethod] unsignedIntegerValue];
+    self.gestureRecognizerMode =
+        [[self.preferences objectForKey:kKayokoPreferenceKeyGestureRecognizerMode] unsignedIntegerValue];
+    if (self.gestureRecognizerMode != kKayokoGestureRecognizerModeClassic &&
+        self.gestureRecognizerMode != kKayokoGestureRecognizerModeSystem) {
+        self.gestureRecognizerMode = kKayokoPreferenceKeyGestureRecognizerModeDefaultValue;
+    }
     self.maximumHistoryAmount = [KayokoPasteboardManager
         normalizedMaximumHistoryAmountForValue:[[self.preferences objectForKey:kKayokoPreferenceKeyMaximumHistoryAmount]
                                                    unsignedIntegerValue]];
@@ -255,6 +268,12 @@ NS_ASSUME_NONNULL_END
         self.automaticPasteMode != kKayokoAutomaticPasteModeSimulated &&
         self.automaticPasteMode != kKayokoAutomaticPasteModeAutomatic) {
         self.automaticPasteMode = kKayokoPreferenceKeyAutomaticPasteModeDefaultValue;
+    }
+    self.initialViewMode = [[self.preferences objectForKey:kKayokoPreferenceKeyInitialViewMode] unsignedIntegerValue];
+    if (self.initialViewMode != kKayokoInitialViewModeHistory &&
+        self.initialViewMode != kKayokoInitialViewModeFavorites &&
+        self.initialViewMode != kKayokoInitialViewModePreviousSelection) {
+        self.initialViewMode = kKayokoPreferenceKeyInitialViewModeDefaultValue;
     }
     self.dismissOnOutsideTouch = [[self.preferences objectForKey:kKayokoPreferenceKeyDismissOnOutsideTouch] boolValue];
     BOOL ignoreRemoteReplication =
@@ -529,6 +548,18 @@ NS_ASSUME_NONNULL_END
 
 - (void)checkpointHistoryDatabase {
     [[KayokoPasteboardManager sharedInstance] checkpointHistoryDatabase];
+}
+
+- (void)clearFavorites {
+    [[KayokoPasteboardManager sharedInstance] removeAllPasteboardItemsFromHistoryWithKey:kKayokoHistoryKeyFavorites
+                                                                      shouldRemoveImages:YES
+                                                                              completion:nil];
+}
+
+- (void)clearHistory {
+    [[KayokoPasteboardManager sharedInstance] removeAllPasteboardItemsFromHistoryWithKey:kKayokoHistoryKeyHistory
+                                                                      shouldRemoveImages:YES
+                                                                              completion:nil];
 }
 
 @end

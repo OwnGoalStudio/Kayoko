@@ -55,6 +55,10 @@ NS_ASSUME_NONNULL_END
 }
 
 + (BOOL)isApplicationProcess {
+    if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.Spotlight"]) {
+        return YES;
+    }
+
     NSArray<NSString *> *args = [[NSProcessInfo processInfo] arguments];
     NSUInteger count = [args count];
     if (count == 0) {

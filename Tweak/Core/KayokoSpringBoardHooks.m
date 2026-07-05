@@ -6,10 +6,17 @@
 #define CHUseSubstrate
 
 #import <CaptainHook/CaptainHook.h>
+#import <CoreFoundation/CoreFoundation.h>
 #import <UIKit/UIKit.h>
+#import <objc/runtime.h>
 
 #import "KayokoCoreRuntime.h"
+#import "KayokoNotificationKeys.h"
+#import "KayokoPreferenceKeys.h"
 #import "KayokoSpringBoardHooks.h"
+#import "KayokoSwipeUpGestureRecognizer.h"
+
+#include <math.h>
 
 CHDeclareClass(SpringBoard);
 CHDeclareClass(UIWindowScene);
@@ -21,9 +28,11 @@ CHDeclareClass(SBHLibrarySearchController);
 CHDeclareClass(SBMainDisplaySystemGestureManager);
 CHDeclareClass(SBMainSwitcherViewController);
 CHDeclareClass(SBMainSwitcherControllerCoordinator);
+CHDeclareClass(_UISystemGestureWindow);
 
 @interface SpringBoard : UIApplication
 - (void)applicationDidFinishLaunching:(id)application;
+- (NSArray<UIKeyCommand *> *)keyCommands;
 @end
 
 @interface SBCoverSheetPrimarySlidingViewController : UIViewController
@@ -58,8 +67,34 @@ CHDeclareClass(SBMainSwitcherControllerCoordinator);
 - (BOOL)_isGestureWithTypeAllowed:(NSInteger)type;
 @end
 
+@interface _UISystemGestureWindow : UIWindow
+- (UIView *)_systemGestureView;
+@end
+
+@interface UIPeripheralHost : NSObject
++ (instancetype)sharedInstance;
++ (NSArray<NSValue *> *)allVisiblePeripheralFrames;
+- (BOOL)isOnScreen;
+@end
+
 static const NSInteger kKayokoSystemGestureTypeCoverSheet = 0x1;
 static const NSInteger kKayokoSystemGestureTypeControlCenter = 0x6;
+static CGFloat const kKayokoSystemKeyboardFrameEdgeTolerance = 1.0;
+static NSString *const kKayokoExternalKeyboardDiscoverabilityTitle = @"Kayoko";
+
+static char kayokoSystemSwipeUpGestureRecognizerKey;
+static char kayokoSystemSwipeUpGestureHandlerKey;
+
+static void kayokoHandleExternalKeyboardShortcut(id self, SEL _cmd, UIKeyCommand *command) {
+    (void)self;
+    (void)_cmd;
+    (void)command;
+    KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];
+    NSString *notificationName =
+        [runtime panelVisible] ? kKayokoNotificationKeyCoreHide : kKayokoNotificationKeyCoreShow;
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (__bridge CFStringRef)notificationName, nil, nil, YES);
+}
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -69,10 +104,133 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)hideForHomeScreenIfVisible:(id)controller;
 + (void)hideForLayoutStateTransition;
 + (void)hideForAppSwitcherIfVisible:(id)switcher;
++ (void)ensureSystemSwipeUpGestureRecognizerForWindow:(_UISystemGestureWindow *)window;
++ (void)installSystemSwipeUpHooks;
 
 @end
 
 NS_ASSUME_NONNULL_END
+
+static CGRect kayokoVisibleKeyboardFrame(void) {
+    Class hostClass = NSClassFromString(@"UIPeripheralHost");
+    if (![hostClass respondsToSelector:@selector(sharedInstance)] ||
+        ![hostClass respondsToSelector:@selector(allVisiblePeripheralFrames)]) {
+        return CGRectNull;
+    }
+
+    UIPeripheralHost *host = [(id)hostClass sharedInstance];
+    if (![host respondsToSelector:@selector(isOnScreen)] || ![host isOnScreen]) {
+        return CGRectNull;
+    }
+
+    NSArray<NSValue *> *visibleFrames = [(id)hostClass allVisiblePeripheralFrames];
+    if (![visibleFrames isKindOfClass:[NSArray class]] || [visibleFrames count] == 0) {
+        return CGRectNull;
+    }
+
+    CGRect keyboardFrame = CGRectNull;
+    for (NSValue *frameValue in visibleFrames) {
+        if (![frameValue respondsToSelector:@selector(CGRectValue)]) {
+            continue;
+        }
+
+        CGRect frame = [frameValue CGRectValue];
+        if (CGRectIsNull(frame) || CGRectIsEmpty(frame)) {
+            continue;
+        }
+
+        keyboardFrame = CGRectIsNull(keyboardFrame) ? frame : CGRectUnion(keyboardFrame, frame);
+    }
+
+    return keyboardFrame;
+}
+
+static CGRect kayokoVisibleKeyboardSwipeFrameInView(UIView *view) {
+    if (!view || !view.window) {
+        return CGRectNull;
+    }
+
+    CGRect keyboardFrame = kayokoVisibleKeyboardFrame();
+    if (CGRectIsNull(keyboardFrame) || CGRectIsEmpty(keyboardFrame)) {
+        return CGRectNull;
+    }
+
+    CGRect frameInView = [view convertRect:keyboardFrame fromView:nil];
+    if (CGRectIsNull(frameInView) || CGRectIsEmpty(frameInView)) {
+        return CGRectNull;
+    }
+
+    UIEdgeInsets safeAreaInsets = view.safeAreaInsets;
+    if (safeAreaInsets.bottom <= 0) {
+        safeAreaInsets = view.window.safeAreaInsets;
+    }
+    if (safeAreaInsets.bottom > 0 &&
+        fabs(CGRectGetMaxY(frameInView) - CGRectGetMaxY(view.bounds)) <= kKayokoSystemKeyboardFrameEdgeTolerance) {
+        frameInView.size.height = MAX(CGRectGetHeight(frameInView) - safeAreaInsets.bottom, 0);
+    }
+
+    return CGRectIsEmpty(frameInView) ? CGRectNull : frameInView;
+}
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface KayokoSystemSwipeUpGestureHandler : NSObject <UIGestureRecognizerDelegate>
+@property(nonatomic, weak, readonly) UIView *view;
+- (instancetype)initWithView:(UIView *)view;
+- (void)handleSwipeUpGesture:(UIGestureRecognizer *)recognizer;
+@end
+
+NS_ASSUME_NONNULL_END
+
+@implementation KayokoSystemSwipeUpGestureHandler
+
+- (instancetype)initWithView:(UIView *)view {
+    self = [super init];
+    if (self) {
+        _view = view;
+    }
+    return self;
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
+    UIView *view = self.view;
+    if (!view || gestureRecognizer != objc_getAssociatedObject(view, &kayokoSystemSwipeUpGestureRecognizerKey)) {
+        return YES;
+    }
+
+    if ([[KayokoCoreRuntime sharedRuntime] panelVisible]) {
+        return NO;
+    }
+
+    CGRect keyboardFrame = kayokoVisibleKeyboardSwipeFrameInView(view);
+    if (CGRectIsNull(keyboardFrame) || CGRectIsEmpty(keyboardFrame)) {
+        return NO;
+    }
+
+    return CGRectContainsPoint(keyboardFrame, [touch locationInView:view]);
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
+    shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
+    (void)gestureRecognizer;
+    (void)otherGestureRecognizer;
+    return YES;
+}
+
+- (void)handleSwipeUpGesture:(UIGestureRecognizer *)recognizer {
+    if (recognizer.state != UIGestureRecognizerStateRecognized) {
+        return;
+    }
+
+    if ([[KayokoCoreRuntime sharedRuntime] panelVisible]) {
+        return;
+    }
+
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (__bridge CFStringRef)kKayokoNotificationKeyCoreShow, nil, nil, YES);
+}
+
+@end
 
 CHOptimizedMethod1(self, void, UIWindowScene, _delegate_windowDidBecomeVisible, UIWindow *, window) {
     CHSuper1(UIWindowScene, _delegate_windowDidBecomeVisible, window);
@@ -90,6 +248,19 @@ CHOptimizedMethod1(self, void, UIWindowScene, _delegate_windowDidBecomeVisible, 
 CHOptimizedMethod1(self, void, SpringBoard, applicationDidFinishLaunching, id, application) {
     CHSuper1(SpringBoard, applicationDidFinishLaunching, application);
     [[KayokoCoreRuntime sharedRuntime] preloadInitialHistory];
+}
+
+CHOptimizedMethod0(self, NSArray<UIKeyCommand *> *, SpringBoard, keyCommands) {
+    NSArray<UIKeyCommand *> *keyCommands = CHSuper0(SpringBoard, keyCommands);
+    if (!([[KayokoCoreRuntime sharedRuntime] activationMethod] & kActivationMethodExternalKeyboard)) {
+        return keyCommands;
+    }
+
+    UIKeyCommand *command = [UIKeyCommand keyCommandWithInput:@"V"
+                                                modifierFlags:UIKeyModifierCommand | UIKeyModifierShift
+                                                       action:@selector(kayokoHandleExternalKeyboardShortcut:)];
+    [command setDiscoverabilityTitle:kKayokoExternalKeyboardDiscoverabilityTitle];
+    return keyCommands ? [keyCommands arrayByAddingObject:command] : @[ command ];
 }
 
 CHOptimizedMethod1(self, void, UIViewController, viewWillAppear, BOOL, animated) {
@@ -164,6 +335,14 @@ CHOptimizedMethod2(self, void, SBMainSwitcherControllerCoordinator, layoutStateT
     [KayokoSpringBoardHookInstaller hideForAppSwitcherIfVisible:self];
 }
 
+CHOptimizedMethod1(self, void, _UISystemGestureWindow, sendEvent, UIEvent *, event) {
+    if (event.type == UIEventTypeTouches) {
+        [KayokoSpringBoardHookInstaller ensureSystemSwipeUpGestureRecognizerForWindow:self];
+    }
+
+    CHSuper1(_UISystemGestureWindow, sendEvent, event);
+}
+
 @implementation KayokoSpringBoardHookInstaller
 
 + (BOOL)isStatusBarWindow:(UIWindow *)window {
@@ -218,6 +397,33 @@ CHOptimizedMethod2(self, void, SBMainSwitcherControllerCoordinator, layoutStateT
     if (switcherVisible) {
         [runtime hide];
     }
+}
+
++ (void)ensureSystemSwipeUpGestureRecognizerForWindow:(_UISystemGestureWindow *)window {
+    if (![window respondsToSelector:@selector(_systemGestureView)]) {
+        return;
+    }
+
+    UIView *gestureView = [window _systemGestureView];
+    if (![gestureView isKindOfClass:[UIView class]]) {
+        return;
+    }
+
+    if (objc_getAssociatedObject(gestureView, &kayokoSystemSwipeUpGestureRecognizerKey)) {
+        return;
+    }
+
+    KayokoSystemSwipeUpGestureHandler *handler = [[KayokoSystemSwipeUpGestureHandler alloc] initWithView:gestureView];
+    KayokoSwipeUpGestureRecognizer *recognizer =
+        [[KayokoSwipeUpGestureRecognizer alloc] initWithTarget:handler action:@selector(handleSwipeUpGesture:)];
+    recognizer.cancelsTouchesInView = NO;
+    recognizer.delegate = handler;
+    [gestureView addGestureRecognizer:recognizer];
+
+    objc_setAssociatedObject(gestureView, &kayokoSystemSwipeUpGestureHandlerKey, handler,
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(gestureView, &kayokoSystemSwipeUpGestureRecognizerKey, recognizer,
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 + (void)installStatusBarHooks {
@@ -283,6 +489,19 @@ CHOptimizedMethod2(self, void, SBMainSwitcherControllerCoordinator, layoutStateT
     }
 }
 
++ (void)installSystemSwipeUpHooks {
+    static dispatch_once_t sOnceToken;
+    dispatch_once(&sOnceToken, ^{
+      Class windowClass = NSClassFromString(@"_UISystemGestureWindow");
+      if (![windowClass instancesRespondToSelector:@selector(sendEvent:)]) {
+          return;
+      }
+
+      CHLoadClass_(&_UISystemGestureWindow$, windowClass);
+      CHHook1(_UISystemGestureWindow, sendEvent);
+    });
+}
+
 + (void)installAppSwitcherHooks {
     SEL transitionBeginSelector = @selector(layoutStateTransitionCoordinator:transitionDidBeginWithTransitionContext:);
     SEL transitionEndSelector = @selector(layoutStateTransitionCoordinator:transitionDidEndWithTransitionContext:);
@@ -311,14 +530,26 @@ CHOptimizedMethod2(self, void, SBMainSwitcherControllerCoordinator, layoutStateT
 
 + (void)installHooks {
     [self installStatusBarHooks];
+
     CHLoadClass_(&SpringBoard$, NSClassFromString(@"SpringBoard"));
+    class_addMethod(CHClass(SpringBoard), @selector(kayokoHandleExternalKeyboardShortcut:),
+                    (IMP)kayokoHandleExternalKeyboardShortcut, "v@:@");
+
     CHHook1(SpringBoard, applicationDidFinishLaunching);
+    CHHook0(SpringBoard, keyCommands);
+
     [self installHomeScreenHooks];
     [self installAppSwitcherHooks];
     [self installLockScreenTransitionHooks];
     [self installSpotlightHooks];
     [self installLibrarySearchHooks];
     [self installSystemGestureHooks];
+
+    KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];
+    if ((runtime.activationMethod & kActivationMethodSwipeUp) &&
+        runtime.gestureRecognizerMode == kKayokoGestureRecognizerModeSystem) {
+        [self installSystemSwipeUpHooks];
+    }
 }
 
 @end

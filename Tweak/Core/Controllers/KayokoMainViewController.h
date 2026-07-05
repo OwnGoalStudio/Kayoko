@@ -5,6 +5,8 @@
 
 #import <UIKit/UIKit.h>
 
+#import "KayokoPreferenceKeys.h"
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoMainViewController : UIViewController
@@ -12,6 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL automaticallyPaste;
 @property(nonatomic, assign) BOOL dismissOnOutsideTouch;
 @property(nonatomic, assign) BOOL swipeToSelectWords;
+@property(nonatomic, assign) KayokoInitialViewMode initialViewMode;
 @property(nonatomic, assign) NSUInteger previewLineCount;
 @property(nonatomic, assign) BOOL shouldPlayFeedback;
 @property(nonatomic, copy, nullable) void (^focusRestoreRequestHandler)(void);

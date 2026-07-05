@@ -49,6 +49,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak, nullable) UIView *activeSourceContentView;
 
 - (void)showContentForItem:(KayokoPasteboardItem *)item;
+- (nullable NSString *)historyKeyForInitialViewMode;
 - (void)hideAfterDirectPaste;
 - (void)hideWordSelection;
 - (void)restoreActiveSourceContentView;
@@ -434,6 +435,18 @@ NS_ASSUME_NONNULL_END
 
 - (void)handleHistoryChanged {
     [[self historyController] handleHistoryChanged];
+}
+
+- (nullable NSString *)historyKeyForInitialViewMode {
+    switch ([self initialViewMode]) {
+    case kKayokoInitialViewModeFavorites:
+        return kKayokoHistoryKeyFavorites;
+    case kKayokoInitialViewModeHistory:
+        return kKayokoHistoryKeyHistory;
+    case kKayokoInitialViewModePreviousSelection:
+        return nil;
+    }
+    return nil;
 }
 
 - (void)reloadTableViewForHistoryKey:(NSString *)historyKey
@@ -905,6 +918,9 @@ NS_ASSUME_NONNULL_END
     if ([[self panelPresentationController] isAnimating] || [self preparingToShow]) {
         return;
     }
+    if (![self isHidden]) {
+        return;
+    }
 
     [self setDismissingPanel:NO];
     [self setPreparingToShow:YES];
@@ -914,6 +930,11 @@ NS_ASSUME_NONNULL_END
 
     [[self historyListViewController] setAutomaticallyPaste:[self automaticallyPaste]];
     [[self favoritesListViewController] setAutomaticallyPaste:[self automaticallyPaste]];
+
+    NSString *initialHistoryKey = [self historyKeyForInitialViewMode];
+    if ([initialHistoryKey length] > 0) {
+        [[self historyController] setActiveHistoryKey:initialHistoryKey];
+    }
 
     NSString *historyKey = [self effectiveActiveHistoryKey];
     [self reloadTableViewForHistoryKey:historyKey
