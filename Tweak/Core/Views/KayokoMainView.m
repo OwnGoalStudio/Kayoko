@@ -289,6 +289,42 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
     return safeAreaInsets;
 }
 
+- (CGFloat)sceneSafeAreaBottomInsetForWindow:(UIWindow *)window {
+    UIWindowScene *windowScene = [window windowScene];
+    for (UIWindow *sceneWindow in [windowScene windows]) {
+        if ([sceneWindow isHidden]) {
+            continue;
+        }
+
+        CGFloat bottomInset = MAX([sceneWindow safeAreaInsets].bottom, 0);
+        if (bottomInset > 0) {
+            return bottomInset;
+        }
+    }
+
+    return 0;
+}
+
+- (CGFloat)safeAreaBottomInsetForContentView:(nullable UIView *)contentView {
+    CGFloat bottomInset = MAX([contentView safeAreaInsets].bottom, 0);
+    if (bottomInset > 0) {
+        return bottomInset;
+    }
+
+    UIView *referenceView = contentView ?: self;
+    UIWindow *window = [referenceView window] ?: [self window];
+    CGFloat windowBottomSafeAreaInset =
+        MAX(MAX([window safeAreaInsets].bottom, [self sceneSafeAreaBottomInsetForWindow:window]), 0);
+    if (!referenceView || !window || windowBottomSafeAreaInset <= 0) {
+        return 0;
+    }
+
+    CGRect referenceBoundsInWindow = [referenceView convertRect:[referenceView bounds] toView:window];
+    CGFloat safeAreaBottomY = CGRectGetMaxY([window bounds]) - windowBottomSafeAreaInset;
+    CGFloat unsafeBottomOverlap = CGRectGetMaxY(referenceBoundsInWindow) - safeAreaBottomY;
+    return ceil(MIN(MAX(unsafeBottomOverlap, 0), windowBottomSafeAreaInset));
+}
+
 - (UIEdgeInsets)contentSafeAreaAdditionalInsetsRemovingRedundantSystemInsets:(UIEdgeInsets)additionalInsets {
     UIEdgeInsets safeAreaInsets = [self safeAreaInsets];
     if (safeAreaInsets.top > 0) {

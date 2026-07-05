@@ -45,6 +45,7 @@ typedef NS_ENUM(NSUInteger, KayokoContentTransitionDirection) {
 - (void)setClearButtonEnabledForItemCount:(NSUInteger)itemCount;
 - (void)setGrabberFoldProgress:(CGFloat)progress;
 - (UIEdgeInsets)effectiveContentSafeAreaInsets;
+- (CGFloat)safeAreaBottomInsetForContentView:(nullable UIView *)contentView;
 - (void)installContentView:(UIView *)contentView hidden:(BOOL)hidden;
 - (void)showContentView:(UIView *)viewToShow
         hideContentView:(UIView *)viewToHide

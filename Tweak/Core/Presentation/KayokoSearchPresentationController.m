@@ -467,12 +467,24 @@ NS_ASSUME_NONNULL_END
     return [tableView minimumBottomInsetForMaintainingHiddenHeaderWithAdditionalContentHeightReduction:0];
 }
 
+- (CGFloat)safeAreaBottomInsetForTableView:(KayokoHistoryListView *)tableView {
+    UIView *containerView = [self containerView];
+    if ([containerView isKindOfClass:[KayokoMainView class]]) {
+        return [(KayokoMainView *)containerView safeAreaBottomInsetForContentView:tableView];
+    }
+
+    return MAX([tableView safeAreaInsets].bottom, 0);
+}
+
 - (void)applyBottomInsetToTableView:(KayokoHistoryListView *)tableView {
     [tableView setKeyboardBottomInset:[self keyboardBottomInset]];
     [tableView updateNoSearchResultsPlaceholderLayout];
 
     UIEdgeInsets contentInset = [tableView contentInset];
-    CGFloat bottomInset = [self keyboardBottomInset] + [self hiddenSearchBottomInsetForTableView:tableView];
+    CGFloat keyboardBottomInset = [self keyboardBottomInset];
+    CGFloat hiddenSearchBottomInset = [self hiddenSearchBottomInsetForTableView:tableView];
+    CGFloat safeAreaBottomInset = [self safeAreaBottomInsetForTableView:tableView];
+    CGFloat bottomInset = hiddenSearchBottomInset + MAX(keyboardBottomInset, safeAreaBottomInset);
     contentInset.bottom = bottomInset;
     [tableView setContentInset:contentInset];
 

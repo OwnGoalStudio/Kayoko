@@ -4,6 +4,7 @@
 //
 
 #import "KayokoWordSelectionView.h"
+#import "KayokoMainView.h"
 #import "KayokoWordSelectionTokenizer.h"
 #import "KayokoWordTokenView.h"
 
@@ -128,6 +129,35 @@ NS_ASSUME_NONNULL_END
     [[self scrollView] setContentOffset:contentOffset animated:animated];
 }
 
+- (nullable KayokoMainView *)mainView {
+    UIView *view = [self superview];
+    while (view) {
+        if ([view isKindOfClass:[KayokoMainView class]]) {
+            return (KayokoMainView *)view;
+        }
+        view = [view superview];
+    }
+
+    return nil;
+}
+
+- (void)updateScrollInsets {
+    CGFloat bottomInset = 0;
+    KayokoMainView *mainView = [self mainView];
+    if (mainView) {
+        bottomInset = [mainView safeAreaBottomInsetForContentView:[self scrollView]];
+    } else {
+        bottomInset = MAX([[self scrollView] safeAreaInsets].bottom, 0);
+    }
+
+    UIEdgeInsets contentInset = [[self scrollView] contentInset];
+    contentInset.bottom = bottomInset;
+    [[self scrollView] setContentInset:contentInset];
+
+    UIEdgeInsets indicatorInsets = UIEdgeInsetsMake(0, 0, bottomInset, 0);
+    [[self scrollView] setVerticalScrollIndicatorInsets:indicatorInsets];
+}
+
 - (void)layoutSubviews {
     [super layoutSubviews];
 
@@ -164,6 +194,12 @@ NS_ASSUME_NONNULL_END
     BOOL scrollable = contentHeight > CGRectGetHeight([self bounds]) + 0.5;
     [[self scrollView] setBounces:scrollable];
     [[self scrollView] setAlwaysBounceVertical:scrollable];
+    [self updateScrollInsets];
+}
+
+- (void)safeAreaInsetsDidChange {
+    [super safeAreaInsetsDidChange];
+    [self updateScrollInsets];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
