@@ -356,7 +356,7 @@ NS_ASSUME_NONNULL_END
 
     if (![criteria hasActiveFilters]) {
         [self invalidatePendingSearchRequests];
-        [listViewController showSearchTokensOnlyWithCriteria:criteria];
+        [listViewController showSearchTokensWithFullListForCriteria:criteria];
         [self updateTokenListForListViewController:listViewController];
         [self updateSearchTokenHeaderHeights];
         return;

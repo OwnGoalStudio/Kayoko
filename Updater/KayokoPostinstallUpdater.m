@@ -105,7 +105,7 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
     return [[KayokoHistoryStore alloc] initWithDatabasePath:[KayokoHistoryStore defaultDatabasePath]
                                                  imagesPath:[self currentImagesPath]
                                                 lockingMode:KayokoHistoryStoreLockingModeExclusiveWhileOpen
-                                     busyTimeoutMilliseconds:kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds];
+                                    busyTimeoutMilliseconds:kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds];
 }
 
 - (NSString *)currentImagesPath {

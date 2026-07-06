@@ -255,8 +255,8 @@ NS_ASSUME_NONNULL_END
     [self reloadTableView];
 }
 
-- (void)showSearchTokensOnlyWithCriteria:(KayokoSearchCriteria *)searchCriteria {
-    [[self dataStore] showSearchTokensOnlyWithCriteria:searchCriteria];
+- (void)showSearchTokensWithFullListForCriteria:(KayokoSearchCriteria *)searchCriteria {
+    [[self dataStore] showSearchTokensWithFullListForCriteria:searchCriteria];
     [self reloadTableView];
 }
 

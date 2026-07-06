@@ -63,7 +63,9 @@ NS_ASSUME_NONNULL_END
 
 - (void)setItems:(NSArray<NSDictionary<NSString *, id> *> *)items {
     _items = [items copy] ?: @[];
-    if (![self hasActiveSearch]) {
+    if ([self isBrowsingSearchTokens]) {
+        [self setDisplayedItems:[self items]];
+    } else if (![self hasActiveSearch]) {
         [self refreshDisplayedItems];
     }
 }
@@ -93,11 +95,11 @@ NS_ASSUME_NONNULL_END
     [self refreshDisplayedItems];
 }
 
-- (void)showSearchTokensOnlyWithCriteria:(KayokoSearchCriteria *)searchCriteria {
+- (void)showSearchTokensWithFullListForCriteria:(KayokoSearchCriteria *)searchCriteria {
     _searchCriteria = [searchCriteria copy] ?: [KayokoSearchCriteria emptyCriteria];
     _searchText = [[self searchCriteria] searchText];
     [self setBrowsingSearchTokens:YES];
-    [self setDisplayedItems:@[]];
+    [self setDisplayedItems:[self items] ?: @[]];
 }
 
 - (void)clearSearch {

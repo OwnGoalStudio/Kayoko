@@ -57,11 +57,10 @@
 + (NSArray<NSDictionary<NSString *, id> *> *)detectedTokensForText:(NSString *)text inRange:(NSRange)textRange {
     NSMutableArray<NSDictionary<NSString *, id> *> *tokens = [[NSMutableArray alloc] init];
     NSMutableArray<NSTextCheckingResult *> *detectedResults = [[NSMutableArray alloc] init];
-    NSDataDetector *detector =
-        [NSDataDetector dataDetectorWithTypes:NSTextCheckingTypeLink | NSTextCheckingTypePhoneNumber |
-                                              NSTextCheckingTypeDate | NSTextCheckingTypeAddress |
-                                              NSTextCheckingTypeTransitInformation
-                                        error:nil];
+    NSDataDetector *detector = [NSDataDetector
+        dataDetectorWithTypes:NSTextCheckingTypeLink | NSTextCheckingTypePhoneNumber | NSTextCheckingTypeDate |
+                              NSTextCheckingTypeAddress | NSTextCheckingTypeTransitInformation
+                        error:nil];
     [detector enumerateMatchesInString:text
                                options:0
                                  range:textRange

@@ -372,7 +372,7 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
             [[KayokoHistoryStore alloc] initWithDatabasePath:_databasePath
                                                   imagesPath:_imagesPath
                                                  lockingMode:KayokoHistoryStoreLockingModeExclusiveWhileOpen
-                                      busyTimeoutMilliseconds:kKayokoCoreHistoryStoreBusyTimeoutMilliseconds];
+                                     busyTimeoutMilliseconds:kKayokoCoreHistoryStoreBusyTimeoutMilliseconds];
     }
     return _historyStore;
 }

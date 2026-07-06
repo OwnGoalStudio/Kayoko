@@ -23,12 +23,11 @@ typedef NS_ENUM(NSInteger, KayokoHistoryStoreLockingMode) {
 
 + (NSString *)defaultDatabasePath;
 
-- (instancetype)initWithDatabasePath:(NSString *)databasePath
-                          imagesPath:(NSString *)imagesPath;
+- (instancetype)initWithDatabasePath:(NSString *)databasePath imagesPath:(NSString *)imagesPath;
 - (instancetype)initWithDatabasePath:(NSString *)databasePath
                           imagesPath:(NSString *)imagesPath
                          lockingMode:(KayokoHistoryStoreLockingMode)lockingMode
-              busyTimeoutMilliseconds:(NSInteger)busyTimeoutMilliseconds NS_DESIGNATED_INITIALIZER;
+             busyTimeoutMilliseconds:(NSInteger)busyTimeoutMilliseconds NS_DESIGNATED_INITIALIZER;
 - (instancetype)init NS_UNAVAILABLE;
 
 - (BOOL)prepareStoreWithError:(NSError **)error;

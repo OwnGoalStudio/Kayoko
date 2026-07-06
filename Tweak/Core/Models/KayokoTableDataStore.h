@@ -22,7 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)beginApplyingSearchCriteria:(KayokoSearchCriteria *)searchCriteria;
 - (void)applySearchCriteria:(KayokoSearchCriteria *)searchCriteria
               filteredItems:(NSArray<NSDictionary<NSString *, id> *> *)filteredItems;
-- (void)showSearchTokensOnlyWithCriteria:(KayokoSearchCriteria *)searchCriteria;
+- (void)showSearchTokensWithFullListForCriteria:(KayokoSearchCriteria *)searchCriteria;
 - (void)clearSearch;
 - (NSUInteger)indexOfItemMatchingDictionary:(NSDictionary<NSString *, id> *)dictionary
                                     inItems:(NSArray<NSDictionary<NSString *, id> *> *)items;

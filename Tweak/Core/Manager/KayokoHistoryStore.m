@@ -7,10 +7,10 @@
 #import "KayokoPasteboardItem.h"
 #import "KayokoSearchCriteria.h"
 
+#import <limits.h>
 #import <roothide.h>
 #import <sqlite3.h>
 #import <string.h>
-#import <limits.h>
 
 static NSString *const kKayokoHistoryStoreErrorDomain = @"com.82flex.kayoko.history-store";
 static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imported";
@@ -41,13 +41,13 @@ NS_ASSUME_NONNULL_END
     return [self initWithDatabasePath:databasePath
                            imagesPath:imagesPath
                           lockingMode:KayokoHistoryStoreLockingModeNormal
-               busyTimeoutMilliseconds:kKayokoHistoryStoreDefaultBusyTimeoutMilliseconds];
+              busyTimeoutMilliseconds:kKayokoHistoryStoreDefaultBusyTimeoutMilliseconds];
 }
 
 - (instancetype)initWithDatabasePath:(NSString *)databasePath
                           imagesPath:(NSString *)imagesPath
                          lockingMode:(KayokoHistoryStoreLockingMode)lockingMode
-              busyTimeoutMilliseconds:(NSInteger)busyTimeoutMilliseconds {
+             busyTimeoutMilliseconds:(NSInteger)busyTimeoutMilliseconds {
     self = [super init];
     if (self) {
         _databasePath = [databasePath copy];
@@ -671,9 +671,8 @@ NS_ASSUME_NONNULL_END
     static NSDataDetector *detector = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      NSTextCheckingTypes types =
-          NSTextCheckingTypeLink | NSTextCheckingTypePhoneNumber | NSTextCheckingTypeDate | NSTextCheckingTypeAddress |
-          NSTextCheckingTypeTransitInformation;
+      NSTextCheckingTypes types = NSTextCheckingTypeLink | NSTextCheckingTypePhoneNumber | NSTextCheckingTypeDate |
+                                  NSTextCheckingTypeAddress | NSTextCheckingTypeTransitInformation;
       detector = [NSDataDetector dataDetectorWithTypes:types error:nil];
     });
 
