@@ -16,8 +16,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, nullable) UIControl *outsideDismissOverlayView;
 @property(nonatomic, strong, nullable) UIImpactFeedbackGenerator *feedbackGenerator;
 @property(nonatomic, assign) BOOL panGestureDidReachZeroAlpha;
-@property(nonatomic, assign) CGFloat pendingPanDismissTranslationY;
-@property(nonatomic, assign) CGFloat pendingPanDismissVelocityY;
+@property(nonatomic, assign) CGFloat pendingDismissTranslationY;
+@property(nonatomic, assign) CGFloat pendingDismissVelocityY;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -81,8 +81,15 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+- (void)prepareStandardDismissAnimation {
+    CGFloat targetTranslationY = MAX([[self panelView] bounds].size.height / 3, 120);
+    [self setPendingDismissTranslationY:targetTranslationY];
+    [self setPendingDismissVelocityY:0];
+}
+
 - (void)handleOutsideDismissOverlayTouchDown {
-    if ([self isDismissOnOutsideTouch] && ![[self panelView] isHidden]) {
+    if ([self isDismissOnOutsideTouch] && ![[self panelView] isHidden] && ![self isAnimating]) {
+        [self prepareStandardDismissAnimation];
         [[self delegate] panelPresentationControllerDidRequestDismiss:self];
     }
 }
@@ -125,8 +132,8 @@ NS_ASSUME_NONNULL_END
     CGFloat visibleTranslationY = MAX([[self panelView] transform].ty, 0);
     CGFloat startingTranslationY = MAX(MAX(translation.y, visibleTranslationY), 0);
     CGFloat targetTranslationY = startingTranslationY + MAX([[self panelView] bounds].size.height / 3, 120);
-    [self setPendingPanDismissTranslationY:targetTranslationY];
-    [self setPendingPanDismissVelocityY:MAX(velocity.y, 0)];
+    [self setPendingDismissTranslationY:targetTranslationY];
+    [self setPendingDismissVelocityY:MAX(velocity.y, 0)];
 }
 
 - (void)handlePanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
@@ -262,18 +269,18 @@ NS_ASSUME_NONNULL_END
     }
 
     [[self outsideDismissOverlayView] setUserInteractionEnabled:NO];
-    CGFloat panDismissTranslationY = [self pendingPanDismissTranslationY];
-    CGFloat panDismissVelocityY = [self pendingPanDismissVelocityY];
-    [self setPendingPanDismissTranslationY:0];
-    [self setPendingPanDismissVelocityY:0];
+    CGFloat dismissTranslationY = [self pendingDismissTranslationY];
+    CGFloat dismissVelocityY = [self pendingDismissVelocityY];
+    [self setPendingDismissTranslationY:0];
+    [self setPendingDismissVelocityY:0];
 
     [self setAnimating:YES];
     CGFloat animationDuration = 0.33;
     CGFloat initialSpringVelocity = 0;
-    if (panDismissTranslationY > 0) {
+    if (dismissTranslationY > 0 && dismissVelocityY > 0) {
         CGFloat currentTranslationY = MAX([[self panelView] transform].ty, 0);
-        CGFloat remainingDistance = MAX(panDismissTranslationY - currentTranslationY, 1);
-        CGFloat effectiveVelocityY = MAX(panDismissVelocityY, 900);
+        CGFloat remainingDistance = MAX(dismissTranslationY - currentTranslationY, 1);
+        CGFloat effectiveVelocityY = MAX(dismissVelocityY, 900);
         animationDuration = MIN(MAX(remainingDistance / effectiveVelocityY, 0.12), 0.33);
         initialSpringVelocity = effectiveVelocityY / remainingDistance;
     }
@@ -284,8 +291,8 @@ NS_ASSUME_NONNULL_END
         initialSpringVelocity:initialSpringVelocity
         options:UIViewAnimationOptionCurveEaseOut
         animations:^{
-          if (panDismissTranslationY > 0) {
-              [[self panelView] setTransform:CGAffineTransformMakeTranslation(0, panDismissTranslationY)];
+          if (dismissTranslationY > 0) {
+              [[self panelView] setTransform:CGAffineTransformMakeTranslation(0, dismissTranslationY)];
           }
           [[self panelView] setAlpha:0];
           [[self outsideDismissOverlayView] setAlpha:0];
@@ -304,8 +311,8 @@ NS_ASSUME_NONNULL_END
     [[[self panelView] layer] removeAllAnimations];
     [[[self outsideDismissOverlayView] layer] removeAllAnimations];
     [[self outsideDismissOverlayView] setUserInteractionEnabled:NO];
-    [self setPendingPanDismissTranslationY:0];
-    [self setPendingPanDismissVelocityY:0];
+    [self setPendingDismissTranslationY:0];
+    [self setPendingDismissVelocityY:0];
     [self setAnimating:NO];
 
     [[self panelView] setTransform:CGAffineTransformIdentity];

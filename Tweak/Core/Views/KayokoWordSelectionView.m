@@ -50,6 +50,7 @@ NS_ASSUME_NONNULL_END
 
         [self setScrollView:[[UIScrollView alloc] init]];
         [[self scrollView] setAlwaysBounceVertical:NO];
+        [[self scrollView] setAutomaticallyAdjustsScrollIndicatorInsets:NO];
         [[self scrollView] setBackgroundColor:[UIColor clearColor]];
         [self addSubview:[self scrollView]];
 

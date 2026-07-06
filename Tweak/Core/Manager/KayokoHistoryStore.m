@@ -18,6 +18,15 @@ static NSString *const kKayokoHistoryStoreSearchIndexSchemaVersionKey = @"search
 static NSInteger const kKayokoHistoryStoreSearchIndexVersion = 1;
 static NSInteger const kKayokoHistoryStoreDefaultBusyTimeoutMilliseconds = 3000;
 
+static NSString *KayokoHistoryStoreLocalizedString(NSString *key) {
+    static NSBundle *localizationBundle = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+      localizationBundle = [NSBundle bundleWithPath:jbroot(@"/Library/PreferenceBundles/KayokoPreferences.bundle")];
+    });
+    return [localizationBundle localizedStringForKey:key value:key table:@"Tweak"] ?: key;
+}
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoHistoryStore ()
@@ -189,7 +198,9 @@ NS_ASSUME_NONNULL_END
 
     int result = sqlite3_wal_checkpoint_v2(_database, NULL, SQLITE_CHECKPOINT_TRUNCATE, NULL, NULL);
     if (result != SQLITE_OK) {
-        [self populateError:error code:result message:@"Unable to checkpoint history database"];
+        [self populateError:error
+                       code:result
+                    message:KayokoHistoryStoreLocalizedString(@"Unable to checkpoint history database")];
         return NO;
     }
 
@@ -232,7 +243,11 @@ NS_ASSUME_NONNULL_END
 - (BOOL)validateSearchIndexWithError:(NSError **)error {
     NSString *schemaVersion = [self metadataValueForKey:kKayokoHistoryStoreSearchIndexSchemaVersionKey error:error];
     if ([schemaVersion integerValue] != kKayokoHistoryStoreSearchIndexVersion) {
-        [self populateError:error code:SQLITE_SCHEMA message:@"Kayoko history search index is not ready"];
+        [self populateError:error
+                       code:SQLITE_SCHEMA
+                    message:
+                        KayokoHistoryStoreLocalizedString(
+                            @"Kayoko history search index is not ready. Reinstalling Kayoko may resolve this issue.")];
         return NO;
     }
 
@@ -241,7 +256,12 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
     if (staleItemCount > 0) {
-        [self populateError:error code:SQLITE_SCHEMA message:@"Kayoko history search index contains unprocessed items"];
+        [self populateError:error
+                       code:SQLITE_SCHEMA
+                    message:
+                        KayokoHistoryStoreLocalizedString(
+                            @"Kayoko history search index contains unprocessed items. Reinstalling Kayoko may resolve "
+                            @"this issue.")];
         return NO;
     }
 
@@ -305,7 +325,9 @@ NS_ASSUME_NONNULL_END
                                  changes:&deletedCount
                                    error:error];
         if (success && deletedCount == 0) {
-            [self populateError:error code:SQLITE_NOTFOUND message:@"History item not found"];
+            [self populateError:error
+                           code:SQLITE_NOTFOUND
+                        message:KayokoHistoryStoreLocalizedString(@"History item not found")];
             success = NO;
         }
     }
@@ -338,7 +360,9 @@ NS_ASSUME_NONNULL_END
                                   changes:&deletedCount
                                     error:error];
     if (success && deletedCount == 0) {
-        [self populateError:error code:SQLITE_NOTFOUND message:@"History item not found"];
+        [self populateError:error
+                       code:SQLITE_NOTFOUND
+                    message:KayokoHistoryStoreLocalizedString(@"History item not found")];
         success = NO;
     }
     if (success && shouldRemoveImage && [imageName length] > 0) {
@@ -740,7 +764,9 @@ NS_ASSUME_NONNULL_END
     int result = sqlite3_open_v2([[self databasePath] fileSystemRepresentation], &_database,
                                  SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, NULL);
     if (result != SQLITE_OK) {
-        [self populateError:error code:result message:@"Unable to open history database"];
+        [self populateError:error
+                       code:result
+                    message:KayokoHistoryStoreLocalizedString(@"Unable to open history database")];
         [self closeDatabase];
         return NO;
     }
@@ -1066,12 +1092,13 @@ NS_ASSUME_NONNULL_END
     }
 
     NSString *sqliteMessage = _database ? [NSString stringWithUTF8String:sqlite3_errmsg(_database)] : @"";
-    *error = [NSError errorWithDomain:kKayokoHistoryStoreErrorDomain
-                                 code:code
-                             userInfo:@{
-                                 NSLocalizedDescriptionKey : message ?: @"SQLite operation failed",
-                                 NSLocalizedFailureReasonErrorKey : sqliteMessage ?: @""
-                             }];
+    *error = [NSError
+        errorWithDomain:kKayokoHistoryStoreErrorDomain
+                   code:code
+               userInfo:@{
+                   NSLocalizedDescriptionKey : message ?: KayokoHistoryStoreLocalizedString(@"SQLite operation failed"),
+                   NSLocalizedFailureReasonErrorKey : sqliteMessage ?: @""
+               }];
 }
 
 @end

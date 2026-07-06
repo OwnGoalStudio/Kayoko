@@ -48,7 +48,7 @@
     _horizontalScrollingLayout = horizontalScrollingLayout;
     UICollectionViewFlowLayout *layout = (UICollectionViewFlowLayout *)[self collectionViewLayout];
     [layout setScrollDirection:horizontalScrollingLayout ? UICollectionViewScrollDirectionHorizontal
-                                                        : UICollectionViewScrollDirectionVertical];
+                                                         : UICollectionViewScrollDirectionVertical];
     [layout invalidateLayout];
     [self setScrollEnabled:horizontalScrollingLayout];
     [self resetContentOffsetToLeadingEdge];

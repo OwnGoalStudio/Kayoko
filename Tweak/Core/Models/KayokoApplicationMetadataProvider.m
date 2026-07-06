@@ -10,6 +10,7 @@
 
 static int const kKayokoApplicationIconFormatListRow = 1;
 static int const kKayokoApplicationIconFormatSearchToken = 5;
+static NSString *const kKayokoSpringBoardBundleIdentifier = @"com.apple.springboard";
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -46,7 +47,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (NSString *)displayNameForBundleIdentifier:(NSString *)bundleIdentifier {
-    if ([bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
+    if ([self isSpringBoardBundleIdentifier:bundleIdentifier]) {
         return [[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"SpringBoard"
                                                                              value:nil
                                                                              table:@"Tweak"];
@@ -57,9 +58,31 @@ NS_ASSUME_NONNULL_END
     return [displayName length] > 0 ? displayName : bundleIdentifier;
 }
 
+- (BOOL)isSpringBoardBundleIdentifier:(NSString *)bundleIdentifier {
+    NSString *normalizedBundleIdentifier = [[bundleIdentifier
+        stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] lowercaseString];
+    return [normalizedBundleIdentifier isEqualToString:kKayokoSpringBoardBundleIdentifier] ||
+           [normalizedBundleIdentifier isEqualToString:@"springboard"];
+}
+
 - (NSString *)iconCacheKeyForBundleIdentifier:(NSString *)bundleIdentifier format:(int)format scale:(CGFloat)scale {
     NSString *cacheBundleIdentifier = [bundleIdentifier length] > 0 ? bundleIdentifier : @"com.apple.WebSheet";
     return [NSString stringWithFormat:@"%@|%d|%.2f", cacheBundleIdentifier, format, scale];
+}
+
+- (nullable UIImage *)springBoardIcon {
+    BOOL isPad = [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad;
+    return [UIImage imageNamed:isPad ? @"HLS_iPad_Universal" : @"HLS_iPhone_Universal"
+                             inBundle:[KayokoPasteboardManager localizationBundle]
+        compatibleWithTraitCollection:nil];
+}
+
+- (nullable UIImage *)springBoardSearchTokenIcon {
+    BOOL isPad = [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad;
+    UIImage *icon = [UIImage imageNamed:isPad ? @"HLS_iPad_SearchToken" : @"HLS_iPhone_SearchToken"
+                               inBundle:[KayokoPasteboardManager localizationBundle]
+          compatibleWithTraitCollection:nil];
+    return [icon imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
 }
 
 - (nullable UIImage *)applicationIconForBundleIdentifier:(NSString *)bundleIdentifier
@@ -95,11 +118,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (nullable UIImage *)iconForBundleIdentifier:(NSString *)bundleIdentifier {
-    if ([bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
-        BOOL isPad = [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad;
-        return [UIImage imageNamed:isPad ? @"HLS_iPad_Universal" : @"HLS_iPhone_Universal"
-                                 inBundle:[KayokoPasteboardManager localizationBundle]
-            compatibleWithTraitCollection:nil];
+    if ([self isSpringBoardBundleIdentifier:bundleIdentifier]) {
+        return [self springBoardIcon];
     }
 
     return [self applicationIconForBundleIdentifier:bundleIdentifier
@@ -108,6 +128,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (nullable UIImage *)smallIconForBundleIdentifier:(NSString *)bundleIdentifier {
+    if ([self isSpringBoardBundleIdentifier:bundleIdentifier]) {
+        return [self springBoardSearchTokenIcon];
+    }
+
     return [self applicationIconForBundleIdentifier:bundleIdentifier
                                              format:kKayokoApplicationIconFormatSearchToken
                                               scale:[[UIScreen mainScreen] scale]];

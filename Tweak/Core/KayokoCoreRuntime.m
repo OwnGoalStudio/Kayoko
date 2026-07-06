@@ -21,6 +21,7 @@
 #import "KayokoPreferenceKeys.h"
 
 static NSTimeInterval const kKayokoMinimumFeedbackInterval = 0.6;
+static NSTimeInterval const kKayokoPasteSuppressionExpirationDelay = 1.0;
 
 @interface UIStatusBarStyleRequest : NSObject
 @property(nonatomic, assign, readonly) long long style;
@@ -47,18 +48,102 @@ static NSTimeInterval const kKayokoMinimumFeedbackInterval = 0.6;
 
 NS_ASSUME_NONNULL_BEGIN
 
+@interface KayokoPasteSuppressionState : NSObject
+@property(nonatomic, assign, readonly, getter=isActive) BOOL active;
+- (void)beginWithExpirationDelay:(NSTimeInterval)expirationDelay;
+- (BOOL)consumeIfActive;
+@end
+
+@interface KayokoPasteSuppressionState ()
+
+@property(nonatomic, assign, readwrite, getter=isActive) BOOL active;
+@property(nonatomic, assign) NSUInteger token;
+@property(nonatomic, copy, nullable) dispatch_block_t expirationBlock;
+
+- (void)clear;
+- (void)cancelExpiration;
+- (void)expireForToken:(NSUInteger)token;
+
+@end
+
+NS_ASSUME_NONNULL_END
+
+@implementation KayokoPasteSuppressionState
+
+- (void)beginWithExpirationDelay:(NSTimeInterval)expirationDelay {
+    self.token++;
+    self.active = YES;
+
+    [self cancelExpiration];
+
+    NSUInteger token = self.token;
+    __weak typeof(self) weakSelf = self;
+    dispatch_block_t expirationBlock = dispatch_block_create(0, ^{
+      __strong typeof(weakSelf) strongSelf = weakSelf;
+      if (!strongSelf || strongSelf.token != token) {
+          return;
+      }
+
+      [strongSelf expireForToken:token];
+    });
+    self.expirationBlock = expirationBlock;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(expirationDelay * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), expirationBlock);
+}
+
+- (BOOL)consumeIfActive {
+    if (!self.active) {
+        return NO;
+    }
+
+    [self clear];
+    return YES;
+}
+
+- (void)clear {
+    [self cancelExpiration];
+    self.active = NO;
+}
+
+- (void)cancelExpiration {
+    dispatch_block_t expirationBlock = self.expirationBlock;
+    if (expirationBlock) {
+        dispatch_block_cancel(expirationBlock);
+        self.expirationBlock = nil;
+    }
+}
+
+- (void)expireForToken:(NSUInteger)token {
+    if (self.token != token) {
+        return;
+    }
+
+    self.expirationBlock = nil;
+    self.active = NO;
+}
+
+@end
+
+NS_ASSUME_NONNULL_BEGIN
+
 @interface KayokoCoreRuntime ()
+
+#pragma mark - Runtime Configuration
 
 @property(nonatomic, assign, readwrite, getter=isEnabled) BOOL enabled;
 @property(nonatomic, assign, readwrite) NSUInteger activationMethod;
 @property(nonatomic, assign, readwrite) KayokoGestureRecognizerMode gestureRecognizerMode;
 @property(nonatomic, assign, readwrite) BOOL pasteTipsDisabled;
 
-@property(nonatomic, strong, nullable) KayokoMainViewController *mainViewController;
-@property(nonatomic, strong, nullable) NSUserDefaults *preferences;
-@property(nonatomic, strong, nullable) AVAudioPlayer *clipboardFeedbackSoundPlayer;
-@property(nonatomic, strong, nullable) AVAudioPlayer *pasteFeedbackSoundPlayer;
+#pragma mark - View State
 
+@property(nonatomic, strong, nullable) KayokoMainViewController *mainViewController;
+@property(nonatomic, assign) BOOL pendingHeightPreferenceApply;
+@property(nonatomic, assign) BOOL didRequestInitialHistoryPreload;
+
+#pragma mark - Preferences
+
+@property(nonatomic, strong, nullable) NSUserDefaults *preferences;
 @property(nonatomic, assign) NSUInteger maximumHistoryAmount;
 @property(nonatomic, assign) BOOL saveText;
 @property(nonatomic, assign) BOOL saveImages;
@@ -72,11 +157,19 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) NSUInteger previewLineCount;
 @property(nonatomic, assign) CGFloat heightInPoints;
 
-@property(nonatomic, assign, getter=isPasteInProgress) BOOL pasteInProgress;
+#pragma mark - Feedback
+
+@property(nonatomic, strong, nullable) AVAudioPlayer *clipboardFeedbackSoundPlayer;
+@property(nonatomic, strong, nullable) AVAudioPlayer *pasteFeedbackSoundPlayer;
 @property(nonatomic, assign) NSTimeInterval lastPasteFeedbackOccurred;
 @property(nonatomic, assign) NSTimeInterval lastCopyFeedbackOccurred;
-@property(nonatomic, assign) BOOL pendingHeightPreferenceApply;
-@property(nonatomic, assign) BOOL didRequestInitialHistoryPreload;
+
+#pragma mark - Pasteboard Capture
+
+@property(nonatomic, strong) KayokoPasteSuppressionState *pasteSuppressionState;
+
+#pragma mark - Device State
+
 @property(nonatomic, assign) int lockStateToken;
 @property(nonatomic, assign, getter=isPackageMaintenanceMode) BOOL packageMaintenanceMode;
 
@@ -100,6 +193,7 @@ NS_ASSUME_NONNULL_END
     if (self) {
         _previewLineCount = 1;
         _heightInPoints = 420;
+        _pasteSuppressionState = [[KayokoPasteSuppressionState alloc] init];
     }
     return self;
 }
@@ -446,7 +540,7 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Pasteboard
 
 - (void)markPasteWillStart {
-    self.pasteInProgress = YES;
+    [self.pasteSuppressionState beginWithExpirationDelay:kKayokoPasteSuppressionExpirationDelay];
 }
 
 - (void)capturePasteboardChange {
@@ -461,10 +555,7 @@ NS_ASSUME_NONNULL_END
     }
 
     [[KayokoPasteboardManager sharedInstance] pullPasteboardChangesWithCompletion:^(BOOL didSaveAnyItem) {
-      if (self.isPasteInProgress) {
-          dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            self.pasteInProgress = NO;
-          });
+      if ([self.pasteSuppressionState consumeIfActive]) {
           return;
       }
       if (!didSaveAnyItem) {

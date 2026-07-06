@@ -171,6 +171,12 @@ NS_ASSUME_NONNULL_END
            [[self tableView] isContentOffsetAtHiddenSearchHeaderBoundary:contentOffset];
 }
 
+- (BOOL)shouldRestoreContentOffsetAfterMovingRowToTopFromOffset:(CGPoint)contentOffset {
+    return ![self hasActiveSearch] &&
+           ([[self tableView] isSearchHeaderExposedAtContentOffset:contentOffset] ||
+            [[self tableView] isContentOffsetAtHiddenSearchHeaderBoundary:contentOffset]);
+}
+
 - (UITableViewRowAnimation)rowAnimationForTopInsertionFromContentOffset:(CGPoint)contentOffset {
     if ([[self tableView] isSearchHeaderExposedAtContentOffset:contentOffset]) {
         return UITableViewRowAnimationFade;
@@ -323,6 +329,10 @@ NS_ASSUME_NONNULL_END
     }
 
     if (existingIndex != NSNotFound && existingIndex < [oldItems count] && [newItems count] == [oldItems count]) {
+        CGPoint contentOffsetBeforeMove = [[self tableView] contentOffset];
+        BOOL restoresContentOffsetAfterMove =
+            [self shouldRestoreContentOffsetAfterMovingRowToTopFromOffset:contentOffsetBeforeMove];
+
         [[self tableView]
             performBatchUpdates:^{
               [self setItems:newItems];
@@ -330,6 +340,9 @@ NS_ASSUME_NONNULL_END
                                        toIndexPath:[NSIndexPath indexPathForRow:0 inSection:0]];
             }
             completion:^(__unused BOOL finished) {
+              if (restoresContentOffsetAfterMove) {
+                  [[self tableView] setContentOffset:contentOffsetBeforeMove animated:NO];
+              }
               [self refreshSearchPlaceholder];
             }];
         return;

@@ -537,11 +537,12 @@ NS_ASSUME_NONNULL_END
     CGFloat keyboardBottomInset = [self keyboardBottomInset];
     CGFloat hiddenSearchBottomInset = [self hiddenSearchBottomInsetForTableView:tableView];
     CGFloat safeAreaBottomInset = [self safeAreaBottomInsetForTableView:tableView];
-    CGFloat bottomInset = hiddenSearchBottomInset + MAX(keyboardBottomInset, safeAreaBottomInset);
-    contentInset.bottom = bottomInset;
+    CGFloat obscuredBottomInset = MAX(keyboardBottomInset, safeAreaBottomInset);
+    contentInset.bottom = hiddenSearchBottomInset + obscuredBottomInset;
     [tableView setContentInset:contentInset];
 
-    UIEdgeInsets indicatorInsets = UIEdgeInsetsMake(0, 0, bottomInset, 0);
+    [tableView setAutomaticallyAdjustsScrollIndicatorInsets:NO];
+    UIEdgeInsets indicatorInsets = UIEdgeInsetsMake(0, 0, obscuredBottomInset, 0);
     [tableView setVerticalScrollIndicatorInsets:indicatorInsets];
 }
 

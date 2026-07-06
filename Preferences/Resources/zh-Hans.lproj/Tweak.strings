@@ -25,3 +25,11 @@
 "Images" = "图片";
 "Unable to Load History" = "无法载入历史记录";
 "%@\n%@" = "%@\n%@";
+"Unable to checkpoint history database" = "无法完成历史记录数据库维护";
+"Kayoko history search index is not ready. Reinstalling Kayoko may resolve this issue." = "Kayoko 的历史搜索索引尚未准备好。重新安装 Kayoko 或许可以解决此问题。";
+"Kayoko history search index contains unprocessed items. Reinstalling Kayoko may resolve this issue." = "Kayoko 的历史搜索索引仍有未处理项目。重新安装 Kayoko 或许可以解决此问题。";
+"History item not found" = "未找到这条历史记录";
+"Unable to open history database" = "无法打开历史记录数据库";
+"SQLite operation failed" = "数据库操作失败";
+"Unable to migrate history source %@. Reinstalling Kayoko may resolve this issue." = "无法迁移历史记录来源 %@。重新安装 Kayoko 或许可以解决此问题。";
+"Kayoko history is unavailable while package maintenance is in progress. Try again after installation finishes." = "Kayoko 正在进行安装维护，暂时无法使用历史记录。请在安装完成后重试。";

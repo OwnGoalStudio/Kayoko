@@ -959,10 +959,15 @@ NS_ASSUME_NONNULL_END
 #pragma mark - History Reads
 
 - (NSError *)maintenanceModeError {
-    return [NSError
-        errorWithDomain:kKayokoPasteboardManagerErrorDomain
-                   code:1
-               userInfo:@{NSLocalizedDescriptionKey : @"Kayoko history is unavailable during package maintenance"}];
+    NSString *description = [[KayokoPasteboardManager localizationBundle]
+        localizedStringForKey:
+            @"Kayoko history is unavailable while package maintenance is in progress. Try again after "
+            @"installation finishes."
+                        value:nil
+                        table:@"Tweak"];
+    return [NSError errorWithDomain:kKayokoPasteboardManagerErrorDomain
+                               code:1
+                           userInfo:@{NSLocalizedDescriptionKey : description}];
 }
 
 - (NSMutableArray<NSDictionary<NSString *, id> *> *)getItemsFromHistoryWithKey:(NSString *)historyKey {

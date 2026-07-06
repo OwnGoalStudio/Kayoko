@@ -13,6 +13,15 @@ static NSString *const kKayokoMigratorHistoryKey = @"history";
 static NSString *const kKayokoMigratorFavoritesKey = @"favorites";
 static NSString *const kKayokoHistoryMigratorErrorDomain = @"com.82flex.kayoko.history-migrator";
 
+static NSString *KayokoHistoryMigratorLocalizedString(NSString *key) {
+    static NSBundle *localizationBundle = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+      localizationBundle = [NSBundle bundleWithPath:jbroot(@"/Library/PreferenceBundles/KayokoPreferences.bundle")];
+    });
+    return [localizationBundle localizedStringForKey:key value:key table:@"Tweak"] ?: key;
+}
+
 NS_ASSUME_NONNULL_BEGIN
 
 @implementation KayokoHistoryMigrationSource
@@ -340,7 +349,9 @@ NS_ASSUME_NONNULL_END
 }
 
 - (NSError *)migrationErrorForSource:(KayokoHistoryMigrationSource *)source reason:(NSString *)reason {
-    NSString *description = [NSString stringWithFormat:@"Unable to migrate history source %@", [source identifier]];
+    NSString *descriptionFormat = KayokoHistoryMigratorLocalizedString(
+        @"Unable to migrate history source %@. Reinstalling Kayoko may resolve this issue.");
+    NSString *description = [NSString stringWithFormat:descriptionFormat, [source identifier]];
     return [NSError
         errorWithDomain:kKayokoHistoryMigratorErrorDomain
                    code:1

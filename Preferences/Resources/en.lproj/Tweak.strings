@@ -25,3 +25,11 @@
 "Images" = "Images";
 "Unable to Load History" = "Unable to Load History";
 "%@\n%@" = "%@\n%@";
+"Unable to checkpoint history database" = "Unable to checkpoint history database";
+"Kayoko history search index is not ready. Reinstalling Kayoko may resolve this issue." = "Kayoko history search index is not ready. Reinstalling Kayoko may resolve this issue.";
+"Kayoko history search index contains unprocessed items. Reinstalling Kayoko may resolve this issue." = "Kayoko history search index contains unprocessed items. Reinstalling Kayoko may resolve this issue.";
+"History item not found" = "History item not found";
+"Unable to open history database" = "Unable to open history database";
+"SQLite operation failed" = "SQLite operation failed";
+"Unable to migrate history source %@. Reinstalling Kayoko may resolve this issue." = "Unable to migrate history source %@. Reinstalling Kayoko may resolve this issue.";
+"Kayoko history is unavailable while package maintenance is in progress. Try again after installation finishes." = "Kayoko history is unavailable while package maintenance is in progress. Try again after installation finishes.";
