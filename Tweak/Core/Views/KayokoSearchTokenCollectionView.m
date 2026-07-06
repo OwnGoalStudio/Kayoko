@@ -25,6 +25,7 @@
 
     self = [super initWithFrame:CGRectZero collectionViewLayout:layout];
     if (self) {
+        _horizontalScrollingLayout = YES;
         _edgeFadeWidth = horizontalContentInset;
         _edgeFadeMaskLayer = [self newEdgeFadeMaskLayer];
 
@@ -37,6 +38,21 @@
         [[self layer] setMask:_edgeFadeMaskLayer];
     }
     return self;
+}
+
+- (void)setHorizontalScrollingLayout:(BOOL)horizontalScrollingLayout {
+    if (_horizontalScrollingLayout == horizontalScrollingLayout) {
+        return;
+    }
+
+    _horizontalScrollingLayout = horizontalScrollingLayout;
+    UICollectionViewFlowLayout *layout = (UICollectionViewFlowLayout *)[self collectionViewLayout];
+    [layout setScrollDirection:horizontalScrollingLayout ? UICollectionViewScrollDirectionHorizontal
+                                                        : UICollectionViewScrollDirectionVertical];
+    [layout invalidateLayout];
+    [self setScrollEnabled:horizontalScrollingLayout];
+    [self resetContentOffsetToLeadingEdge];
+    [self updateEdgeFadeMask];
 }
 
 - (CAGradientLayer *)newEdgeFadeMaskLayer {
@@ -85,6 +101,17 @@
     }
 
     CGPoint contentOffset = [self contentOffset];
+    if (![self isHorizontalScrollingLayout]) {
+        UIColor *opaqueColor = [UIColor colorWithWhite:0 alpha:1];
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        [maskLayer setFrame:CGRectMake(contentOffset.x, contentOffset.y, width, height)];
+        [maskLayer setColors:@[ (id)[opaqueColor CGColor], (id)[opaqueColor CGColor] ]];
+        [maskLayer setLocations:@[ @0, @1 ]];
+        [CATransaction commit];
+        return;
+    }
+
     UIEdgeInsets adjustedInset = [self adjustedContentInset];
     CGFloat leadingScrolledWidth = contentOffset.x + adjustedInset.left;
     CGFloat leadingFadeWidth = MIN([self edgeFadeWidth], MAX(leadingScrolledWidth, 0));

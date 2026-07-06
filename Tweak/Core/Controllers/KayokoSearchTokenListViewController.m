@@ -15,6 +15,7 @@
 static CGFloat const kKayokoSearchTokenTopInset = 12;
 static CGFloat const kKayokoSearchTokenBottomInset = 16;
 static CGFloat const kKayokoSearchTokenSectionSpacing = 16;
+static NSUInteger const kKayokoSearchTokenMaximumVerticalAppTokenCount = 4;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -120,6 +121,7 @@ NS_ASSUME_NONNULL_END
     [self setAppTokens:appTokens ?: @[]];
     [self setNeedsCategoryContentOffsetReset:YES];
     [self setNeedsAppContentOffsetReset:YES];
+    [self configureAppSectionForWidth:CGRectGetWidth([[self view] bounds])];
     [[[self categorySectionView] collectionView] reloadData];
     [[[self appSectionView] collectionView] reloadData];
     [self updateSectionVisibility];
@@ -132,6 +134,21 @@ NS_ASSUME_NONNULL_END
     BOOL showsApp = [self showsAppSection];
     [[self categorySectionView] setHidden:!showsCategory];
     [[self appSectionView] setHidden:!showsApp];
+}
+
+- (BOOL)usesHorizontalScrollingLayoutForAppSection {
+    return [[self appTokens] count] > kKayokoSearchTokenMaximumVerticalAppTokenCount;
+}
+
+- (void)configureAppSectionForWidth:(CGFloat)width {
+    BOOL usesHorizontalScrollingLayout = [self usesHorizontalScrollingLayoutForAppSection];
+    NSUInteger numberOfRows = [KayokoSearchTokenSectionView numberOfRowsForItemCount:[[self appTokens] count]
+                                                                               width:width
+                                                           horizontalScrollingLayout:usesHorizontalScrollingLayout];
+    [[self appSectionView] setHorizontalScrollingLayout:usesHorizontalScrollingLayout];
+    if (numberOfRows > 0) {
+        [[self appSectionView] setNumberOfRows:numberOfRows];
+    }
 }
 
 - (void)viewDidLayoutSubviews {
@@ -158,7 +175,10 @@ NS_ASSUME_NONNULL_END
         if (showsCategory) {
             height += kKayokoSearchTokenSectionSpacing;
         }
-        height += [KayokoSearchTokenSectionView preferredHeight];
+        height += [KayokoSearchTokenSectionView
+            preferredHeightForItemCount:[[self appTokens] count]
+                                  width:width
+              horizontalScrollingLayout:[self usesHorizontalScrollingLayoutForAppSection]];
     }
     return height;
 }
@@ -175,8 +195,9 @@ NS_ASSUME_NONNULL_END
         didLayoutSection = YES;
     }
     if ([self showsAppSection]) {
+        [self configureAppSectionForWidth:width];
         y += didLayoutSection ? kKayokoSearchTokenSectionSpacing : kKayokoSearchTokenTopInset;
-        CGFloat sectionHeight = [KayokoSearchTokenSectionView preferredHeight];
+        CGFloat sectionHeight = [[self appSectionView] preferredHeight];
         [[self appSectionView] setFrame:CGRectMake(0, y, width, sectionHeight)];
         [[self appSectionView] layoutIfNeeded];
     }

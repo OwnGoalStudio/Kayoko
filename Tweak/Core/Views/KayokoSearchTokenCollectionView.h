@@ -8,6 +8,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSearchTokenCollectionView : UICollectionView
+@property(nonatomic, assign, getter=isHorizontalScrollingLayout) BOOL horizontalScrollingLayout;
 - (instancetype)initWithItemSize:(CGSize)itemSize
                      itemSpacing:(CGFloat)itemSpacing
           horizontalContentInset:(CGFloat)horizontalContentInset NS_DESIGNATED_INITIALIZER;
