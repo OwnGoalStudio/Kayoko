@@ -15,7 +15,7 @@
 static CGFloat const kKayokoSearchTokenTopInset = 12;
 static CGFloat const kKayokoSearchTokenBottomInset = 16;
 static CGFloat const kKayokoSearchTokenSectionSpacing = 16;
-static NSUInteger const kKayokoSearchTokenMaximumVerticalAppTokenCount = 4;
+static NSUInteger const kKayokoSearchTokenMaximumVerticalAppTokenCount = 2;
 
 NS_ASSUME_NONNULL_BEGIN
 

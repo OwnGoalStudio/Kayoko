@@ -15,7 +15,7 @@
 static NSString *const kKayokoCurrentDataDirectory = @"/var/mobile/Library/com.82flex.kayoko";
 static NSUInteger const kKayokoMobileUserID = 501;
 static NSUInteger const kKayokoMobileGroupID = 501;
-static useconds_t const kKayokoCoreMaintenanceGracePeriodMicroseconds = 300000;
+static useconds_t const kKayokoCoreMaintenanceGracePeriodMicroseconds = 500000;
 static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000;
 
 @implementation KayokoPostinstallUpdater
