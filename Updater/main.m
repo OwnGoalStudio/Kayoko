@@ -8,16 +8,29 @@
 
 #import <Foundation/Foundation.h>
 
-static BOOL syncCredentialWithError(NSError **error) {
-    return [KayokoPurchaseAuthorization mirrorSileoHavocCredentialToAppleAccessGroupWithError:error];
+#if defined(DEBUG) || defined(__DEBUG__)
+static void logSyncedCredentialSource(NSString *source) {
+    NSString *displaySource = [source length] > 0 ? [source capitalizedString] : @"Unknown";
+    fprintf(stderr, "Kayoko: Synced Havoc credential from %s.\n", [displaySource UTF8String]);
+}
+#endif
+
+static BOOL syncCredentialWithSource(NSString **source, NSError **error) {
+    return [KayokoPurchaseAuthorization mirrorHavocCredentialToAppleAccessGroupWithSource:source error:error];
 }
 
 static void syncCredentialBestEffort(void) {
     NSError *syncError = nil;
-    if (!syncCredentialWithError(&syncError)) {
-        fprintf(stderr, "Kayoko: Unable to sync Sileo Havoc credential: %s\n",
+    NSString *source = nil;
+    if (!syncCredentialWithSource(&source, &syncError)) {
+        fprintf(stderr, "Kayoko: Unable to sync Havoc credential: %s\n",
                 [[[syncError localizedDescription] description] UTF8String]);
     }
+#if defined(DEBUG) || defined(__DEBUG__)
+    else {
+        logSyncedCredentialSource(source);
+    }
+#endif
 }
 
 static int runPostinstall(void) {
@@ -49,11 +62,15 @@ static int runPostinstall(void) {
 static int runSyncCredential(void) {
     @autoreleasepool {
         NSError *error = nil;
-        if (!syncCredentialWithError(&error)) {
+        NSString *source = nil;
+        if (!syncCredentialWithSource(&source, &error)) {
             fprintf(stderr, "Kayoko: Command sync-credential failed: %s\n",
                     [[[error localizedDescription] description] UTF8String]);
             return 1;
         }
+#if defined(DEBUG) || defined(__DEBUG__)
+        logSyncedCredentialSource(source);
+#endif
         return 0;
     }
 }

@@ -37,6 +37,8 @@
 "Play Sound Effects" = "Play Sound Effects";
 "Please check the following: open Sileo → tap the avatar in the top-right corner → make sure the Havoc payment provider is signed in" = "Please check the following: open Sileo → tap the avatar in the top-right corner → make sure the Havoc payment provider is signed in";
 "Please check the following: open Sileo → tap the avatar in the top-right corner → tap Havoc → make sure Kayoko is in your purchases" = "Please check the following: open Sileo → tap the avatar in the top-right corner → tap Havoc → make sure Kayoko is in your purchases";
+"Please check the following: open Zebra → select the Sources tab → tap Havoc → make sure it is signed in" = "Please check the following: open Zebra → select the Sources tab → tap Havoc → make sure it is signed in";
+"Please check the following: open Zebra → select the Sources tab → tap Havoc → tap My Account in the top-right corner → make sure Kayoko is in your purchases" = "Please check the following: open Zebra → select the Sources tab → tap Havoc → tap My Account in the top-right corner → make sure Kayoko is in your purchases";
 "Prediction Bar" = "Prediction Bar";
 "Preview" = "Preview";
 "Preview Lines" = "Preview Lines";

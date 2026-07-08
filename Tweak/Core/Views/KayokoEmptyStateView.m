@@ -67,8 +67,10 @@ NS_ASSUME_NONNULL_END
         [NSLayoutConstraint activateConstraints:@[
             [[[self contentStackView] centerXAnchor] constraintEqualToAnchor:[self centerXAnchor]],
             [self contentStackViewCenterYConstraint],
-            [[[self contentStackView] leadingAnchor] constraintGreaterThanOrEqualToAnchor:[self leadingAnchor] constant:24],
-            [[[self contentStackView] trailingAnchor] constraintLessThanOrEqualToAnchor:[self trailingAnchor] constant:-24],
+            [[[self contentStackView] leadingAnchor] constraintGreaterThanOrEqualToAnchor:[self leadingAnchor]
+                                                                                 constant:24],
+            [[[self contentStackView] trailingAnchor] constraintLessThanOrEqualToAnchor:[self trailingAnchor]
+                                                                               constant:-24],
             [[[self contentStackView] widthAnchor] constraintLessThanOrEqualToAnchor:[self widthAnchor] constant:-48],
             [[[self messageLabel] leadingAnchor] constraintGreaterThanOrEqualToAnchor:[self leadingAnchor] constant:24],
             [[[self messageLabel] trailingAnchor] constraintLessThanOrEqualToAnchor:[self trailingAnchor] constant:-24],
@@ -125,8 +127,8 @@ NS_ASSUME_NONNULL_END
     NSBundle *bundle = [KayokoPasteboardManager localizationBundle];
     [self setName:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Tweak"]];
     [[self messageLabel] setText:[bundle localizedStringForKey:@"Open Settings → “Kayoko” to complete verification."
-                                                          value:nil
-                                                          table:@"Tweak"]];
+                                                         value:nil
+                                                         table:@"Tweak"]];
     [[self actionButton] setTitle:[bundle localizedStringForKey:@"Continue" value:nil table:@"Tweak"]
                          forState:UIControlStateNormal];
     [self setActionHandler:actionHandler];

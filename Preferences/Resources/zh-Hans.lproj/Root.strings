@@ -37,6 +37,8 @@
 "Play Sound Effects" = "播放声音效果";
 "Please check the following: open Sileo → tap the avatar in the top-right corner → make sure the Havoc payment provider is signed in" = "请按如下步骤检查：打开 Sileo → 点选右上角头像 → 检查付款服务提供商 Havoc 是否处于已登录状态";
 "Please check the following: open Sileo → tap the avatar in the top-right corner → tap Havoc → make sure Kayoko is in your purchases" = "请按如下步骤检查：打开 Sileo → 点选右上角头像 → 点选 Havoc → 检查已购列表中是否有 Kayoko";
+"Please check the following: open Zebra → select the Sources tab → tap Havoc → make sure it is signed in" = "请按如下步骤检查：打开 Zebra → 选择 “软件源” 标签页 → 点选 “Havoc” → 检查是否处于已登录状态";
+"Please check the following: open Zebra → select the Sources tab → tap Havoc → tap My Account in the top-right corner → make sure Kayoko is in your purchases" = "请按如下步骤检查：打开 Zebra → 选择 “软件源” 标签页 → 点选 “Havoc” → 点选界面右上角 “我的帐户” → 检查已购列表中是否有 Kayoko";
 "Prediction Bar" = "预测栏";
 "Preview" = "预览";
 "Preview Lines" = "预览行数";

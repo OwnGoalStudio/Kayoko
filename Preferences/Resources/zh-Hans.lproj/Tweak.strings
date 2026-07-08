@@ -7,6 +7,7 @@
 "Clear" = "清空";
 "Clear Favorites Confirmation" = "要清空所有收藏内容吗？此操作不可撤销。";
 "Clear History Confirmation" = "要清空历史记录吗？此操作不可撤销。";
+"Continue" = "继续";
 "Copy" = "拷贝";
 "Dates" = "日期";
 "Favorites" = "收藏夹";
@@ -24,7 +25,6 @@
 "No Search Results" = "无搜索结果";
 "No Tag" = "无标签";
 "Open" = "打开";
-"Continue" = "继续";
 "Open Settings → “Kayoko” to complete verification." = "打开设置 → “Kayoko” 以完成验证。";
 "Paste" = "粘贴";
 "Phone Numbers" = "电话号码";

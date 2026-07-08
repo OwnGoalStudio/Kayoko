@@ -34,6 +34,9 @@ typedef NS_ENUM(NSInteger, KayokoPurchaseAuthorizationState) {
 
 @interface KayokoPurchaseAuthorization : NSObject
 
++ (BOOL)mirrorHavocCredentialToAppleAccessGroupWithError:(NSError **)error;
++ (BOOL)mirrorHavocCredentialToAppleAccessGroupWithSource:(NSString *_Nullable *_Nullable)source
+                                                    error:(NSError **)error;
 + (BOOL)mirrorSileoHavocCredentialToAppleAccessGroupWithError:(NSError **)error;
 + (BOOL)hasAuthorizationPassFlagWithError:(NSError **)error;
 + (BOOL)setAuthorizationPassFlagWithError:(NSError **)error;

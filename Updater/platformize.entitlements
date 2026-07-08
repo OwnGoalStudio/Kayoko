@@ -9,6 +9,8 @@
 	<key>keychain-access-groups</key>
 	<array>
 		<string>org.coolstar.Sileo</string>
+		<string>com.apple.mobilesafari</string>
+		<string>xyz.willy.Zebra</string>
 		<string>apple</string>
 	</array>
 </dict>
