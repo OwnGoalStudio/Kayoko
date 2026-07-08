@@ -13,6 +13,9 @@ static CGFloat const kKayokoHistoryListViewBaseRowHeight = 65;
 static CGFloat const kKayokoHistoryListViewAdditionalPreviewLineHeight = 18;
 static NSUInteger const kKayokoHistoryListViewMaximumPreviewLineCount = 3;
 static CGFloat const kKayokoHistoryListViewHiddenHeaderInsetPadding = 1;
+static CGFloat const kKayokoHistoryListViewVerticalFadeHeight = 20;
+static CGFloat const kKayokoNoSearchResultsPlaceholderMinimumHeight = 96;
+static NSTimeInterval const kKayokoHistoryListViewTransientContentOffsetPreservationDuration = 1.0;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -23,11 +26,16 @@ NS_ASSUME_NONNULL_BEGIN
 @interface KayokoHistoryListView ()
 @property(nonatomic, assign, getter=isUpdatingNoSearchResultsPlaceholderLayout)
     BOOL updatingNoSearchResultsPlaceholderLayout;
+@property(nonatomic, assign) BOOL preservesTransientContentOffset;
+@property(nonatomic, assign) CGPoint transientPreservedContentOffset;
+@property(nonatomic, assign) NSUInteger transientContentOffsetPreservationIdentifier;
 @end
 
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoNoSearchResultsFooterView
+
+#pragma mark - Lifecycle
 
 - (instancetype)init {
     self = [super init];
@@ -57,6 +65,8 @@ NS_ASSUME_NONNULL_END
 
 @implementation KayokoHistoryListView
 
+#pragma mark - Search Placeholder
+
 - (void)setShowsNoSearchResultsPlaceholder:(BOOL)showsNoSearchResultsPlaceholder {
     UIView *footerView = [self tableFooterView];
     BOOL isShowingPlaceholder = [footerView isKindOfClass:[KayokoNoSearchResultsFooterView class]];
@@ -76,7 +86,7 @@ NS_ASSUME_NONNULL_END
 - (CGFloat)noSearchResultsPlaceholderHeight {
     CGFloat headerHeight = [self hiddenHeaderOffsetY];
     CGFloat availableHeight = CGRectGetHeight([self bounds]) - headerHeight - [self keyboardBottomInset];
-    return ceil(MAX(availableHeight, 1));
+    return ceil(MAX(availableHeight, kKayokoNoSearchResultsPlaceholderMinimumHeight));
 }
 
 - (void)updateNoSearchResultsPlaceholderLayout {
@@ -109,6 +119,8 @@ NS_ASSUME_NONNULL_END
     _keyboardBottomInset = keyboardBottomInset;
     [self updateNoSearchResultsPlaceholderLayout];
 }
+
+#pragma mark - Search Header Geometry
 
 - (CGFloat)hiddenHeaderOffsetY {
     UIView *headerView = [self tableHeaderView];
@@ -158,6 +170,8 @@ NS_ASSUME_NONNULL_END
     return ceil(MAX(requiredContentHeight - projectedContentHeight, 0));
 }
 
+#pragma mark - Row Removal
+
 - (void)prepareHiddenHeaderInsetsForRemovingRowAtIndexPath:(NSIndexPath *)indexPath {
     CGFloat hiddenHeaderOffsetY = [self hiddenHeaderOffsetY];
     if (hiddenHeaderOffsetY <= 0) {
@@ -176,11 +190,121 @@ NS_ASSUME_NONNULL_END
     [self setContentInset:contentInset];
 }
 
+#pragma mark - Transient Content Offset
+
+- (BOOL)shouldPreserveTransientContentOffsetForRequestedContentOffset:(CGPoint)contentOffset {
+    if (![self preservesTransientContentOffset]) {
+        return NO;
+    }
+    if ([self isTracking] || [self isDragging] || [self isDecelerating]) {
+        return NO;
+    }
+
+    CGPoint restoredContentOffset = [self transientContentOffsetForCurrentInsets];
+    return fabs(contentOffset.y - restoredContentOffset.y) > 0.5 ||
+           fabs(contentOffset.x - restoredContentOffset.x) > 0.5;
+}
+
+- (CGPoint)transientContentOffsetForCurrentInsets {
+    UIEdgeInsets adjustedContentInset = [self adjustedContentInset];
+    CGSize boundsSize = [self bounds].size;
+    CGSize contentSize = [self contentSize];
+    CGPoint contentOffset = [self transientPreservedContentOffset];
+
+    CGFloat minimumX = -adjustedContentInset.left;
+    CGFloat maximumX = MAX(minimumX, contentSize.width - boundsSize.width + adjustedContentInset.right);
+    CGFloat minimumY = -adjustedContentInset.top;
+    CGFloat maximumY = MAX(minimumY, contentSize.height - boundsSize.height + adjustedContentInset.bottom);
+    contentOffset.x = MIN(MAX(contentOffset.x, minimumX), maximumX);
+    contentOffset.y = MIN(MAX(contentOffset.y, minimumY), maximumY);
+    return contentOffset;
+}
+
+- (void)restoreTransientContentOffsetForCurrentInsetsIfNeeded {
+    if (![self preservesTransientContentOffset]) {
+        return;
+    }
+    if ([self isTracking] || [self isDragging] || [self isDecelerating]) {
+        return;
+    }
+
+    CGPoint restoredContentOffset = [self transientContentOffsetForCurrentInsets];
+    CGPoint currentContentOffset = [self contentOffset];
+    if (fabs(currentContentOffset.x - restoredContentOffset.x) <= 0.5 &&
+        fabs(currentContentOffset.y - restoredContentOffset.y) <= 0.5) {
+        return;
+    }
+
+    [super setContentOffset:restoredContentOffset];
+}
+
+- (void)endTransientContentOffsetPreservationIfNeeded {
+    if (![self preservesTransientContentOffset]) {
+        return;
+    }
+
+    [self setPreservesTransientContentOffset:NO];
+}
+
+- (void)beginTransientContentOffsetPreservationAtContentOffset:(CGPoint)contentOffset {
+    [self setTransientPreservedContentOffset:contentOffset];
+    [self setPreservesTransientContentOffset:YES];
+    NSUInteger preservationIdentifier = [self transientContentOffsetPreservationIdentifier] + 1;
+    [self setTransientContentOffsetPreservationIdentifier:preservationIdentifier];
+    [self restoreTransientContentOffsetForCurrentInsetsIfNeeded];
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(
+        dispatch_time(DISPATCH_TIME_NOW,
+                      (int64_t)(kKayokoHistoryListViewTransientContentOffsetPreservationDuration * NSEC_PER_SEC)),
+        dispatch_get_main_queue(), ^{
+          __strong typeof(weakSelf) strongSelf = weakSelf;
+          if (!strongSelf || [strongSelf transientContentOffsetPreservationIdentifier] != preservationIdentifier) {
+              return;
+          }
+          [strongSelf endTransientContentOffsetPreservationIfNeeded];
+        });
+}
+
+#pragma mark - Content Offset
+
+- (void)setContentOffset:(CGPoint)contentOffset {
+    if ([self shouldPreserveTransientContentOffsetForRequestedContentOffset:contentOffset]) {
+        [super setContentOffset:[self transientContentOffsetForCurrentInsets]];
+        return;
+    }
+
+    [super setContentOffset:contentOffset];
+}
+
+- (void)setContentOffset:(CGPoint)contentOffset animated:(BOOL)animated {
+    if ([self shouldPreserveTransientContentOffsetForRequestedContentOffset:contentOffset]) {
+        [super setContentOffset:[self transientContentOffsetForCurrentInsets] animated:NO];
+        [self updateEdgeFadeMask];
+        return;
+    }
+
+    [super setContentOffset:contentOffset animated:animated];
+    [self updateEdgeFadeMask];
+}
+
+- (void)setContentInset:(UIEdgeInsets)contentInset {
+    [super setContentInset:contentInset];
+    [self restoreTransientContentOffsetForCurrentInsetsIfNeeded];
+}
+
 - (void)scrollToTopAnimated:(BOOL)animated {
     CGPoint contentOffset = [self contentOffset];
     contentOffset.y = -[self adjustedContentInset].top;
     [self setContentOffset:contentOffset animated:animated];
 }
+
+- (void)updateEdgeFadeMask {
+    [self setEdgeFadeLeadingScrollOffset:[self hiddenHeaderOffsetY]];
+    [super updateEdgeFadeMask];
+}
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithName:(NSString *)name {
     self = [super init];
@@ -189,11 +313,16 @@ NS_ASSUME_NONNULL_END
         [self setName:name];
         [self setBackgroundColor:[UIColor clearColor]];
         [self setAlwaysBounceVertical:YES];
+        [self setEdgeFadeAxis:KayokoEdgeFadeAxisVertical];
+        [self setEdgeFadeWidth:kKayokoHistoryListViewVerticalFadeHeight];
+        [self setEdgeFadeEnabled:YES];
         [self setPreviewLineCount:1];
     }
 
     return self;
 }
+
+#pragma mark - Configuration
 
 - (void)setPreviewLineCount:(NSUInteger)previewLineCount {
     NSUInteger lineCount = MIN(MAX(previewLineCount, 1), kKayokoHistoryListViewMaximumPreviewLineCount);

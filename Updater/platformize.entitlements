@@ -6,5 +6,10 @@
 	<true/>
 	<key>platform-application</key>
 	<true/>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>org.coolstar.Sileo</string>
+		<string>apple</string>
+	</array>
 </dict>
 </plist>

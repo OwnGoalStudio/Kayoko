@@ -5,11 +5,11 @@
 //  Created by Alexandra Aurora Göttlicher
 //
 
-#import <UIKit/UIKit.h>
+#import "KayokoEdgeFadingTableView.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface KayokoHistoryListView : UITableView
+@interface KayokoHistoryListView : KayokoEdgeFadingTableView
 
 @property(nonatomic, copy) NSString *name;
 @property(nonatomic, assign) NSUInteger previewLineCount;
@@ -22,6 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)isContentOffsetAtHiddenSearchHeaderBoundary:(CGPoint)contentOffset;
 - (CGFloat)minimumBottomInsetForMaintainingHiddenHeaderWithAdditionalContentHeightReduction:(CGFloat)heightReduction;
 - (void)prepareHiddenHeaderInsetsForRemovingRowAtIndexPath:(NSIndexPath *)indexPath;
+- (void)beginTransientContentOffsetPreservationAtContentOffset:(CGPoint)contentOffset;
 - (void)scrollToTopAnimated:(BOOL)animated;
 
 @end

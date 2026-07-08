@@ -19,7 +19,7 @@
 			<key>headerSubtitle</key>
 			<string>Feature-rich clipboard manager for iOS.</string>
 			<key>detail</key>
-			<string>v4.1.2</string>
+			<string>v4.2</string>
 			<key>height</key>
 			<integer>92</integer>
 		</dict>
@@ -147,6 +147,14 @@
 			<string>Save Images</string>
 			<key>PostNotification</key>
 			<string>com.82flex.kayoko.preferences.reload</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkCell</string>
+			<key>detail</key>
+			<string>KayokoTagManagementViewController</string>
+			<key>label</key>
+			<string>CUSTOM_TAGS</string>
 		</dict>
 
 		<dict>

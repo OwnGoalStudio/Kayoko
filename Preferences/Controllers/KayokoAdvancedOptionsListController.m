@@ -6,7 +6,9 @@
 #import "KayokoAdvancedOptionsListController.h"
 #import "KayokoNotificationKeys.h"
 #import "KayokoPreferenceKeys.h"
+#import "KayokoPurchaseAuthorization.h"
 #import "KayokoRespringControllerSupport.h"
+#import "KayokoTagStore.h"
 
 #import <Preferences/PSSpecifier.h>
 #import <UIKit/UIKit.h>
@@ -16,6 +18,8 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
 
 @implementation KayokoAdvancedOptionsListController
 
+#pragma mark - Specifiers
+
 - (NSArray<PSSpecifier *> *)specifiers {
     if (!_specifiers) {
         _specifiers = [self loadSpecifiersFromPlistName:@"AdvancedOptions" target:self];
@@ -24,6 +28,8 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
     return _specifiers;
 }
 
+#pragma mark - Preference Writing
+
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
     [super setPreferenceValue:value specifier:specifier];
 
@@ -31,6 +37,8 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
         [self promptToRespring];
     }
 }
+
+#pragma mark - Prompts
 
 - (void)resetPrompt {
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
@@ -77,6 +85,73 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
                                 notificationName:kKayokoNotificationKeyCoreClearHistory];
 }
 
+- (void)deactivateAuthorizationPrompt {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+
+    UIAlertController *deactivateAlert = [UIAlertController
+        alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
+                         message:[bundle localizedStringForKey:
+                                             @"Are you sure you want to deactivate Kayoko on this device? "
+                                             @"This removes Kayoko’s mirrored Havoc credentials and "
+                                             @"local authorization state."
+                                                         value:nil
+                                                         table:@"AdvancedOptions"]
+                  preferredStyle:UIAlertControllerStyleAlert];
+
+    UIAlertAction *deactivateAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Deactivate"
+                                                                                             value:nil
+                                                                                             table:@"AdvancedOptions"]
+                                                               style:UIAlertActionStyleDestructive
+                                                             handler:^(UIAlertAction *action) {
+                                                               (void)action;
+                                                               [self deactivateAuthorization];
+                                                             }];
+
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
+                                                                                         value:nil
+                                                                                         table:@"AdvancedOptions"]
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
+
+    [deactivateAlert addAction:deactivateAction];
+    [deactivateAlert addAction:cancelAction];
+
+    [self presentViewController:deactivateAlert animated:YES completion:nil];
+}
+
+- (void)restoreTagsPrompt {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+
+    UIAlertController *restoreAlert = [UIAlertController
+        alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
+                         message:[bundle localizedStringForKey:@"Are you sure you want to restore the default tags? "
+                                                               @"Existing tags will be replaced. This action cannot be "
+                                                               @"undone."
+                                                         value:nil
+                                                         table:@"AdvancedOptions"]
+                  preferredStyle:UIAlertControllerStyleAlert];
+
+    UIAlertAction *restoreAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Restore Tags"
+                                                                                          value:nil
+                                                                                          table:@"AdvancedOptions"]
+                                                            style:UIAlertActionStyleDestructive
+                                                          handler:^(UIAlertAction *action) {
+                                                            (void)action;
+                                                            [self restoreTags];
+                                                          }];
+
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
+                                                                                         value:nil
+                                                                                         table:@"AdvancedOptions"]
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
+
+    [restoreAlert addAction:restoreAction];
+    [restoreAlert addAction:cancelAction];
+
+    [self presentViewController:restoreAlert animated:YES completion:nil];
+}
+
 - (void)presentClearConfirmationWithMessageKey:(NSString *)messageKey
                                 actionTitleKey:(NSString *)actionTitleKey
                               notificationName:(NSString *)notificationName {
@@ -106,6 +181,8 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
 
     [self presentViewController:clearAlert animated:YES completion:nil];
 }
+
+#pragma mark - Data Directory
 
 - (void)checkDataDirectory {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
@@ -168,6 +245,41 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
     [self presentViewController:alert animated:YES completion:nil];
 }
 
+#pragma mark - Authorization
+
+- (void)deactivateAuthorization {
+    NSError *error = nil;
+    if (![KayokoPurchaseAuthorization clearAuthorizationStateWithError:&error]) {
+        [self presentDeactivateAuthorizationError:error];
+        return;
+    }
+
+    [self.navigationController popToRootViewControllerAnimated:YES];
+}
+
+- (void)presentDeactivateAuthorizationError:(NSError *)error {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    NSString *message = [error localizedDescription]
+                            ?: [bundle localizedStringForKey:@"Unable to Deactivate"
+                                                       value:nil
+                                                       table:@"AdvancedOptions"];
+    UIAlertController *alert =
+        [UIAlertController alertControllerWithTitle:[bundle localizedStringForKey:@"Unable to Deactivate"
+                                                                            value:nil
+                                                                            table:@"AdvancedOptions"]
+                                            message:message
+                                     preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *action = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"OK"
+                                                                                   value:nil
+                                                                                   table:@"AdvancedOptions"]
+                                                     style:UIAlertActionStyleDefault
+                                                   handler:nil];
+    [alert addAction:action];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+#pragma mark - Maintenance Actions
+
 - (void)resetPreferences {
     NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kKayokoPreferencesIdentifier];
     for (NSString *key in [userDefaults dictionaryRepresentation]) {
@@ -178,6 +290,40 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          (CFStringRef)kKayokoNotificationKeyPreferencesReload, nil, nil, YES);
 }
+
+- (void)restoreTags {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    KayokoTagStore *tagStore = [[KayokoTagStore alloc] initWithTagsPath:[KayokoTagStore defaultTagsPath]
+                                                     localizationBundle:bundle];
+
+    NSError *error = nil;
+    if (![tagStore restoreDefaultTagsWithError:&error]) {
+        [self presentRestoreTagsError:error];
+    }
+}
+
+- (void)presentRestoreTagsError:(NSError *)error {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    NSString *message = [error localizedDescription]
+                            ?: [bundle localizedStringForKey:@"Unable to Restore Tags"
+                                                       value:nil
+                                                       table:@"AdvancedOptions"];
+    UIAlertController *alert =
+        [UIAlertController alertControllerWithTitle:[bundle localizedStringForKey:@"Unable to Restore Tags"
+                                                                            value:nil
+                                                                            table:@"AdvancedOptions"]
+                                            message:message
+                                     preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *action = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"OK"
+                                                                                   value:nil
+                                                                                   table:@"AdvancedOptions"]
+                                                     style:UIAlertActionStyleDefault
+                                                   handler:nil];
+    [alert addAction:action];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+#pragma mark - UITableViewDataSource
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     PSSpecifier *specifier = [self specifierAtIndexPath:indexPath];

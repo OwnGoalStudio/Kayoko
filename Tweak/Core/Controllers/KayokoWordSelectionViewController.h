@@ -31,6 +31,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign, readonly, getter=isShowingWordSelection) BOOL showingWordSelection;
 @property(nonatomic, assign, readonly) BOOL hasSelectedText;
 @property(nonatomic, copy, nullable) void (^selectionChangedHandler)(void);
+@property(nonatomic, copy, nullable) void (^tagAssignmentHandler)(KayokoPasteboardItem *item, NSString *historyKey);
 
 - (instancetype)initWithName:(NSString *)name
              favoritesButton:(UIButton *)favoritesButton

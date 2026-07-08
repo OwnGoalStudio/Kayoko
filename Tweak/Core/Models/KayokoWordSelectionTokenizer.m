@@ -7,6 +7,8 @@
 
 @implementation KayokoWordSelectionTokenizer
 
+#pragma mark - Public Tokenization
+
 + (NSArray<NSDictionary<NSString *, id> *> *)tokensForText:(NSString *)text {
     if (![text length]) {
         return @[];
@@ -53,6 +55,8 @@
 
     return tokens;
 }
+
+#pragma mark - Detectors
 
 + (NSArray<NSDictionary<NSString *, id> *> *)detectedTokensForText:(NSString *)text inRange:(NSRange)textRange {
     NSMutableArray<NSDictionary<NSString *, id> *> *tokens = [[NSMutableArray alloc] init];
@@ -114,6 +118,8 @@
     token[@"lineBreakAfter"] = @YES;
     tokens[index] = token;
 }
+
+#pragma mark - Word Tokenization
 
 + (NSArray<NSDictionary<NSString *, id> *> *)wordTokensForText:(NSString *)text inRange:(NSRange)range {
     NSMutableArray<NSDictionary<NSString *, id> *> *tokens = [[NSMutableArray alloc] init];
@@ -184,6 +190,8 @@
                           }];
 }
 
+#pragma mark - Token Construction
+
 + (void)addTokenFromText:(NSString *)text
                  inRange:(NSRange)range
                 toTokens:(NSMutableArray<NSDictionary<NSString *, id> *> *)tokens {
@@ -201,6 +209,8 @@
 + (BOOL)isTokenTextValid:(NSString *)text {
     return [[text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] length] > 0;
 }
+
+#pragma mark - Character Sets
 
 + (BOOL)tokenContainsCJKCharacter:(NSString *)text {
     return [text rangeOfCharacterFromSet:[self cjkCharacterSet]].location != NSNotFound;

@@ -7,6 +7,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class KayokoTag;
+
 @interface KayokoWordSelectionView : UIView
 
 @property(nonatomic, copy, readonly) NSString *selectedText;
@@ -14,8 +16,14 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, nullable) void (^selectionChangedHandler)(void);
 
 - (void)setText:(NSString *)text;
+- (void)configureTagBarWithTags:(NSArray<KayokoTag *> *)tags
+                selectedTagUUID:(nullable NSString *)selectedTagUUID
+               selectionHandler:(nullable void (^)(NSString *_Nullable tagUUID))selectionHandler;
+- (void)setSelectedTagUUID:(nullable NSString *)selectedTagUUID;
 - (void)reset;
 - (void)scrollToTopAnimated:(BOOL)animated;
+- (BOOL)hasVisibleTagBar;
+- (void)requireSelectionGestureRecognizerToFailGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer;
 
 @end
 

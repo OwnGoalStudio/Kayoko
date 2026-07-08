@@ -7,12 +7,14 @@
 #import "KayokoHistoryMigrator.h"
 #import "KayokoHistoryStore.h"
 #import "KayokoNotificationKeys.h"
+#import "KayokoTagStore.h"
 
 #import <CoreFoundation/CoreFoundation.h>
 #import <roothide.h>
 #import <unistd.h>
 
 static NSString *const kKayokoCurrentDataDirectory = @"/var/mobile/Library/com.82flex.kayoko";
+static NSString *const kKayokoPreferencesBundlePath = @"/Library/PreferenceBundles/KayokoPreferences.bundle";
 static NSUInteger const kKayokoMobileUserID = 501;
 static NSUInteger const kKayokoMobileGroupID = 501;
 static useconds_t const kKayokoCoreMaintenanceGracePeriodMicroseconds = 500000;
@@ -20,8 +22,17 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
 
 @implementation KayokoPostinstallUpdater
 
+#pragma mark - Postinstall
+
 - (BOOL)runPostinstallWithError:(NSError **)error {
     [self notifyCoreToPrepareForMaintenance];
+
+    NSError *defaultTagsError = nil;
+    BOOL preparedDefaultTags = [self prepareDefaultTagsIfNeededWithError:&defaultTagsError];
+
+    NSError *defaultTagsOwnershipError = nil;
+    BOOL repairedDefaultTagsOwnership =
+        preparedDefaultTags && [self repairDefaultTagsOwnershipWithError:&defaultTagsOwnershipError];
 
     KayokoHistoryStore *store = [self historyStore];
     NSError *lockError = nil;
@@ -38,20 +49,41 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
     NSError *migrationError = nil;
     BOOL migrated = [migrator migrateIfNeededWithError:&migrationError];
 
+    NSError *tagReferenceError = nil;
+    BOOL upgradedTagReferences = migrated && [store upgradeTagReferencesWithError:&tagReferenceError];
+
     NSError *searchIndexError = nil;
-    BOOL upgradedSearchIndex = migrated && [store upgradeSearchIndexWithError:&searchIndexError];
+    BOOL upgradedSearchIndex = upgradedTagReferences && [store upgradeSearchIndexWithError:&searchIndexError];
 
     NSError *ownershipError = nil;
-    BOOL repairedOwnership = [self repairCurrentDataDirectoryOwnershipWithError:&ownershipError];
+    BOOL repairedOwnership = upgradedSearchIndex && [self repairCurrentDataDirectoryOwnershipWithError:&ownershipError];
     if (!migrated) {
         if (error) {
             *error = migrationError;
         }
         return NO;
     }
+    if (!upgradedTagReferences) {
+        if (error) {
+            *error = tagReferenceError;
+        }
+        return NO;
+    }
     if (!upgradedSearchIndex) {
         if (error) {
             *error = searchIndexError;
+        }
+        return NO;
+    }
+    if (!preparedDefaultTags) {
+        if (error) {
+            *error = defaultTagsError;
+        }
+        return NO;
+    }
+    if (!repairedDefaultTagsOwnership) {
+        if (error) {
+            *error = defaultTagsOwnershipError;
         }
         return NO;
     }
@@ -64,6 +96,8 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
 
     return YES;
 }
+
+#pragma mark - Legacy Cleanup
 
 - (NSArray<NSString *> *)safelyDeletableLegacyPathsWithError:(NSError **)error {
     KayokoHistoryStore *store = [self historyStore];
@@ -92,7 +126,7 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
     return paths;
 }
 
-#pragma mark - Private
+#pragma mark - Core Coordination
 
 - (void)notifyCoreToPrepareForMaintenance {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
@@ -100,6 +134,8 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
                                          YES);
     usleep(kKayokoCoreMaintenanceGracePeriodMicroseconds);
 }
+
+#pragma mark - Store Paths
 
 - (KayokoHistoryStore *)historyStore {
     return [[KayokoHistoryStore alloc] initWithDatabasePath:[KayokoHistoryStore defaultDatabasePath]
@@ -110,6 +146,41 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
 
 - (NSString *)currentImagesPath {
     return [jbroot(kKayokoCurrentDataDirectory) stringByAppendingPathComponent:@"images"];
+}
+
+#pragma mark - Default Tags
+
+- (BOOL)prepareDefaultTagsIfNeededWithError:(NSError **)error {
+    KayokoTagStore *tagStore = [[KayokoTagStore alloc] initWithTagsPath:[KayokoTagStore defaultTagsPath]
+                                                     localizationBundle:[self preferencesLocalizationBundle]];
+    return [tagStore ensureDefaultTagsFileExistsWithError:error];
+}
+
+- (NSBundle *)preferencesLocalizationBundle {
+    NSString *bundlePath = jbroot(kKayokoPreferencesBundlePath);
+    NSBundle *bundle = [NSBundle bundleWithPath:bundlePath];
+    return bundle ?: [NSBundle mainBundle];
+}
+
+#pragma mark - Ownership
+
+- (BOOL)repairDefaultTagsOwnershipWithError:(NSError **)error {
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSString *dataDirectory = [[KayokoTagStore defaultTagsPath] stringByDeletingLastPathComponent];
+    BOOL isDirectory = NO;
+    if ([fileManager fileExistsAtPath:dataDirectory isDirectory:&isDirectory] && isDirectory) {
+        if (![self repairOwnershipAtPath:dataDirectory isDirectory:YES fileManager:fileManager error:error]) {
+            return NO;
+        }
+    }
+
+    NSString *tagsPath = [KayokoTagStore defaultTagsPath];
+    isDirectory = NO;
+    if ([fileManager fileExistsAtPath:tagsPath isDirectory:&isDirectory]) {
+        return [self repairOwnershipAtPath:tagsPath isDirectory:isDirectory fileManager:fileManager error:error];
+    }
+
+    return YES;
 }
 
 - (BOOL)repairCurrentDataDirectoryOwnershipWithError:(NSError **)error {
@@ -149,6 +220,8 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
     };
     return [fileManager setAttributes:attributes ofItemAtPath:path error:error];
 }
+
+#pragma mark - Legacy Path Helpers
 
 - (void)addPathIfExists:(NSString *)path
             fileManager:(NSFileManager *)fileManager

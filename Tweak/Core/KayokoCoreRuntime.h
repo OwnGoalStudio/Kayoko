@@ -4,6 +4,9 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class FBScene;
+@class UIApplicationSceneSettings;
+
 @interface KayokoCoreRuntime : NSObject
 
 @property(nonatomic, assign, readonly, getter=isEnabled) BOOL enabled;
@@ -12,6 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign, readonly) BOOL pasteTipsDisabled;
 @property(nonatomic, assign, readonly) BOOL panelVisible;
 @property(nonatomic, assign, readonly) BOOL fullscreenSearchActive;
+@property(nonatomic, assign, readonly) BOOL systemMultitaskingGestureSuppressed;
 
 + (instancetype)sharedRuntime;
 
@@ -27,6 +31,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)hide;
 - (void)hideImmediately;
 - (void)reloadHistory;
+- (void)handleApplicationMetadataChanged;
+- (void)handleScene:(FBScene *)scene didUpdateSettings:(UIApplicationSceneSettings *)settings;
 - (void)checkpointHistoryDatabase;
 - (void)prepareForPackageMaintenance;
 - (void)clearFavorites;

@@ -6,8 +6,11 @@
 #import "KayokoWordSelectionViewController.h"
 
 #import "KayokoHeaderButtonStyle.h"
+#import "KayokoHistoryItemActionHandler.h"
 #import "KayokoPasteboardItem.h"
 #import "KayokoPasteboardManager.h"
+#import "KayokoTag.h"
+#import "KayokoTagCatalog.h"
 #import "KayokoWordSelectionView.h"
 
 // Word selection creates one button per token; CJK text can approach one token per character.
@@ -20,13 +23,21 @@ static NSString *kayokoWordSelectionTextByTrimmingBoundaryNewlines(NSString *tex
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoWordSelectionViewController ()
+#pragma mark - Views
+
 @property(nonatomic, strong, readwrite) KayokoWordSelectionView *wordSelectionView;
-@property(nonatomic, copy, readwrite) NSString *name;
 @property(nonatomic, weak) UIButton *favoritesButton;
 @property(nonatomic, weak) UIButton *backButton;
 @property(nonatomic, weak) UIButton *clearButton;
+
+#pragma mark - State
+
+@property(nonatomic, copy, readwrite) NSString *name;
 @property(nonatomic, copy, nullable, readwrite) NSString *sourceHistoryKey;
 @property(nonatomic, strong, nullable, readwrite) KayokoPasteboardItem *sourceItem;
+@property(nonatomic, strong) KayokoHistoryItemActionHandler *actionHandler;
+
+#pragma mark - Header
 
 - (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey;
 - (void)resetHeaderState;
@@ -34,11 +45,18 @@ NS_ASSUME_NONNULL_BEGIN
                      withImageName:(NSString *)imageName
                       andImageSize:(NSUInteger)imageSize
                       andTintColor:(UIColor *)color;
+
+#pragma mark - Tags
+
+- (void)configureTagBarForSourceItem:(KayokoPasteboardItem *)item;
+- (void)assignTagUUID:(nullable NSString *)tagUUID;
 @end
 
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoWordSelectionViewController
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithName:(NSString *)name
              favoritesButton:(UIButton *)favoritesButton
@@ -52,6 +70,7 @@ NS_ASSUME_NONNULL_END
         _clearButton = clearButton;
         _wordSelectionView = [[KayokoWordSelectionView alloc] init];
         [_wordSelectionView setHidden:YES];
+        _actionHandler = [[KayokoHistoryItemActionHandler alloc] init];
         [self setView:_wordSelectionView];
 
         __weak typeof(self) weakSelf = self;
@@ -64,6 +83,8 @@ NS_ASSUME_NONNULL_END
     }
     return self;
 }
+
+#pragma mark - Public State
 
 - (NSString *)selectedText {
     return [[self wordSelectionView] selectedText];
@@ -85,6 +106,8 @@ NS_ASSUME_NONNULL_END
     [[self wordSelectionView] scrollToTopAnimated:animated];
 }
 
+#pragma mark - Header
+
 - (void)updateStyleForHeaderButton:(UIButton *)button
                      withImageName:(NSString *)imageName
                       andImageSize:(NSUInteger)imageSize
@@ -96,6 +119,8 @@ NS_ASSUME_NONNULL_END
     [button setTintColor:color];
 }
 
+#pragma mark - Presentation
+
 - (void)showWordSelectionWithItem:(KayokoPasteboardItem *)item
                  sourceHistoryKey:(NSString *)sourceHistoryKey
                automaticallyPaste:(BOOL)automaticallyPaste {
@@ -105,6 +130,7 @@ NS_ASSUME_NONNULL_END
     NSString *text = kayokoWordSelectionTextByTrimmingBoundaryNewlines([item content]);
     [[self wordSelectionView] setText:text];
     [[self wordSelectionView] setHidden:NO];
+    [self configureTagBarForSourceItem:item];
 
     [self updateStyleForHeaderButton:[self favoritesButton]
                        withImageName:@"arrowshape.turn.up.backward"
@@ -127,6 +153,54 @@ NS_ASSUME_NONNULL_END
     [self updateActionButtonState];
 }
 
+#pragma mark - Tags
+
+- (void)configureTagBarForSourceItem:(KayokoPasteboardItem *)item {
+    NSArray<KayokoTag *> *tags = [[KayokoTagCatalog sharedCatalog] reloadTags];
+    __weak typeof(self) weakSelf = self;
+    [[self wordSelectionView] configureTagBarWithTags:tags
+                                      selectedTagUUID:[item tagUUID]
+                                     selectionHandler:^(NSString *tagUUID) {
+                                       [weakSelf assignTagUUID:tagUUID];
+                                     }];
+}
+
+- (void)assignTagUUID:(NSString *)tagUUID {
+    KayokoPasteboardItem *item = [self sourceItem];
+    NSString *historyKey = [self sourceHistoryKey];
+    NSString *normalizedTagUUID = [tagUUID length] > 0 ? tagUUID : nil;
+    NSString *previousTagUUID = [item tagUUID];
+    if (!item || [historyKey length] == 0 || [(previousTagUUID ?: @"") isEqualToString:(normalizedTagUUID ?: @"")]) {
+        return;
+    }
+
+    [[self wordSelectionView] setSelectedTagUUID:normalizedTagUUID];
+    [item setTagUUID:normalizedTagUUID];
+
+    __weak typeof(self) weakSelf = self;
+    [[self actionHandler] setTagUUID:normalizedTagUUID
+                             forItem:item
+                          historyKey:historyKey
+                          completion:^(BOOL success) {
+                            __strong typeof(weakSelf) strongSelf = weakSelf;
+                            if (!strongSelf) {
+                                return;
+                            }
+                            if (!success) {
+                                [item setTagUUID:previousTagUUID];
+                                [[strongSelf wordSelectionView] setSelectedTagUUID:previousTagUUID];
+                                return;
+                            }
+                            [[strongSelf delegate] wordSelectionViewController:strongSelf
+                                                triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleLight];
+                            if ([strongSelf tagAssignmentHandler]) {
+                                [strongSelf tagAssignmentHandler](item, historyKey);
+                            }
+                          }];
+}
+
+#pragma mark - Dismissal
+
 - (void)prepareToHideWordSelection {
     [self resetHeaderState];
 }
@@ -134,6 +208,8 @@ NS_ASSUME_NONNULL_END
 - (void)hideWordSelection {
     [self resetWordSelectionState];
 }
+
+#pragma mark - Actions
 
 - (void)handleActionButtonWithAutomaticallyPaste:(BOOL)automaticallyPaste {
     KayokoPasteboardItem *sourceItem = [self sourceItem];
@@ -162,6 +238,8 @@ NS_ASSUME_NONNULL_END
     [[self delegate] wordSelectionViewController:self didRequestHideContainerAfterDirectPaste:automaticallyPaste];
     [[self delegate] wordSelectionViewController:self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
 }
+
+#pragma mark - Header Helpers
 
 - (void)resetHeaderState {
     [[self clearButton] setHidden:NO];

@@ -8,6 +8,7 @@
 #import <CaptainHook/CaptainHook.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <UIKit/UIKit.h>
+#import <math.h>
 #import <objc/runtime.h>
 
 #import "KayokoCoreRuntime.h"
@@ -16,9 +17,8 @@
 #import "KayokoSpringBoardHooks.h"
 #import "KayokoSwipeUpGestureRecognizer.h"
 
-#include <math.h>
-
 CHDeclareClass(SpringBoard);
+CHDeclareClass(FBScene);
 CHDeclareClass(UIStatusBarWindow);
 CHDeclareClass(UIWindowScene);
 CHDeclareClass(UIViewController);
@@ -29,6 +29,7 @@ CHDeclareClass(SBHLibrarySearchController);
 CHDeclareClass(SBMainDisplaySystemGestureManager);
 CHDeclareClass(SBMainSwitcherViewController);
 CHDeclareClass(SBMainSwitcherControllerCoordinator);
+CHDeclareClass(SBApplicationController);
 CHDeclareClass(_UISystemGestureWindow);
 
 @interface SpringBoard : UIApplication
@@ -37,6 +38,16 @@ CHDeclareClass(_UISystemGestureWindow);
 @end
 
 @interface UIStatusBarWindow : UIWindow
+@end
+
+@class FBSSceneTransitionContext;
+@class UIApplicationSceneSettings;
+typedef void (^FBSceneUpdateCompletion)(void);
+
+@interface FBScene : NSObject
+- (void)updateSettings:(UIApplicationSceneSettings *)settings
+    withTransitionContext:(FBSSceneTransitionContext *)context
+               completion:(FBSceneUpdateCompletion)completion;
 @end
 
 @interface SBCoverSheetPrimarySlidingViewController : UIViewController
@@ -67,6 +78,14 @@ CHDeclareClass(_UISystemGestureWindow);
 - (BOOL)isSearchFieldEditing;
 @end
 
+@interface SBApplicationController : NSObject
+- (void)applicationsAdded:(id)added;
+- (void)applicationsDemoted:(id)demoted;
+- (void)applicationsRemoved:(id)removed;
+- (void)applicationsReplaced:(id)replaced;
+- (void)applicationsUpdated:(id)updated;
+@end
+
 @interface SBMainDisplaySystemGestureManager : NSObject
 - (BOOL)_isGestureWithTypeAllowed:(NSInteger)type;
 @end
@@ -82,7 +101,10 @@ CHDeclareClass(_UISystemGestureWindow);
 @end
 
 static const NSInteger kKayokoSystemGestureTypeCoverSheet = 0x1;
+static const NSInteger kKayokoSystemGestureTypeMultitaskingA = 0x29;
+static const NSInteger kKayokoSystemGestureTypeMultitaskingB = 0x2B;
 static const NSInteger kKayokoSystemGestureTypeControlCenter = 0x6;
+
 static CGFloat const kKayokoSystemKeyboardFrameEdgeTolerance = 1.0;
 static NSString *const kKayokoExternalKeyboardDiscoverabilityTitle = @"Kayoko";
 
@@ -104,17 +126,32 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSpringBoardHookInstaller ()
 
+#pragma mark - Status Bar Panel
+
 + (BOOL)isStatusBarWindow:(UIWindow *)window;
 + (void)installPanelIfNeededInStatusBarWindow:(UIWindow *)window;
+
+#pragma mark - Visibility
+
 + (void)hideForHomeScreenIfVisible:(id)controller;
 + (void)hideForLayoutStateTransition;
 + (void)hideForAppSwitcherIfVisible:(id)switcher;
+
+#pragma mark - System Swipe
+
 + (void)ensureSystemSwipeUpGestureRecognizerForWindow:(_UISystemGestureWindow *)window;
+
+#pragma mark - Hook Installation
+
++ (void)installApplicationMetadataHooks;
++ (void)installSceneSettingsHooks;
 + (void)installSystemSwipeUpHooks;
 
 @end
 
 NS_ASSUME_NONNULL_END
+
+#pragma mark - Keyboard Geometry
 
 static CGRect kayokoVisibleKeyboardFrame(void) {
     Class hostClass = NSClassFromString(@"UIPeripheralHost");
@@ -181,13 +218,21 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSystemSwipeUpGestureHandler : NSObject <UIGestureRecognizerDelegate>
 @property(nonatomic, weak, readonly) UIView *view;
+
+#pragma mark - Lifecycle
+
 - (instancetype)initWithView:(UIView *)view;
+
+#pragma mark - Actions
+
 - (void)handleSwipeUpGesture:(UIGestureRecognizer *)recognizer;
 @end
 
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoSystemSwipeUpGestureHandler
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithView:(UIView *)view {
     self = [super init];
@@ -196,6 +241,8 @@ NS_ASSUME_NONNULL_END
     }
     return self;
 }
+
+#pragma mark - UIGestureRecognizerDelegate
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
     UIView *view = self.view;
@@ -222,6 +269,8 @@ NS_ASSUME_NONNULL_END
     return YES;
 }
 
+#pragma mark - Actions
+
 - (void)handleSwipeUpGesture:(UIGestureRecognizer *)recognizer {
     if (recognizer.state != UIGestureRecognizerStateRecognized) {
         return;
@@ -237,6 +286,8 @@ NS_ASSUME_NONNULL_END
 
 @end
 
+#pragma mark - Status Bar Hooks
+
 CHOptimizedMethod1(self, void, UIWindowScene, _delegate_windowDidBecomeVisible, UIWindow *, window) {
     CHSuper1(UIWindowScene, _delegate_windowDidBecomeVisible, window);
     [KayokoSpringBoardHookInstaller installPanelIfNeededInStatusBarWindow:window];
@@ -247,6 +298,8 @@ CHOptimizedMethod1(self, id, UIStatusBarWindow, initWithFrame, CGRect, frame) {
     [KayokoSpringBoardHookInstaller installPanelIfNeededInStatusBarWindow:window];
     return window;
 }
+
+#pragma mark - SpringBoard Hooks
 
 CHOptimizedMethod1(self, void, SpringBoard, applicationDidFinishLaunching, id, application) {
     CHSuper1(SpringBoard, applicationDidFinishLaunching, application);
@@ -265,6 +318,8 @@ CHOptimizedMethod0(self, NSArray<UIKeyCommand *> *, SpringBoard, keyCommands) {
     [command setDiscoverabilityTitle:kKayokoExternalKeyboardDiscoverabilityTitle];
     return keyCommands ? [keyCommands arrayByAddingObject:command] : @[ command ];
 }
+
+#pragma mark - Visibility Hooks
 
 CHOptimizedMethod1(self, void, UIViewController, viewWillAppear, BOOL, animated) {
     CHSuper1(UIViewController, viewWillAppear, animated);
@@ -301,15 +356,51 @@ CHOptimizedMethod1(self, void, SBHLibrarySearchController, _willDismissSearchAni
     }
 }
 
+#pragma mark - Application Metadata Hooks
+
+CHOptimizedMethod1(self, void, SBApplicationController, applicationsAdded, id, added) {
+    CHSuper1(SBApplicationController, applicationsAdded, added);
+    [[KayokoCoreRuntime sharedRuntime] handleApplicationMetadataChanged];
+}
+
+CHOptimizedMethod1(self, void, SBApplicationController, applicationsDemoted, id, demoted) {
+    CHSuper1(SBApplicationController, applicationsDemoted, demoted);
+    [[KayokoCoreRuntime sharedRuntime] handleApplicationMetadataChanged];
+}
+
+CHOptimizedMethod1(self, void, SBApplicationController, applicationsRemoved, id, removed) {
+    CHSuper1(SBApplicationController, applicationsRemoved, removed);
+    [[KayokoCoreRuntime sharedRuntime] handleApplicationMetadataChanged];
+}
+
+CHOptimizedMethod1(self, void, SBApplicationController, applicationsReplaced, id, replaced) {
+    CHSuper1(SBApplicationController, applicationsReplaced, replaced);
+    [[KayokoCoreRuntime sharedRuntime] handleApplicationMetadataChanged];
+}
+
+CHOptimizedMethod1(self, void, SBApplicationController, applicationsUpdated, id, updated) {
+    CHSuper1(SBApplicationController, applicationsUpdated, updated);
+    [[KayokoCoreRuntime sharedRuntime] handleApplicationMetadataChanged];
+}
+
+#pragma mark - System Gesture Hooks
+
 CHOptimizedMethod1(self, BOOL, SBMainDisplaySystemGestureManager, _isGestureWithTypeAllowed, NSInteger, type) {
+    KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];
     if ((type == kKayokoSystemGestureTypeCoverSheet || type == kKayokoSystemGestureTypeControlCenter) &&
-        [[KayokoCoreRuntime sharedRuntime] fullscreenSearchActive]) {
+        [runtime fullscreenSearchActive]) {
+        return NO;
+    }
+    if ((type == kKayokoSystemGestureTypeMultitaskingA || type == kKayokoSystemGestureTypeMultitaskingB) &&
+        [runtime systemMultitaskingGestureSuppressed]) {
         return NO;
     }
 
     return CHSuper1(SBMainDisplaySystemGestureManager, _isGestureWithTypeAllowed, type);
 }
 
+#pragma mark - App Switcher Hooks
+
 CHOptimizedMethod2(self, void, SBMainSwitcherViewController, layoutStateTransitionCoordinator, id, coordinator,
                    transitionDidBeginWithTransitionContext, id, context) {
     CHSuper2(SBMainSwitcherViewController, layoutStateTransitionCoordinator, coordinator,
@@ -337,6 +428,8 @@ CHOptimizedMethod2(self, void, SBMainSwitcherControllerCoordinator, layoutStateT
              transitionDidEndWithTransitionContext, context);
     [KayokoSpringBoardHookInstaller hideForAppSwitcherIfVisible:self];
 }
+
+#pragma mark - System Swipe Hooks
 
 CHOptimizedMethod1(self, void, _UISystemGestureWindow, sendEvent, UIEvent *, event) {
     if (event.type == UIEventTypeTouches) {
@@ -346,7 +439,17 @@ CHOptimizedMethod1(self, void, _UISystemGestureWindow, sendEvent, UIEvent *, eve
     CHSuper1(_UISystemGestureWindow, sendEvent, event);
 }
 
+#pragma mark - Scene Hooks
+
+CHOptimizedMethod3(self, void, FBScene, updateSettings, UIApplicationSceneSettings *, settings, withTransitionContext,
+                   FBSSceneTransitionContext *, context, completion, FBSceneUpdateCompletion, completion) {
+    CHSuper3(FBScene, updateSettings, settings, withTransitionContext, context, completion, completion);
+    [[KayokoCoreRuntime sharedRuntime] handleScene:self didUpdateSettings:settings];
+}
+
 @implementation KayokoSpringBoardHookInstaller
+
+#pragma mark - Status Bar Panel
 
 + (BOOL)isStatusBarWindow:(UIWindow *)window {
     Class statusBarWindowClass = NSClassFromString(@"UIStatusBarWindow");
@@ -372,6 +475,8 @@ CHOptimizedMethod1(self, void, _UISystemGestureWindow, sendEvent, UIEvent *, eve
       });
     });
 }
+
+#pragma mark - Visibility
 
 + (BOOL)isHomeScreenController:(id)controller {
     static Class iconControllerClass = nil;
@@ -417,6 +522,8 @@ CHOptimizedMethod1(self, void, _UISystemGestureWindow, sendEvent, UIEvent *, eve
     }
 }
 
+#pragma mark - System Swipe
+
 + (void)ensureSystemSwipeUpGestureRecognizerForWindow:(_UISystemGestureWindow *)window {
     if (![window respondsToSelector:@selector(_systemGestureView)]) {
         return;
@@ -443,6 +550,8 @@ CHOptimizedMethod1(self, void, _UISystemGestureWindow, sendEvent, UIEvent *, eve
     objc_setAssociatedObject(gestureView, &kayokoSystemSwipeUpGestureRecognizerKey, recognizer,
                              OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
+
+#pragma mark - Hook Installation
 
 + (void)installStatusBarHooks {
     Class windowSceneClass = NSClassFromString(@"UIWindowScene");
@@ -513,6 +622,41 @@ CHOptimizedMethod1(self, void, _UISystemGestureWindow, sendEvent, UIEvent *, eve
     }
 }
 
++ (void)installApplicationMetadataHooks {
+    Class applicationControllerClass = NSClassFromString(@"SBApplicationController");
+    if (!applicationControllerClass) {
+        return;
+    }
+
+    CHLoadClass_(&SBApplicationController$, applicationControllerClass);
+    if ([applicationControllerClass instancesRespondToSelector:@selector(applicationsAdded:)]) {
+        CHHook1(SBApplicationController, applicationsAdded);
+    }
+    if ([applicationControllerClass instancesRespondToSelector:@selector(applicationsDemoted:)]) {
+        CHHook1(SBApplicationController, applicationsDemoted);
+    }
+    if ([applicationControllerClass instancesRespondToSelector:@selector(applicationsRemoved:)]) {
+        CHHook1(SBApplicationController, applicationsRemoved);
+    }
+    if ([applicationControllerClass instancesRespondToSelector:@selector(applicationsReplaced:)]) {
+        CHHook1(SBApplicationController, applicationsReplaced);
+    }
+    if ([applicationControllerClass instancesRespondToSelector:@selector(applicationsUpdated:)]) {
+        CHHook1(SBApplicationController, applicationsUpdated);
+    }
+}
+
++ (void)installSceneSettingsHooks {
+    Class sceneClass = NSClassFromString(@"FBScene");
+    SEL updateSettingsSelector = @selector(updateSettings:withTransitionContext:completion:);
+    if (![sceneClass instancesRespondToSelector:updateSettingsSelector]) {
+        return;
+    }
+
+    CHLoadClass_(&FBScene$, sceneClass);
+    CHHook3(FBScene, updateSettings, withTransitionContext, completion);
+}
+
 + (void)installSystemGestureHooks {
     Class gestureManagerClass = NSClassFromString(@"SBMainDisplaySystemGestureManager");
     CHLoadClass_(&SBMainDisplaySystemGestureManager$, gestureManagerClass);
@@ -561,6 +705,8 @@ CHOptimizedMethod1(self, void, _UISystemGestureWindow, sendEvent, UIEvent *, eve
     }
 }
 
+#pragma mark - Entrypoint
+
 + (void)installHooks {
     [self installStatusBarHooks];
 
@@ -576,6 +722,8 @@ CHOptimizedMethod1(self, void, _UISystemGestureWindow, sendEvent, UIEvent *, eve
     [self installLockScreenTransitionHooks];
     [self installSpotlightHooks];
     [self installLibrarySearchHooks];
+    [self installApplicationMetadataHooks];
+    [self installSceneSettingsHooks];
     [self installSystemGestureHooks];
 
     KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];

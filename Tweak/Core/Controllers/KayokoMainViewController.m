@@ -18,70 +18,80 @@
 #import "KayokoPreviewView.h"
 #import "KayokoPreviewViewController.h"
 #import "KayokoSearchController.h"
+#import "KayokoTagCatalog.h"
+#import "KayokoWordSelectionView.h"
 #import "KayokoWordSelectionViewController.h"
 
-static NSString *kayokoMainPreviewTextByTrimmingBoundaryNewlines(NSString *text) {
-    return [(text ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
-}
+static CGFloat const kKayokoTransientEdgeBackHorizontalDominance = 1.2;
+static CGFloat const kKayokoTransientEdgeBackCompletionProgress = 0.35;
+static CGFloat const kKayokoTransientEdgeBackCompletionVelocity = 650;
+static NSTimeInterval const kKayokoTransientEdgeBackMinimumAnimationDuration = 0.08;
+static NSTimeInterval const kKayokoTransientEdgeBackMaximumAnimationDuration = 0.22;
+
+@interface LSApplicationWorkspace : NSObject
++ (instancetype)defaultWorkspace;
+- (BOOL)openSensitiveURL:(NSURL *)url withOptions:(NSDictionary *)options error:(NSError **)error;
+@end
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoMainViewController () <KayokoClearConfirmationViewControllerDelegate, KayokoHistoryControllerDelegate,
                                         KayokoPanelPresentationControllerDelegate, KayokoSearchControllerDelegate,
                                         KayokoHistoryListViewControllerDelegate,
-                                        KayokoWordSelectionViewControllerDelegate>
+                                        KayokoWordSelectionViewControllerDelegate, UIGestureRecognizerDelegate>
+#pragma mark - Views
+
 @property(nonatomic, strong) KayokoMainView *mainView;
-@property(nonatomic, copy, nullable) NSString *clearConfirmationHistoryKey;
-@property(nonatomic, strong) KayokoHistoryController *historyController;
-@property(nonatomic, strong) KayokoHistoryListViewController *historyListViewController;
-@property(nonatomic, strong) KayokoHistoryListViewController *favoritesListViewController;
 @property(nonatomic, strong) KayokoEmptyStateView *historyEmptyStateView;
 @property(nonatomic, strong) KayokoEmptyStateView *favoritesEmptyStateView;
 @property(nonatomic, strong) KayokoEmptyStateView *storageErrorView;
-@property(nonatomic, strong, nullable) NSError *storageError;
-@property(nonatomic, strong) KayokoPanelPresentationController *panelPresentationController;
+@property(nonatomic, strong) KayokoEmptyStateView *authorizationRequiredView;
+
+#pragma mark - Child Controllers
+
+@property(nonatomic, strong) KayokoHistoryListViewController *historyListViewController;
+@property(nonatomic, strong) KayokoHistoryListViewController *favoritesListViewController;
 @property(nonatomic, strong) KayokoClearConfirmationViewController *clearConfirmationViewController;
 @property(nonatomic, strong) KayokoPreviewViewController *previewViewController;
 @property(nonatomic, strong) KayokoWordSelectionViewController *wordSelectionViewController;
+
+#pragma mark - Coordinators
+
+@property(nonatomic, strong) KayokoHistoryController *historyController;
+@property(nonatomic, strong) KayokoPanelPresentationController *panelPresentationController;
 @property(nonatomic, strong) KayokoSearchController *searchController;
+
+#pragma mark - State
+
+@property(nonatomic, copy, nullable) NSString *clearConfirmationHistoryKey;
+@property(nonatomic, strong, nullable) NSError *storageError;
 @property(nonatomic, assign) BOOL preparingToShow;
 @property(nonatomic, assign) NSUInteger showRequestIdentifier;
 @property(nonatomic, assign, getter=isDismissingPanel) BOOL dismissingPanel;
-@property(nonatomic, weak, nullable) UIView *activeSourceContentView;
 
-- (void)showContentForItem:(KayokoPasteboardItem *)item;
-- (nullable NSString *)historyKeyForInitialViewMode;
-- (void)hideAfterDirectPaste;
-- (void)hideWordSelection;
-- (void)restoreActiveSourceContentView;
-- (void)refreshSearchAfterEndingTransientContentIfNeeded;
-- (BOOL)isPreviewActive;
-- (BOOL)isWordSelectionActive;
-- (void)updateFavoritesButtonForHistoryKey:(NSString *)historyKey;
-- (void)handleTitleTapControlPressed;
-- (KayokoEmptyStateView *)emptyStateViewForHistoryKey:(NSString *)historyKey;
-- (BOOL)cancelSearchForEmptyActiveHistoryIfNeededHidingView:(UIView *)viewToHide
-                                                  direction:(KayokoContentTransitionDirection)direction
-                                                 completion:(nullable void (^)(void))completion;
-- (void)showContentView:(UIView *)viewToShow
-        hideContentView:(UIView *)viewToHide
-              direction:(KayokoContentTransitionDirection)direction
-             completion:(nullable void (^)(void))completion;
-- (void)handlePasteboardItemDictionary:(NSDictionary<NSString *, id> *)dictionary
-                   movedFromHistoryKey:(NSString *)sourceHistoryKey
-                          toHistoryKey:(NSString *)destinationHistoryKey;
-- (void)updateContentState;
-- (void)updateContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility;
-- (void)showStorageError:(NSError *)error;
+#pragma mark - Transient Content
+
+@property(nonatomic, assign) BOOL restoresSearchFirstResponderAfterTransientContent;
+@property(nonatomic, assign) BOOL hasSearchContentOffsetBeforeTransientContent;
+@property(nonatomic, assign) CGPoint searchContentOffsetBeforeTransientContent;
+@property(nonatomic, weak, nullable) UIView *activeSourceContentView;
+@property(nonatomic, strong) UIScreenEdgePanGestureRecognizer *transientEdgeBackGestureRecognizer;
+@property(nonatomic, weak, nullable) UIView *interactiveTransientReturnSourceView;
+@property(nonatomic, weak, nullable) UIView *interactiveTransientReturnContentView;
+@property(nonatomic, assign) BOOL interactiveTransientReturnWasPreview;
+@property(nonatomic, assign) BOOL didRestoreSearchDuringInteractiveTransientReturn;
 @end
 
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoMainViewController
 
+#pragma mark - Lifecycle
+
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithNibName:nil bundle:nil];
     if (self) {
+        _authorizationPassed = YES;
         _mainView = [[KayokoMainView alloc] initWithFrame:frame];
         [self setView:_mainView];
         _historyListViewController = [[KayokoHistoryListViewController alloc]
@@ -146,10 +156,19 @@ NS_ASSUME_NONNULL_END
         _storageErrorView = [[KayokoEmptyStateView alloc] init];
         [_mainView installContentView:_storageErrorView hidden:YES];
 
+        _authorizationRequiredView = [[KayokoEmptyStateView alloc] init];
+        [_authorizationRequiredView updateWithAuthorizationRequiredActionHandler:^{
+          [weakSelf openAuthorizationSettings];
+        }];
+        [_mainView installContentView:_authorizationRequiredView hidden:YES];
+
         _previewViewController =
             [[KayokoPreviewViewController alloc] initWithFavoritesButton:[_mainView favoritesButton]
                                                               backButton:[_mainView backButton]
                                                              clearButton:[_mainView clearButton]];
+        [_previewViewController setTagAssignmentHandler:^(KayokoPasteboardItem *item, NSString *historyKey) {
+          [weakSelf handleTagAssignmentForItem:item historyKey:historyKey];
+        }];
         [self addChildViewController:_previewViewController];
         [_mainView installContentView:[_previewViewController previewView] hidden:YES];
         [_previewViewController didMoveToParentViewController:self];
@@ -162,6 +181,9 @@ NS_ASSUME_NONNULL_END
                  backButton:[_mainView backButton]
                 clearButton:[_mainView clearButton]];
         [_wordSelectionViewController setDelegate:self];
+        [_wordSelectionViewController setTagAssignmentHandler:^(KayokoPasteboardItem *item, NSString *historyKey) {
+          [weakSelf handleTagAssignmentForItem:item historyKey:historyKey];
+        }];
         [self addChildViewController:_wordSelectionViewController];
         [_mainView installContentView:[_wordSelectionViewController view] hidden:YES];
         [_wordSelectionViewController didMoveToParentViewController:self];
@@ -173,9 +195,22 @@ NS_ASSUME_NONNULL_END
                                       favoritesListViewController:_favoritesListViewController
                                              panGestureRecognizer:[_panelPresentationController panGestureRecognizer]];
         [_searchController setDelegate:self];
+
+        _transientEdgeBackGestureRecognizer = [[UIScreenEdgePanGestureRecognizer alloc]
+            initWithTarget:self
+                    action:@selector(handleTransientEdgeBackGestureRecognizer:)];
+        [_transientEdgeBackGestureRecognizer setEdges:UIRectEdgeLeft];
+        [_transientEdgeBackGestureRecognizer setDelegate:self];
+        [_mainView addGestureRecognizer:_transientEdgeBackGestureRecognizer];
+        [[_previewViewController previewView]
+            requireImagePanGestureRecognizerToFailGestureRecognizer:_transientEdgeBackGestureRecognizer];
+        [[_wordSelectionViewController wordSelectionView]
+            requireSelectionGestureRecognizerToFailGestureRecognizer:_transientEdgeBackGestureRecognizer];
     }
     return self;
 }
+
+#pragma mark - Configuration
 
 - (BOOL)isHidden {
     return [[self mainView] isHidden];
@@ -197,6 +232,7 @@ NS_ASSUME_NONNULL_END
     [[self historyEmptyStateView] setOverrideUserInterfaceStyle:style];
     [[self favoritesEmptyStateView] setOverrideUserInterfaceStyle:style];
     [[self storageErrorView] setOverrideUserInterfaceStyle:style];
+    [[self authorizationRequiredView] setOverrideUserInterfaceStyle:style];
 }
 
 - (void)setDismissOnOutsideTouch:(BOOL)dismissOnOutsideTouch {
@@ -214,6 +250,29 @@ NS_ASSUME_NONNULL_END
     _shouldPlayFeedback = shouldPlayFeedback;
     [[self panelPresentationController] setShouldPlayFeedback:shouldPlayFeedback];
 }
+
+- (void)setAuthorizationPassed:(BOOL)authorizationPassed {
+    if (_authorizationPassed == authorizationPassed) {
+        return;
+    }
+
+    _authorizationPassed = authorizationPassed;
+    if ([self isHidden]) {
+        return;
+    }
+
+    if (authorizationPassed) {
+        [self reload];
+    } else {
+        [self setHistoryContentVisibleForKey:[self effectiveActiveHistoryKey]];
+    }
+}
+
+- (BOOL)isAuthorizationRequired {
+    return ![self isAuthorizationPassed];
+}
+
+#pragma mark - Layout and Lookup
 
 - (void)handleViewLayout {
     [[self searchController] layout];
@@ -241,6 +300,8 @@ NS_ASSUME_NONNULL_END
     return [self activeListViewController];
 }
 
+#pragma mark - KayokoSearchControllerDelegate
+
 - (void)searchControllerWillAnimateSearchState:(KayokoSearchController *)searchController {
     [[self mainView] setAnimating:YES];
     [[self panelPresentationController] finishOutsideDismissOverlayShow];
@@ -257,7 +318,20 @@ NS_ASSUME_NONNULL_END
     [[self historyEmptyStateView] setKeyboardBottomInset:keyboardBottomInset];
     [[self favoritesEmptyStateView] setKeyboardBottomInset:keyboardBottomInset];
     [[self storageErrorView] setKeyboardBottomInset:keyboardBottomInset];
+    [[self authorizationRequiredView] setKeyboardBottomInset:keyboardBottomInset];
 }
+
+#pragma mark - UIGestureRecognizerDelegate
+
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
+    if (gestureRecognizer == [self transientEdgeBackGestureRecognizer]) {
+        return [self canBeginTransientEdgeBackGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)gestureRecognizer];
+    }
+
+    return YES;
+}
+
+#pragma mark - KayokoPanelPresentationControllerDelegate
 
 - (void)panelPresentationControllerDidRequestDismiss:(KayokoPanelPresentationController *)controller {
     [self hideRestoringFocus];
@@ -275,14 +349,51 @@ NS_ASSUME_NONNULL_END
     return [[self searchController] isSearchActive];
 }
 
+- (BOOL)panelPresentationController:(KayokoPanelPresentationController *)controller
+    shouldBeginExpandedPanelPanFromView:(nullable UIView *)view
+                               velocity:(CGPoint)velocity {
+    (void)controller;
+    (void)view;
+    (void)velocity;
+    if ([self isHidden] || [[self panelPresentationController] isAnimating]) {
+        return NO;
+    }
+    if ([self isShowingClearConfirmation] || [self isPreviewActive] || [self isWordSelectionActive]) {
+        return NO;
+    }
+
+    UIView *activeContentView = [self activeHistoryContentView];
+    return activeContentView == [[self historyListViewController] tableView] ||
+           activeContentView == [[self favoritesListViewController] tableView] ||
+           activeContentView == [self historyEmptyStateView] || activeContentView == [self favoritesEmptyStateView] ||
+           activeContentView == [self storageErrorView] || activeContentView == [self authorizationRequiredView];
+}
+
 - (BOOL)isFullscreenSearchActive {
     return [[self searchController] isSearchActive];
 }
 
-- (void)panelPresentationController:(KayokoPanelPresentationController *)controller
-    handleFullscreenSearchPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
-    [[self searchController] handleFullscreenPanGestureRecognizer:recognizer];
+- (BOOL)shouldSuppressSystemMultitaskingGesture {
+    if ([self isHidden]) {
+        return NO;
+    }
+
+    KayokoPreviewView *previewView = [[self previewViewController] previewView];
+    if (![previewView isHidden] && [previewView hasVisibleTagBar]) {
+        return YES;
+    }
+
+    KayokoWordSelectionView *wordSelectionView = [[self wordSelectionViewController] wordSelectionView];
+    return ![wordSelectionView isHidden] && [wordSelectionView hasVisibleTagBar];
 }
+
+- (void)panelPresentationController:(KayokoPanelPresentationController *)controller
+    handleFullscreenSearchPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
+                             beganInHeaderView:(BOOL)beganInHeaderView {
+    [[self searchController] handleFullscreenPanGestureRecognizer:recognizer beganInHeaderView:beganInHeaderView];
+}
+
+#pragma mark - KayokoHistoryControllerDelegate
 
 - (BOOL)historyControllerIsPanelVisible:(KayokoHistoryController *)controller {
     return ![self isHidden];
@@ -309,6 +420,12 @@ NS_ASSUME_NONNULL_END
 - (void)searchController:(KayokoSearchController *)searchController didFailLoadingSearchWithError:(NSError *)error {
     [self showStorageError:error];
 }
+
+- (void)handleApplicationMetadataChanged {
+    [[self searchController] handleApplicationMetadataChanged];
+}
+
+#pragma mark - KayokoHistoryListViewControllerDelegate
 
 - (void)historyListViewControllerDidRequestHide:(KayokoHistoryListViewController *)controller {
     [self hideRestoringFocus];
@@ -337,6 +454,8 @@ NS_ASSUME_NONNULL_END
                             toHistoryKey:destinationHistoryKey];
 }
 
+#pragma mark - Content Lookup
+
 - (KayokoHistoryListView *)tableViewForHistoryKey:(NSString *)historyKey {
     return [[self historyController] tableViewForHistoryKey:historyKey];
 }
@@ -347,6 +466,11 @@ NS_ASSUME_NONNULL_END
 }
 
 - (UIView *)contentViewForHistoryKey:(NSString *)historyKey {
+    if ([self isAuthorizationRequired]) {
+        [[self authorizationRequiredView] setKeyboardBottomInset:[[self searchController] keyboardBottomInset]];
+        return [self authorizationRequiredView];
+    }
+
     if ([self storageError]) {
         [[self storageErrorView] updateWithStorageError:[self storageError]];
         [[self storageErrorView] setKeyboardBottomInset:[[self searchController] keyboardBottomInset]];
@@ -382,6 +506,10 @@ NS_ASSUME_NONNULL_END
 
     if (![[self storageErrorView] isHidden]) {
         return [self storageErrorView];
+    }
+
+    if (![[self authorizationRequiredView] isHidden]) {
+        return [self authorizationRequiredView];
     }
 
     return [self emptyStateViewForHistoryKey:[self effectiveActiveHistoryKey]];
@@ -420,12 +548,19 @@ NS_ASSUME_NONNULL_END
         return [[self storageErrorView] name];
     }
 
+    if (view == [self authorizationRequiredView]) {
+        return [[self authorizationRequiredView] name];
+    }
+
     return nil;
 }
+
+#pragma mark - History Content
 
 - (void)setHistoryContentVisibleForKey:(NSString *)historyKey {
     [[self historyController] setActiveHistoryKey:historyKey];
     UIView *contentView = [self contentViewForHistoryKey:historyKey];
+    BOOL showsAuthorizationRequired = contentView == [self authorizationRequiredView];
     [[[self historyListViewController] tableView]
         setHidden:contentView != [[self historyListViewController] tableView]];
     [[[self favoritesListViewController] tableView]
@@ -433,13 +568,28 @@ NS_ASSUME_NONNULL_END
     [[self historyEmptyStateView] setHidden:contentView != [self historyEmptyStateView]];
     [[self favoritesEmptyStateView] setHidden:contentView != [self favoritesEmptyStateView]];
     [[self storageErrorView] setHidden:contentView != [self storageErrorView]];
+    [[self authorizationRequiredView] setHidden:!showsAuthorizationRequired];
     [contentView setAlpha:1];
     [contentView setTransform:CGAffineTransformIdentity];
+    if (showsAuthorizationRequired) {
+        [[self searchController] resetBeforeHide];
+        [self showAuthorizationRequiredHeaderIcon];
+        [[[self mainView] clearButton] setHidden:YES];
+        [[[self mainView] backButton] setHidden:YES];
+        [[[self mainView] titleTapControl] setEnabled:NO];
+        [[self mainView] setTitleText:[self titleForContentView:contentView]];
+        [[self mainView] setClearButtonEnabledForItemCount:0];
+        return;
+    }
+
+    [self restoreHistoryHeaderIconForHistoryKey:historyKey];
+    [[[self mainView] clearButton] setHidden:NO];
+    [[[self mainView] backButton] setHidden:YES];
+    [[[self mainView] titleTapControl] setEnabled:YES];
     [[self searchController] attachToListViewController:[self listViewControllerForHistoryKey:historyKey]
                                          hidesSearchBar:![[self searchController] isSearchActive]];
     [[self searchController] refreshForListViewController:[self activeListViewController]];
     [[self mainView] setTitleText:[self titleForContentView:contentView]];
-    [self updateFavoritesButtonForHistoryKey:historyKey];
 }
 
 - (void)markHistoryKeyLoaded:(NSString *)historyKey {
@@ -447,6 +597,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateActiveTableViewState:(KayokoHistoryListView *)tableView {
+    if ([self isAuthorizationRequired]) {
+        return;
+    }
+
     if (tableView == [self activeTableView]) {
         KayokoHistoryListViewController *activeListViewController = [self activeListViewController];
         if ([self cancelSearchForEmptyActiveHistoryIfNeededHidingView:[self activeHistoryContentView]
@@ -492,6 +646,8 @@ NS_ASSUME_NONNULL_END
                           completion:(void (^)(KayokoHistoryListView *tableView))completion {
     [[self historyController] reloadTableViewForHistoryKey:historyKey completion:completion];
 }
+
+#pragma mark - Clear Confirmation
 
 - (void)showClearConfirmationForHistoryKey:(NSString *)historyKey {
     [[self historyController] setActiveHistoryKey:historyKey];
@@ -564,7 +720,14 @@ NS_ASSUME_NONNULL_END
     return [self clearConfirmationHistoryKey] && ![[[self clearConfirmationViewController] confirmationView] isHidden];
 }
 
+#pragma mark - Content State
+
 - (void)updateClearButtonState {
+    if ([self isAuthorizationRequired]) {
+        [[self mainView] setClearButtonEnabledForItemCount:0];
+        return;
+    }
+
     if ([self storageError]) {
         [[self mainView] setClearButtonEnabledForItemCount:0];
         return;
@@ -602,6 +765,8 @@ NS_ASSUME_NONNULL_END
                            direction:KayokoContentTransitionDirectionForward];
 }
 
+#pragma mark - Transient Content
+
 - (BOOL)isPreviewActive {
     return ![[[self previewViewController] previewView] isHidden] || [[self previewViewController] previewItem] != nil;
 }
@@ -609,6 +774,218 @@ NS_ASSUME_NONNULL_END
 - (BOOL)isWordSelectionActive {
     return ![[[self wordSelectionViewController] view] isHidden] ||
            [[self wordSelectionViewController] sourceItem] != nil;
+}
+
+- (UIView *)activeTransientContentViewForEdgeBackGesture {
+    UIView *previewView = [[self previewViewController] previewView];
+    if (![previewView isHidden] && [[self previewViewController] previewItem]) {
+        return previewView;
+    }
+
+    UIView *wordSelectionView = [[self wordSelectionViewController] view];
+    if (![wordSelectionView isHidden] && [[self wordSelectionViewController] sourceItem]) {
+        return wordSelectionView;
+    }
+
+    return nil;
+}
+
+- (BOOL)canBeginTransientEdgeBackGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
+    if ([self isHidden] || [[self mainView] isAnimating] || [[self panelPresentationController] isAnimating]) {
+        return NO;
+    }
+
+    UIView *sourceView = [self activeSourceContentView];
+    UIView *contentView = [self activeTransientContentViewForEdgeBackGesture];
+    if (!sourceView || !contentView) {
+        return NO;
+    }
+
+    CGPoint velocity = [recognizer velocityInView:[self mainView]];
+    if (velocity.x <= 0 || fabs(velocity.x) <= fabs(velocity.y) * kKayokoTransientEdgeBackHorizontalDominance) {
+        return NO;
+    }
+
+    if (contentView == [[self previewViewController] previewView] &&
+        ![[[self previewViewController] previewView] canBeginEdgeBackGesture]) {
+        return NO;
+    }
+
+    return YES;
+}
+
+- (CGFloat)progressForTransientEdgeBackGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
+    CGFloat width = MAX(CGRectGetWidth([[[self mainView] contentContainerView] bounds]), 1);
+    CGFloat progress = [recognizer translationInView:[self mainView]].x / width;
+    return MIN(MAX(progress, 0), 1);
+}
+
+- (NSTimeInterval)transientEdgeBackAnimationDurationWithProgress:(CGFloat)progress finishing:(BOOL)finishing {
+    CGFloat remainingProgress = finishing ? 1 - progress : progress;
+    NSTimeInterval duration = kKayokoTransientEdgeBackMaximumAnimationDuration * remainingProgress;
+    return MIN(MAX(duration, kKayokoTransientEdgeBackMinimumAnimationDuration),
+               kKayokoTransientEdgeBackMaximumAnimationDuration);
+}
+
+- (void)resetInteractiveTransientReturnState {
+    [self setInteractiveTransientReturnSourceView:nil];
+    [self setInteractiveTransientReturnContentView:nil];
+    [self setInteractiveTransientReturnWasPreview:NO];
+    [self setDidRestoreSearchDuringInteractiveTransientReturn:NO];
+}
+
+- (void)clearSearchAfterTransientContentState {
+    [self setRestoresSearchFirstResponderAfterTransientContent:NO];
+    [self setHasSearchContentOffsetBeforeTransientContent:NO];
+}
+
+- (BOOL)restoreSearchAfterTransientContentIfNeededClearingState:(BOOL)clearsState {
+    BOOL didRestore = NO;
+    if ([[self searchController] isSearchActive]) {
+        CGPoint targetContentOffset = [[[self activeListViewController] tableView] contentOffset];
+        if ([self hasSearchContentOffsetBeforeTransientContent]) {
+            targetContentOffset = [self searchContentOffsetBeforeTransientContent];
+        }
+        [[self searchController]
+            refreshAfterTransientContentForListViewController:[self activeListViewController]
+                                       restoresFirstResponder:[self restoresSearchFirstResponderAfterTransientContent]
+                                          targetContentOffset:targetContentOffset];
+        didRestore = YES;
+    }
+
+    if (clearsState) {
+        [self clearSearchAfterTransientContentState];
+    }
+    return didRestore;
+}
+
+- (void)beginInteractiveTransientReturnWithGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
+    UIView *sourceView = [self activeSourceContentView];
+    UIView *contentView = [self activeTransientContentViewForEdgeBackGesture];
+    if (!sourceView || !contentView) {
+        return;
+    }
+
+    [self setInteractiveTransientReturnSourceView:sourceView];
+    [self setInteractiveTransientReturnContentView:contentView];
+    [self setInteractiveTransientReturnWasPreview:(contentView == [[self previewViewController] previewView])];
+    [[self mainView] beginInteractiveBackwardContentTransitionToView:sourceView hideContentView:contentView];
+    [[self mainView]
+        updateInteractiveBackwardContentTransitionToView:sourceView
+                                         hideContentView:contentView
+                                                progress:[self
+                                                             progressForTransientEdgeBackGestureRecognizer:recognizer]];
+    [self setDidRestoreSearchDuringInteractiveTransientReturn:
+              [self restoreSearchAfterTransientContentIfNeededClearingState:NO]];
+}
+
+- (void)updateInteractiveTransientReturnWithGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
+    UIView *sourceView = [self interactiveTransientReturnSourceView];
+    UIView *contentView = [self interactiveTransientReturnContentView];
+    if (!sourceView || !contentView) {
+        return;
+    }
+
+    [[self mainView]
+        updateInteractiveBackwardContentTransitionToView:sourceView
+                                         hideContentView:contentView
+                                                progress:[self
+                                                             progressForTransientEdgeBackGestureRecognizer:recognizer]];
+}
+
+- (void)finishInteractiveTransientReturnWithDuration:(NSTimeInterval)duration {
+    UIView *sourceView = [self interactiveTransientReturnSourceView];
+    UIView *contentView = [self interactiveTransientReturnContentView];
+    if (!sourceView || !contentView) {
+        [self resetInteractiveTransientReturnState];
+        return;
+    }
+
+    BOOL wasPreview = [self interactiveTransientReturnWasPreview];
+    if (wasPreview) {
+        [[self previewViewController] prepareToHidePreview];
+    } else {
+        [[self wordSelectionViewController] prepareToHideWordSelection];
+    }
+    if ([self didRestoreSearchDuringInteractiveTransientReturn]) {
+        [self clearSearchAfterTransientContentState];
+    } else {
+        [self restoreSearchAfterTransientContentIfNeededClearingState:YES];
+    }
+    [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleSoft];
+
+    [[self mainView] finishInteractiveBackwardContentTransitionToView:sourceView
+                                                      hideContentView:contentView
+                                                                title:[self titleForContentView:sourceView]
+                                                             duration:duration
+                                                           completion:^{
+                                                             if (wasPreview) {
+                                                                 [[self previewViewController] hidePreview];
+                                                             } else {
+                                                                 [[self wordSelectionViewController] hideWordSelection];
+                                                             }
+                                                             [self setActiveSourceContentView:nil];
+                                                             [self resetInteractiveTransientReturnState];
+                                                           }];
+}
+
+- (void)cancelInteractiveTransientReturnWithDuration:(NSTimeInterval)duration {
+    UIView *sourceView = [self interactiveTransientReturnSourceView];
+    UIView *contentView = [self interactiveTransientReturnContentView];
+    if (!sourceView || !contentView) {
+        [self resetInteractiveTransientReturnState];
+        return;
+    }
+
+    if ([self didRestoreSearchDuringInteractiveTransientReturn]) {
+        [[self searchController] resignSearchFirstResponder];
+    }
+
+    [[self mainView] cancelInteractiveBackwardContentTransitionToView:sourceView
+                                                      hideContentView:contentView
+                                                             duration:duration
+                                                           completion:^{
+                                                             [self resetInteractiveTransientReturnState];
+                                                           }];
+}
+
+- (void)finishOrCancelInteractiveTransientReturnWithGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
+    if ([recognizer state] == UIGestureRecognizerStateCancelled ||
+        [recognizer state] == UIGestureRecognizerStateFailed) {
+        CGFloat progress = [self progressForTransientEdgeBackGestureRecognizer:recognizer];
+        [self cancelInteractiveTransientReturnWithDuration:[self transientEdgeBackAnimationDurationWithProgress:progress
+                                                                                                      finishing:NO]];
+        return;
+    }
+
+    CGFloat progress = [self progressForTransientEdgeBackGestureRecognizer:recognizer];
+    CGPoint velocity = [recognizer velocityInView:[self mainView]];
+    BOOL shouldFinish = progress >= kKayokoTransientEdgeBackCompletionProgress ||
+                        velocity.x >= kKayokoTransientEdgeBackCompletionVelocity;
+    NSTimeInterval duration = [self transientEdgeBackAnimationDurationWithProgress:progress finishing:shouldFinish];
+    if (shouldFinish) {
+        [self finishInteractiveTransientReturnWithDuration:duration];
+    } else {
+        [self cancelInteractiveTransientReturnWithDuration:duration];
+    }
+}
+
+- (void)handleTransientEdgeBackGestureRecognizer:(UIScreenEdgePanGestureRecognizer *)recognizer {
+    switch ([recognizer state]) {
+    case UIGestureRecognizerStateBegan:
+        [self beginInteractiveTransientReturnWithGestureRecognizer:recognizer];
+        break;
+    case UIGestureRecognizerStateChanged:
+        [self updateInteractiveTransientReturnWithGestureRecognizer:recognizer];
+        break;
+    case UIGestureRecognizerStateEnded:
+    case UIGestureRecognizerStateCancelled:
+    case UIGestureRecognizerStateFailed:
+        [self finishOrCancelInteractiveTransientReturnWithGestureRecognizer:recognizer];
+        break;
+    default:
+        break;
+    }
 }
 
 - (void)restoreActiveSourceContentView {
@@ -623,10 +1000,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)refreshSearchAfterEndingTransientContentIfNeeded {
-    if ([[self searchController] isSearchActive]) {
-        [[self searchController] refreshForListViewController:[self activeListViewController]];
-    }
+    [self restoreSearchAfterTransientContentIfNeededClearingState:YES];
 }
+
+#pragma mark - Header State
 
 - (void)updateFavoritesButtonForHistoryKey:(NSString *)historyKey {
     BOOL showingFavorites = [historyKey isEqualToString:kKayokoHistoryKeyFavorites];
@@ -637,6 +1014,44 @@ NS_ASSUME_NONNULL_END
                                    andImageSize:kKayokoFavoritesButtonImageSize
                                    andTintColor:tintColor];
 }
+
+- (nullable UIImage *)authorizationHeaderIconImage {
+    UIImage *bundleIcon = [UIImage imageNamed:@"Icon"
+                                     inBundle:[KayokoPasteboardManager localizationBundle]
+                compatibleWithTraitCollection:nil];
+    if (bundleIcon) {
+        return [bundleIcon imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    }
+
+    UIImageSymbolConfiguration *configuration =
+        [UIImageSymbolConfiguration configurationWithPointSize:kKayokoFavoritesButtonImageSize
+                                                        weight:UIImageSymbolWeightMedium];
+    return [[UIImage systemImageNamed:@"keyboard"] imageWithConfiguration:configuration];
+}
+
+- (void)showAuthorizationRequiredHeaderIcon {
+    UIButton *favoritesButton = [[self mainView] favoritesButton];
+    UIImage *icon = [self authorizationHeaderIconImage];
+    [favoritesButton setHidden:NO];
+    [favoritesButton setEnabled:YES];
+    [favoritesButton setUserInteractionEnabled:NO];
+    [favoritesButton setTintColor:[UIColor labelColor]];
+    [favoritesButton setImage:icon forState:UIControlStateNormal];
+    [[[favoritesButton imageView] layer] setCornerRadius:6];
+    [[favoritesButton imageView] setClipsToBounds:YES];
+}
+
+- (void)restoreHistoryHeaderIconForHistoryKey:(NSString *)historyKey {
+    UIButton *favoritesButton = [[self mainView] favoritesButton];
+    [favoritesButton setHidden:NO];
+    [favoritesButton setEnabled:YES];
+    [favoritesButton setUserInteractionEnabled:YES];
+    [[[favoritesButton imageView] layer] setCornerRadius:0];
+    [[favoritesButton imageView] setClipsToBounds:NO];
+    [self updateFavoritesButtonForHistoryKey:historyKey];
+}
+
+#pragma mark - Content Presentation
 
 - (void)showContentView:(UIView *)viewToShow
         hideContentView:(UIView *)viewToHide
@@ -680,6 +1095,11 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility {
+    if ([self isAuthorizationRequired]) {
+        [self setHistoryContentVisibleForKey:[self effectiveActiveHistoryKey]];
+        return;
+    }
+
     if (![self isShowingClearConfirmation] && [[[self previewViewController] previewView] isHidden] &&
         [[[self wordSelectionViewController] view] isHidden]) {
         if ([self cancelSearchForEmptyActiveHistoryIfNeededHidingView:[self activeHistoryContentView]
@@ -707,8 +1127,14 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+#pragma mark - Actions
+
 - (void)handleFavoritesButtonPressed {
     if ([[self panelPresentationController] isAnimating]) {
+        return;
+    }
+
+    if ([self isAuthorizationRequired]) {
         return;
     }
 
@@ -802,12 +1228,23 @@ NS_ASSUME_NONNULL_END
 - (void)handlePreviewActionButtonPressed {
     if (![[[self wordSelectionViewController] view] isHidden]) {
         [[self wordSelectionViewController] handleActionButtonWithAutomaticallyPaste:[self automaticallyPaste]];
+        return;
+    }
+
+    if (![[[self previewViewController] previewView] isHidden]) {
+        [[self previewViewController] handleActionButtonWithCompletion:^(BOOL success) {
+          if (success) {
+              [[self panelPresentationController] triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
+              [self hideAfterDirectPaste];
+          }
+        }];
     }
 }
 
 - (void)handleClearButtonPressed {
     if ([[self panelPresentationController] isAnimating] || ![[[self previewViewController] previewView] isHidden] ||
-        ![[[self wordSelectionViewController] view] isHidden] || [self isShowingClearConfirmation]) {
+        ![[[self wordSelectionViewController] view] isHidden] || [self isShowingClearConfirmation] ||
+        [self isAuthorizationRequired]) {
         return;
     }
 
@@ -817,6 +1254,10 @@ NS_ASSUME_NONNULL_END
 
 - (void)handleTitleTapControlPressed {
     if ([[self panelPresentationController] isAnimating] || [[self mainView] isAnimating]) {
+        return;
+    }
+
+    if ([self isAuthorizationRequired]) {
         return;
     }
 
@@ -833,6 +1274,8 @@ NS_ASSUME_NONNULL_END
     [[self activeListViewController] scrollToTopAnimated:YES];
 }
 
+#pragma mark - Item Handling
+
 - (void)handlePasteboardItemDictionary:(NSDictionary<NSString *, id> *)dictionary
                    movedFromHistoryKey:(NSString *)sourceHistoryKey
                           toHistoryKey:(NSString *)destinationHistoryKey {
@@ -841,12 +1284,30 @@ NS_ASSUME_NONNULL_END
                                                 toHistoryKey:destinationHistoryKey];
 }
 
+- (void)handleTagAssignmentForItem:(KayokoPasteboardItem *)item historyKey:(NSString *)historyKey {
+    if (!item || [historyKey length] == 0) {
+        return;
+    }
+    [[self listViewControllerForHistoryKey:historyKey] updateTagUUID:[item tagUUID] forItem:item];
+}
+
+#pragma mark - Transient Presentation
+
 - (void)showContentForItem:(KayokoPasteboardItem *)item {
+    BOOL restoresSearchFirstResponder = [[self searchController] isActiveSearchFirstResponder];
+    [self setRestoresSearchFirstResponderAfterTransientContent:restoresSearchFirstResponder];
+    if (restoresSearchFirstResponder) {
+        [self setSearchContentOffsetBeforeTransientContent:[[[self activeListViewController] tableView] contentOffset]];
+        [self setHasSearchContentOffsetBeforeTransientContent:YES];
+    } else {
+        [self setHasSearchContentOffsetBeforeTransientContent:NO];
+    }
     [[self searchController] resignSearchFirstResponder];
     NSString *historyKey = [self effectiveActiveHistoryKey];
     KayokoHistoryListView *sourceTableView = [self tableViewForHistoryKey:historyKey];
     [self setActiveSourceContentView:sourceTableView];
-    NSString *previewText = kayokoMainPreviewTextByTrimmingBoundaryNewlines([item content]);
+    NSString *previewText =
+        [([item content] ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
     BOOL canUseWordSelection = [self swipeToSelectWords] && [[item imageName] isEqualToString:@""] &&
                                [[self wordSelectionViewController] canShowText:previewText];
     if (canUseWordSelection) {
@@ -884,14 +1345,17 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    [self showContentView:sourceView
-          hideContentView:previewView
-                direction:KayokoContentTransitionDirectionBackward
-               completion:^{
-                 [[self previewViewController] hidePreview];
-                 [self setActiveSourceContentView:nil];
-                 [self refreshSearchAfterEndingTransientContentIfNeeded];
-               }];
+    [[self mainView] showContentView:sourceView
+        hideContentView:previewView
+        title:[self titleForContentView:sourceView]
+        direction:KayokoContentTransitionDirectionBackward
+        willAnimate:^{
+          [self refreshSearchAfterEndingTransientContentIfNeeded];
+        }
+        completion:^{
+          [[self previewViewController] hidePreview];
+          [self setActiveSourceContentView:nil];
+        }];
 }
 
 - (void)hideWordSelection {
@@ -909,15 +1373,20 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    [self showContentView:sourceView
-          hideContentView:wordSelectionView
-                direction:KayokoContentTransitionDirectionBackward
-               completion:^{
-                 [[self wordSelectionViewController] hideWordSelection];
-                 [self setActiveSourceContentView:nil];
-                 [self refreshSearchAfterEndingTransientContentIfNeeded];
-               }];
+    [[self mainView] showContentView:sourceView
+        hideContentView:wordSelectionView
+        title:[self titleForContentView:sourceView]
+        direction:KayokoContentTransitionDirectionBackward
+        willAnimate:^{
+          [self refreshSearchAfterEndingTransientContentIfNeeded];
+        }
+        completion:^{
+          [[self wordSelectionViewController] hideWordSelection];
+          [self setActiveSourceContentView:nil];
+        }];
 }
+
+#pragma mark - KayokoClearConfirmationViewControllerDelegate
 
 - (void)clearConfirmationViewControllerDidCancel:(KayokoClearConfirmationViewController *)controller {
     if ([[self panelPresentationController] isAnimating]) {
@@ -937,6 +1406,8 @@ NS_ASSUME_NONNULL_END
               didFailClearingHistoryKey:(NSString *)historyKey {
 }
 
+#pragma mark - KayokoWordSelectionViewControllerDelegate
+
 - (void)wordSelectionViewController:(KayokoWordSelectionViewController *)controller
     didRequestHideContainerAfterDirectPaste:(BOOL)directPaste {
     if (directPaste) {
@@ -951,7 +1422,38 @@ NS_ASSUME_NONNULL_END
     [[self panelPresentationController] triggerHapticFeedbackWithStyle:style];
 }
 
+#pragma mark - Authorization
+
+- (void)openAuthorizationSettings {
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+      NSURL *URL = [NSURL URLWithString:@"prefs:root=Kayoko"];
+      Class workspaceClass = NSClassFromString(@"LSApplicationWorkspace");
+      if (!URL || ![workspaceClass respondsToSelector:@selector(defaultWorkspace)]) {
+          NSLog(@"Kayoko: LSApplicationWorkspace is unavailable for opening Settings");
+          return;
+      }
+
+      LSApplicationWorkspace *workspace = [workspaceClass defaultWorkspace];
+      if (![workspace respondsToSelector:@selector(openSensitiveURL:withOptions:error:)]) {
+          NSLog(@"Kayoko: LSApplicationWorkspace cannot open sensitive URLs");
+          return;
+      }
+
+      NSError *error = nil;
+      if (![workspace openSensitiveURL:URL withOptions:@{} error:&error]) {
+          NSLog(@"Kayoko: Failed to open Kayoko Settings: %@", error);
+      }
+    });
+}
+
+#pragma mark - Public API
+
 - (void)reload {
+    if ([self isAuthorizationRequired]) {
+        [self setHistoryContentVisibleForKey:[self effectiveActiveHistoryKey]];
+        return;
+    }
+
     NSString *historyKey = [self effectiveActiveHistoryKey];
     [self reloadTableViewForHistoryKey:historyKey
                 animatingTopInsertions:![self isHidden] && [historyKey isEqualToString:kKayokoHistoryKeyHistory]
@@ -985,6 +1487,7 @@ NS_ASSUME_NONNULL_END
 
     [self setDismissingPanel:NO];
     [self setPreparingToShow:YES];
+    [[KayokoTagCatalog sharedCatalog] reloadTags];
     NSUInteger showRequestIdentifier = [self showRequestIdentifier] + 1;
     [self setShowRequestIdentifier:showRequestIdentifier];
     [self resetClearConfirmationIfNeeded];
@@ -995,6 +1498,13 @@ NS_ASSUME_NONNULL_END
     NSString *initialHistoryKey = [self historyKeyForInitialViewMode];
     if ([initialHistoryKey length] > 0) {
         [[self historyController] setActiveHistoryKey:initialHistoryKey];
+    }
+
+    if ([self isAuthorizationRequired]) {
+        [self setPreparingToShow:NO];
+        [self setHistoryContentVisibleForKey:[self effectiveActiveHistoryKey]];
+        [[self panelPresentationController] showPanelWithCompletion:nil];
+        return;
     }
 
     NSString *historyKey = [self effectiveActiveHistoryKey];
@@ -1019,12 +1529,20 @@ NS_ASSUME_NONNULL_END
                             }];
 }
 
+#pragma mark - Hiding
+
 - (void)hide {
     [self hideWithCompletion:nil];
 }
 
 - (void)hideAfterDirectPaste {
-    [self hide];
+    BOOL shouldRestoreFocusAfterHide = [self isFullscreenSearchActive];
+    [self hideWithCompletion:^{
+      if (!shouldRestoreFocusAfterHide || ![self focusRestoreRequestHandler]) {
+          return;
+      }
+      [self focusRestoreRequestHandler]();
+    }];
 }
 
 - (void)hideRestoringFocus {

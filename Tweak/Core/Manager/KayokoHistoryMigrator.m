@@ -26,6 +26,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @implementation KayokoHistoryMigrationSource
 
+#pragma mark - Construction
+
 + (instancetype)sourceWithIdentifier:(NSString *)identifier
                          historyPath:(NSString *)historyPath
                           imagesPath:(NSString *)imagesPath {
@@ -47,14 +49,25 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 @interface KayokoHistoryMigrator ()
+
+#pragma mark - Store
+
 @property(nonatomic, strong) KayokoHistoryStore *historyStore;
+
+#pragma mark - Sources
+
 @property(nonatomic, copy) NSArray<KayokoHistoryMigrationSource *> *migrationSources;
+
+#pragma mark - Image Copying
+
 @property(nonatomic, strong) NSMutableDictionary<NSString *, NSString *> *copiedImageNamesBySourcePath;
 @end
 
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoHistoryMigrator
+
+#pragma mark - Sources
 
 + (NSArray<KayokoHistoryMigrationSource *> *)defaultMigrationSources {
     return @[
@@ -67,6 +80,8 @@ NS_ASSUME_NONNULL_END
                                                 imagesPath:jbroot(@"/var/mobile/Library/com.82flex.kayoko/images/")]
     ];
 }
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithHistoryStore:(KayokoHistoryStore *)historyStore
                     migrationSources:(NSArray<KayokoHistoryMigrationSource *> *)migrationSources {
@@ -88,6 +103,8 @@ NS_ASSUME_NONNULL_END
                                                                stringByAppendingPathComponent:@"images"]];
     return [self initWithHistoryStore:historyStore migrationSources:@[ source ]];
 }
+
+#pragma mark - Migration
 
 - (BOOL)migrateIfNeededWithError:(NSError **)error {
     if (![[self historyStore] prepareStoreWithError:error]) {
@@ -180,7 +197,7 @@ NS_ASSUME_NONNULL_END
     return [[self historyStore] markMigrationCompletedWithError:error];
 }
 
-#pragma mark - Private
+#pragma mark - Legacy JSON
 
 - (NSDictionary<NSString *, id> *)legacyHistoryJSONForSource:(KayokoHistoryMigrationSource *)source
                                                       exists:(BOOL *)exists
@@ -213,6 +230,8 @@ NS_ASSUME_NONNULL_END
 
     return json;
 }
+
+#pragma mark - Item Preparation
 
 - (NSArray<NSDictionary<NSString *, id> *> *)preparedItemsFromLegacyJSON:(NSDictionary<NSString *, id> *)json
                                                               primaryKey:(NSString *)primaryKey
@@ -281,6 +300,8 @@ NS_ASSUME_NONNULL_END
     return preparedItem;
 }
 
+#pragma mark - Image Copying
+
 - (NSString *)copyImageNamed:(NSString *)imageName
                   fromSource:(KayokoHistoryMigrationSource *)source
                        error:(NSError **)error {
@@ -340,6 +361,8 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+#pragma mark - Value Mapping
+
 - (NSString *)stringValueFromDictionary:(NSDictionary<NSString *, id> *)dictionary key:(NSString *)key {
     id value = dictionary[key];
     if ([value isKindOfClass:[NSString class]]) {
@@ -347,6 +370,8 @@ NS_ASSUME_NONNULL_END
     }
     return nil;
 }
+
+#pragma mark - Errors
 
 - (NSError *)migrationErrorForSource:(KayokoHistoryMigrationSource *)source reason:(NSString *)reason {
     NSString *descriptionFormat = KayokoHistoryMigratorLocalizedString(

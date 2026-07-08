@@ -25,6 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) UIBlurEffect *blurEffect;
 @property(nonatomic, strong) UIVisualEffectView *blurEffectView;
 @property(nonatomic, strong) UIView *headerView;
+@property(nonatomic, strong) UIView *contentContainerView;
 @property(nonatomic, strong) KayokoGrabberView *grabber;
 @property(nonatomic, strong) UILabel *titleLabel;
 @property(nonatomic, strong) UIControl *titleTapControl;
@@ -56,6 +57,12 @@ NS_ASSUME_NONNULL_BEGIN
                   title:(NSString *)title
               direction:(KayokoContentTransitionDirection)direction
              completion:(nullable void (^)(void))completion;
+- (void)showContentView:(UIView *)viewToShow
+        hideContentView:(UIView *)viewToHide
+                  title:(NSString *)title
+              direction:(KayokoContentTransitionDirection)direction
+            willAnimate:(nullable void (^)(void))willAnimate
+             completion:(nullable void (^)(void))completion;
 - (void)prepareContentTransitionToView:(UIView *)viewToShow
                        hideContentView:(UIView *)viewToHide
                                  title:(NSString *)title
@@ -64,6 +71,19 @@ NS_ASSUME_NONNULL_BEGIN
                              hideContentView:(UIView *)viewToHide
                                    direction:(KayokoContentTransitionDirection)direction;
 - (void)completePreparedContentTransitionHidingView:(UIView *)viewToHide completion:(nullable void (^)(void))completion;
+- (void)beginInteractiveBackwardContentTransitionToView:(UIView *)viewToShow hideContentView:(UIView *)viewToHide;
+- (void)updateInteractiveBackwardContentTransitionToView:(UIView *)viewToShow
+                                         hideContentView:(UIView *)viewToHide
+                                                progress:(CGFloat)progress;
+- (void)finishInteractiveBackwardContentTransitionToView:(UIView *)viewToShow
+                                         hideContentView:(UIView *)viewToHide
+                                                   title:(NSString *)title
+                                                duration:(NSTimeInterval)duration
+                                              completion:(nullable void (^)(void))completion;
+- (void)cancelInteractiveBackwardContentTransitionToView:(UIView *)viewToShow
+                                         hideContentView:(UIView *)viewToHide
+                                                duration:(NSTimeInterval)duration
+                                              completion:(nullable void (^)(void))completion;
 
 @end
 

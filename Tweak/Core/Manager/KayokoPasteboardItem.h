@@ -13,6 +13,7 @@ static NSString *const kKayokoItemKeyBundleIdentifier = @"bundle_identifier";
 static NSString *const kKayokoItemKeyContent = @"content";
 static NSString *const kKayokoItemKeyImageName = @"image_name";
 static NSString *const kKayokoItemKeyHasLink = @"has_link";
+static NSString *const kKayokoItemKeyTagUUID = @"tag_uuid";
 
 @interface KayokoPasteboardItem : NSObject
 
@@ -20,6 +21,7 @@ static NSString *const kKayokoItemKeyHasLink = @"has_link";
 @property(nonatomic, copy) NSString *displayName;
 @property(nonatomic, copy) NSString *content;
 @property(nonatomic, copy) NSString *imageName;
+@property(nonatomic, copy, nullable) NSString *tagUUID;
 @property(nonatomic, assign) BOOL hasLink;
 
 - (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier

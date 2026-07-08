@@ -8,6 +8,8 @@
 #import "KayokoPasteboardItem.h"
 #import "KayokoPasteboardManager.h"
 #import "KayokoTableViewCellContent.h"
+#import "KayokoTag.h"
+#import "KayokoTagCatalog.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -72,6 +74,8 @@ NS_ASSUME_NONNULL_END
         [([item content] ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
     [content setIcon:[[self metadataProvider] iconForBundleIdentifier:bundleIdentifier]];
     [content setDisplayName:[[self metadataProvider] displayNameForBundleIdentifier:bundleIdentifier]];
+    KayokoTag *tag = [[KayokoTagCatalog sharedCatalog] tagForUUID:[item tagUUID]];
+    [content setTagHexColor:[tag hexColor]];
     [content setContentText:contentText];
     [content setAttributedContentText:[self attributedContentTextForText:contentText searchText:searchText]];
     [content setThumbnailImageName:[item imageName]];

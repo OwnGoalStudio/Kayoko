@@ -97,4 +97,21 @@
                                                       completion:completion];
 }
 
+- (void)setTagUUID:(NSString *)tagUUID
+           forItem:(KayokoPasteboardItem *)item
+        historyKey:(NSString *)historyKey
+        completion:(void (^)(BOOL success))completion {
+    if (!item || [historyKey length] == 0) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
+
+    [[KayokoPasteboardManager sharedInstance] setTagUUID:tagUUID
+                                       forPasteboardItem:item
+                                        inHistoryWithKey:historyKey
+                                              completion:completion];
+}
+
 @end

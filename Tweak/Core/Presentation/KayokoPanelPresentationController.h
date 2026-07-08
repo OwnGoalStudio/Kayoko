@@ -15,8 +15,12 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)panelPresentationControllerDidRequestDismiss:(KayokoPanelPresentationController *)controller;
 - (void)panelPresentationControllerDidTapGrabberArea:(KayokoPanelPresentationController *)controller;
 - (BOOL)panelPresentationControllerShouldHandleFullscreenSearchPan:(KayokoPanelPresentationController *)controller;
+- (BOOL)panelPresentationController:(KayokoPanelPresentationController *)controller
+    shouldBeginExpandedPanelPanFromView:(nullable UIView *)view
+                               velocity:(CGPoint)velocity;
 - (void)panelPresentationController:(KayokoPanelPresentationController *)controller
-    handleFullscreenSearchPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer;
+    handleFullscreenSearchPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
+                             beganInHeaderView:(BOOL)beganInHeaderView;
 
 @end
 

@@ -4,6 +4,7 @@
 <dict>
 	<key>items</key>
 	<array>
+
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
@@ -26,6 +27,7 @@
 			<key>PostNotification</key>
 			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>
+
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
@@ -58,6 +60,7 @@
 			<key>PostNotification</key>
 			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>
+
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
@@ -88,11 +91,22 @@
 				<string>System</string>
 			</array>
 		</dict>
+
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
 			<string>Dangerous Zone</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Restore Tags</string>
+			<key>action</key>
+			<string>restoreTagsPrompt</string>
+			<key>isDestructive</key>
+			<true/>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -126,6 +140,17 @@
 		</dict>
 		<dict>
 			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Deactivate</string>
+			<key>action</key>
+			<string>deactivateAuthorizationPrompt</string>
+			<key>isDestructive</key>
+			<true/>
+		</dict>
+
+		<dict>
+			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
 			<string>Maintenance</string>
@@ -138,6 +163,7 @@
 			<key>action</key>
 			<string>checkDataDirectory</string>
 		</dict>
+
 	</array>
 	<key>title</key>
 	<string>Advanced Options</string>

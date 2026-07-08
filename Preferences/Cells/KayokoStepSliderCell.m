@@ -20,6 +20,8 @@ NS_ASSUME_NONNULL_END
     CGRect _cachedThumbRect;
 }
 
+#pragma mark - Track Geometry
+
 - (CGRect)trackRectForBounds:(CGRect)bounds {
     _cachedTrackRect = [super trackRectForBounds:bounds];
     return _cachedTrackRect;
@@ -29,6 +31,8 @@ NS_ASSUME_NONNULL_END
     _cachedThumbRect = [super thumbRectForBounds:bounds trackRect:rect value:value];
     return _cachedThumbRect;
 }
+
+#pragma mark - Step Rendering
 
 - (void)setStepValues:(NSArray<NSNumber *> *)stepValues {
     _stepValues = [stepValues copy];
@@ -79,6 +83,8 @@ NS_ASSUME_NONNULL_END
     CGFloat _valueLabelWidth;
 }
 
+#pragma mark - Lifecycle
+
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
               reuseIdentifier:(NSString *)reuseIdentifier
                     specifier:(PSSpecifier *)specifier {
@@ -109,6 +115,8 @@ NS_ASSUME_NONNULL_END
     return self;
 }
 
+#pragma mark - Layout
+
 - (void)setupConstraints {
     UILayoutGuide *margins = [self layoutMarginsGuide];
     [NSLayoutConstraint activateConstraints:@[
@@ -123,6 +131,8 @@ NS_ASSUME_NONNULL_END
         [[[self contentView] heightAnchor] constraintGreaterThanOrEqualToConstant:44],
     ]];
 }
+
+#pragma mark - Specifier Sync
 
 - (void)setSpecifier:(PSSpecifier *)specifier {
     [super setSpecifier:specifier];
@@ -157,6 +167,8 @@ NS_ASSUME_NONNULL_END
     [_slider setValue:(float)index animated:NO];
     [self updateValueLabelForIndex:index];
 }
+
+#pragma mark - Value Mapping
 
 - (NSArray<NSNumber *> *)normalizedStepValuesFromSpecifier:(PSSpecifier *)specifier {
     NSArray<NSNumber *> *values = [specifier propertyForKey:@"stepValues"];
@@ -199,6 +211,8 @@ NS_ASSUME_NONNULL_END
 - (void)updateValueLabelForIndex:(NSUInteger)index {
     [_valueLabel setText:[[self valueForIndex:index] stringValue]];
 }
+
+#pragma mark - Actions
 
 - (void)sliderValueChanged:(UISlider *)slider {
     NSUInteger index = (NSUInteger)llroundf([slider value]);

@@ -9,6 +9,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 extern NSString *const kKayokoSearchTokenTypeCategory;
 extern NSString *const kKayokoSearchTokenTypeApp;
+extern NSString *const kKayokoSearchTokenTypeTag;
 
 extern NSString *const kKayokoSearchCategoryText;
 extern NSString *const kKayokoSearchCategoryLink;
@@ -24,17 +25,29 @@ extern NSString *const kKayokoSearchCategoryImage;
 @property(nonatomic, copy, readonly) NSString *value;
 @property(nonatomic, copy, readonly) NSString *title;
 @property(nonatomic, copy, readonly, nullable) NSString *imageName;
+@property(nonatomic, copy, readonly, nullable) NSString *displaySignature;
 
 + (instancetype)tokenWithType:(NSString *)type
                         value:(NSString *)value
                         title:(NSString *)title
                     imageName:(nullable NSString *)imageName;
++ (instancetype)tokenWithType:(NSString *)type
+                        value:(NSString *)value
+                        title:(NSString *)title
+                    imageName:(nullable NSString *)imageName
+             displaySignature:(nullable NSString *)displaySignature;
 - (instancetype)initWithType:(NSString *)type
                        value:(NSString *)value
                        title:(NSString *)title
-                   imageName:(nullable NSString *)imageName NS_DESIGNATED_INITIALIZER;
+                   imageName:(nullable NSString *)imageName;
+- (instancetype)initWithType:(NSString *)type
+                       value:(NSString *)value
+                       title:(NSString *)title
+                   imageName:(nullable NSString *)imageName
+            displaySignature:(nullable NSString *)displaySignature NS_DESIGNATED_INITIALIZER;
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;
+- (BOOL)isDisplayEqualToToken:(nullable KayokoSearchToken *)token;
 
 @end
 
@@ -43,19 +56,23 @@ extern NSString *const kKayokoSearchCategoryImage;
 @property(nonatomic, copy, readonly) NSString *searchText;
 @property(nonatomic, copy, readonly, nullable) NSString *categoryValue;
 @property(nonatomic, copy, readonly, nullable) NSString *appBundleIdentifier;
+@property(nonatomic, copy, readonly, nullable) NSString *tagUUID;
 @property(nonatomic, assign, readonly) BOOL hasCategoryToken;
 @property(nonatomic, assign, readonly) BOOL hasAppToken;
+@property(nonatomic, assign, readonly) BOOL hasTagToken;
 @property(nonatomic, assign, readonly) BOOL hasSearchText;
 @property(nonatomic, assign, readonly) BOOL hasActiveFilters;
 
 + (instancetype)emptyCriteria;
 + (instancetype)criteriaWithSearchText:(nullable NSString *)searchText
                          categoryValue:(nullable NSString *)categoryValue
-                   appBundleIdentifier:(nullable NSString *)appBundleIdentifier;
+                   appBundleIdentifier:(nullable NSString *)appBundleIdentifier
+                               tagUUID:(nullable NSString *)tagUUID;
 
 - (instancetype)initWithSearchText:(nullable NSString *)searchText
                      categoryValue:(nullable NSString *)categoryValue
-               appBundleIdentifier:(nullable NSString *)appBundleIdentifier NS_DESIGNATED_INITIALIZER;
+               appBundleIdentifier:(nullable NSString *)appBundleIdentifier
+                           tagUUID:(nullable NSString *)tagUUID NS_DESIGNATED_INITIALIZER;
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;
 

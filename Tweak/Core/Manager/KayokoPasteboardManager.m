@@ -8,11 +8,11 @@
 #import "KayokoPasteboardManager.h"
 #import "KayokoHistoryChangeNotifier.h"
 #import "KayokoHistoryRepository.h"
+#import "KayokoKeyboardHostResolver.h"
 #import "KayokoKeyboardShortcutSender.h"
 #import "KayokoNotificationKeys.h"
 #import "KayokoPasteboardItem.h"
 #import "KayokoPreferenceKeys.h"
-#import "KayokoSceneSettingKeys.h"
 #import "KayokoSearchCriteria.h"
 
 #import <HBLog.h>
@@ -31,50 +31,41 @@ static NSString *const kKayokoPasteboardManagerErrorDomain = @"com.82flex.kayoko
 - (SBApplication *_Nullable)_accessibilityFrontMostApplication;
 @end
 
-@class BSSettings;
-@class FBSSceneClientSettings;
-@class FBSSceneIdentityToken;
-
-@interface BSSettings : NSObject
-- (long long)flagForSetting:(unsigned long long)setting;
-@end
-
-@interface FBSSceneClientSettings : NSObject
-- (BSSettings *)otherSettings;
-- (FBSSceneIdentityToken *)preferredSceneHostIdentity;
-@end
-
-@interface FBSSceneIdentityToken : NSObject
-- (NSString *)identifier;
-@end
-
-@interface FBScene : NSObject
-- (FBSSceneClientSettings *)clientSettings;
-@end
-
-@interface FBSceneManager : NSObject
-+ (FBScene *)keyboardScene;
-+ (instancetype)sharedInstance;
-- (FBScene *)sceneWithIdentifier:(NSString *)identifier;
-@end
-
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoPasteboardPendingWrite : NSObject
+
+#pragma mark - State
+
 @property(nonatomic, assign, readonly, getter=isActive) BOOL active;
 @property(nonatomic, assign, readonly) BOOL shouldAutoPaste;
 @property(nonatomic, assign, readonly) KayokoAutomaticPasteMode automaticPasteMode;
 @property(nonatomic, assign, readonly) NSUInteger token;
 @property(nonatomic, assign, readonly) NSUInteger previousChangeCount;
+
+#pragma mark - Expiration
+
 @property(nonatomic, copy, nullable) dispatch_block_t expirationBlock;
+
+#pragma mark - Lifecycle
+
 - (NSUInteger)beginAfterChangeCount:(NSUInteger)previousChangeCount
                     shouldAutoPaste:(BOOL)shouldAutoPaste
                  automaticPasteMode:(KayokoAutomaticPasteMode)automaticPasteMode;
+
+#pragma mark - Expiration
+
 - (void)scheduleExpirationOnQueue:(dispatch_queue_t)queue
                        afterDelay:(NSTimeInterval)delay
                           handler:(dispatch_block_t)handler;
+
+#pragma mark - Matching
+
 - (BOOL)matchesToken:(NSUInteger)token;
 - (BOOL)hasAdvancedToChangeCount:(NSUInteger)changeCount;
+
+#pragma mark - Cancellation
+
 - (void)cancelExpirationBlock;
 - (void)cancel;
 @end
@@ -543,9 +534,13 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
+    NSDictionary<NSString *, id> *savedDictionary = [_historyRepository latestItemForHistoryKey:historyKey error:nil];
+    if (![savedDictionary[kKayokoItemKeyContent] isEqualToString:dictionary[kKayokoItemKeyContent]]) {
+        savedDictionary = dictionary;
+    }
     [self postHistoryChangedNotificationForHistoryKey:historyKey
                                            changeType:kKayokoPasteboardManagerHistoryChangeTypeUpsertTop
-                                       itemDictionary:dictionary
+                                       itemDictionary:savedDictionary
                                                 limit:limit];
     return YES;
 }
@@ -608,6 +603,28 @@ NS_ASSUME_NONNULL_END
                             fromHistoryKey:sourceHistoryKey
                               toHistoryKey:destinationHistoryKey
                                 completion:completion];
+}
+
+- (void)setTagUUID:(NSString *)tagUUID
+    forPasteboardItem:(KayokoPasteboardItem *)item
+     inHistoryWithKey:(NSString *)historyKey
+           completion:(void (^)(BOOL success))completion {
+    if (_maintenanceMode) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
+
+    if (!item || [historyKey length] == 0) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
+
+    NSDictionary<NSString *, id> *dictionary = [item dictionaryRepresentation];
+    [_historyRepository setTagUUID:tagUUID forItemDictionary:dictionary inHistoryKey:historyKey completion:completion];
 }
 
 - (void)removeAllPasteboardItemsFromHistoryWithKey:(NSString *)historyKey
@@ -841,66 +858,29 @@ NS_ASSUME_NONNULL_END
         return automaticPasteMode;
     }
 
-    BOOL usesClassic = [self focusedSceneUsesClassicAutomaticPaste];
+    BOOL usesClassic = [self effectiveKeyboardHostUsesClassicAutomaticPaste];
     HBLogDebug(@"Kayoko: automatic paste auto mode resolved to %@", usesClassic ? @"classic" : @"simulated");
     return usesClassic ? kKayokoAutomaticPasteModeClassic : kKayokoAutomaticPasteModeSimulated;
 }
 
-- (BOOL)focusedSceneUsesClassicAutomaticPaste {
-    Class managerClass = NSClassFromString(@"FBSceneManager");
-    if (![managerClass respondsToSelector:@selector(keyboardScene)] ||
-        ![managerClass respondsToSelector:@selector(sharedInstance)]) {
+- (BOOL)effectiveKeyboardHostUsesClassicAutomaticPaste {
+    KayokoKeyboardHostContext *hostContext =
+        [[KayokoKeyboardHostResolver sharedResolver] effectiveExternalKeyboardHostContext];
+    if (!hostContext) {
+        HBLogDebug(@"Kayoko: automatic paste auto mode has no external keyboard host context; using simulated");
         return NO;
     }
 
-    FBScene *keyboardScene = [(id)managerClass keyboardScene];
-    FBSceneManager *sceneManager = [(id)managerClass sharedInstance];
-
-    if (![keyboardScene respondsToSelector:@selector(clientSettings)] ||
-        ![sceneManager respondsToSelector:@selector(sceneWithIdentifier:)]) {
-        return NO;
-    }
-
-    FBSSceneClientSettings *keyboardClientSettings = [keyboardScene clientSettings];
-    if (![keyboardClientSettings respondsToSelector:@selector(preferredSceneHostIdentity)]) {
-        return NO;
-    }
-
-    FBSSceneIdentityToken *hostIdentity = [keyboardClientSettings preferredSceneHostIdentity];
-    if (![hostIdentity respondsToSelector:@selector(identifier)]) {
-        return NO;
-    }
-
-    NSString *hostSceneIdentifier = [hostIdentity identifier];
-    if (![hostSceneIdentifier isKindOfClass:[NSString class]] || [hostSceneIdentifier length] == 0) {
-        return NO;
-    }
-
-    if ([[hostSceneIdentifier lowercaseString] containsString:@"com.apple.springboard"]) {
-        HBLogDebug(@"Kayoko: automatic paste auto mode using classic for SpringBoard scene=%@", hostSceneIdentifier);
-        return YES;
-    }
-
-    FBScene *hostScene = [sceneManager sceneWithIdentifier:hostSceneIdentifier];
-    if (![hostScene respondsToSelector:@selector(clientSettings)]) {
-        return NO;
-    }
-
-    FBSSceneClientSettings *hostClientSettings = [hostScene clientSettings];
-    if (![hostClientSettings respondsToSelector:@selector(otherSettings)]) {
-        return NO;
-    }
-
-    BSSettings *otherSettings = [hostClientSettings otherSettings];
-    if (![otherSettings respondsToSelector:@selector(flagForSetting:)]) {
-        return NO;
-    }
-
-    long long helperInjectedFlag = [otherSettings flagForSetting:kKayokoSceneClientSettingHelperInjected];
-    BOOL helperInjected = helperInjectedFlag == 1;
-    HBLogDebug(@"Kayoko: focused scene helper marker scene=%@ flag=%lld injected=%@", hostSceneIdentifier,
-               helperInjectedFlag, helperInjected ? @"YES" : @"NO");
-    return helperInjected;
+    BOOL springBoardHost =
+        hostContext.kind == KayokoKeyboardHostKindSpringBoard || hostContext.kind == KayokoKeyboardHostKindSpotlight;
+    BOOL usesClassic = springBoardHost || [hostContext isHelperInjected];
+    HBLogDebug(@"Kayoko: automatic paste auto mode using %@ keyboard host scene=%@ kind=%@ cached=%@ "
+               @"helperMarkerAvailable=%@ helperFlag=%lld injected=%@",
+               hostContext.isCached ? @"cached external" : @"current", hostContext.identifier,
+               [KayokoKeyboardHostResolver stringForHostKind:hostContext.kind], hostContext.isCached ? @"YES" : @"NO",
+               hostContext.helperMarkerAvailable ? @"YES" : @"NO", hostContext.helperInjectedFlag,
+               hostContext.isHelperInjected ? @"YES" : @"NO");
+    return usesClassic;
 }
 
 - (void)cancelPendingPasteboardWrite {

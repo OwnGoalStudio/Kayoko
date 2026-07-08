@@ -23,6 +23,8 @@ NS_ASSUME_NONNULL_END
 
 @implementation KayokoHistoryController
 
+#pragma mark - Lifecycle
+
 - (instancetype)initWithHistoryListViewController:(KayokoHistoryListViewController *)historyListViewController
                       favoritesListViewController:(KayokoHistoryListViewController *)favoritesListViewController {
     self = [super init];
@@ -45,6 +47,8 @@ NS_ASSUME_NONNULL_END
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
+#pragma mark - View Lookup
+
 - (NSString *)effectiveActiveHistoryKeyWithClearConfirmationHistoryKey:(NSString *)clearConfirmationHistoryKey {
     return clearConfirmationHistoryKey ?: [self activeHistoryKey] ?: kKayokoHistoryKeyHistory;
 }
@@ -62,6 +66,8 @@ NS_ASSUME_NONNULL_END
     return [self tableViewForHistoryKey:
                      [self effectiveActiveHistoryKeyWithClearConfirmationHistoryKey:clearConfirmationHistoryKey]];
 }
+
+#pragma mark - Load State
 
 - (BOOL)hasLoadedHistoryKey:(NSString *)historyKey {
     return [[self loadedHistoryKeys] containsObject:historyKey];
@@ -98,6 +104,8 @@ NS_ASSUME_NONNULL_END
     return [[KayokoPasteboardManager sharedInstance] maximumHistoryAmount];
 }
 
+#pragma mark - Update Policy
+
 - (BOOL)shouldAnimateUpdatesForHistoryKey:(NSString *)historyKey {
     return
         [[self activeHistoryKey] isEqualToString:historyKey] && [[self delegate] historyControllerIsPanelVisible:self];
@@ -107,6 +115,8 @@ NS_ASSUME_NONNULL_END
                                  listViewController:(KayokoHistoryListViewController *)listViewController {
     return ![[self activeHistoryKey] isEqualToString:historyKey] && [[listViewController items] count] == 0;
 }
+
+#pragma mark - Cached Updates
 
 - (void)updateCachedTableViewForHistoryKey:(NSString *)historyKey
                                 changeType:(NSString *)changeType
@@ -150,6 +160,8 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+#pragma mark - Notifications
+
 - (void)handleLocalHistoryChangeNotification:(NSNotification *)notification {
     [self setPendingLocalHistoryChangeNotificationCount:[self pendingLocalHistoryChangeNotificationCount] + 1];
     NSDictionary<NSString *, id> *userInfo = [notification userInfo];
@@ -181,6 +193,8 @@ NS_ASSUME_NONNULL_END
         [[self delegate] historyControllerNeedsVisibleReload:self];
     }
 }
+
+#pragma mark - Loading
 
 - (void)reloadTableViewForHistoryKey:(NSString *)historyKey
               animatingTopInsertions:(BOOL)animatingTopInsertions
@@ -245,6 +259,8 @@ NS_ASSUME_NONNULL_END
                                                   }];
                           }];
 }
+
+#pragma mark - Moves
 
 - (void)handlePasteboardItemDictionary:(NSDictionary<NSString *, id> *)dictionary
                    movedFromHistoryKey:(NSString *)sourceHistoryKey

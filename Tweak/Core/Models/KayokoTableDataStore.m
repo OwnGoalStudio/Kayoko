@@ -125,4 +125,64 @@ NS_ASSUME_NONNULL_END
     return NSNotFound;
 }
 
+- (NSDictionary<NSString *, id> *)dictionaryBySettingTagUUID:(NSString *)tagUUID
+                                                inDictionary:(NSDictionary<NSString *, id> *)dictionary {
+    NSMutableDictionary<NSString *, id> *updatedDictionary = [dictionary mutableCopy];
+    if ([tagUUID length] > 0) {
+        updatedDictionary[kKayokoItemKeyTagUUID] = tagUUID;
+    } else {
+        [updatedDictionary removeObjectForKey:kKayokoItemKeyTagUUID];
+    }
+    return updatedDictionary;
+}
+
+- (BOOL)displayedItemWithTagUUID:(NSString *)tagUUID matchesSearchCriteria:(KayokoSearchCriteria *)searchCriteria {
+    if (![searchCriteria hasTagToken]) {
+        return YES;
+    }
+    return [(tagUUID ?: @"") isEqualToString:([searchCriteria tagUUID] ?: @"")];
+}
+
+- (KayokoTableDataStoreDisplayedItemUpdate)updateTagUUID:(NSString *)tagUUID
+                               forItemMatchingDictionary:(NSDictionary<NSString *, id> *)dictionary
+                                      displayedItemIndex:(NSUInteger *)displayedItemIndex {
+    if (displayedItemIndex) {
+        *displayedItemIndex = NSNotFound;
+    }
+    if (!dictionary) {
+        return KayokoTableDataStoreDisplayedItemUpdateNotFound;
+    }
+
+    NSUInteger itemIndex = [self indexOfItemMatchingDictionary:dictionary inItems:[self items]];
+    if (itemIndex == NSNotFound) {
+        return KayokoTableDataStoreDisplayedItemUpdateNotFound;
+    }
+
+    NSDictionary<NSString *, id> *updatedDictionary = [self dictionaryBySettingTagUUID:tagUUID
+                                                                          inDictionary:[self items][itemIndex]];
+    NSMutableArray<NSDictionary<NSString *, id> *> *items = [[self items] mutableCopy];
+    items[itemIndex] = updatedDictionary;
+    [self setItems:items];
+
+    NSUInteger displayedIndex = [self indexOfItemMatchingDictionary:dictionary inItems:[self displayedItems]];
+    if (displayedIndex == NSNotFound) {
+        return KayokoTableDataStoreDisplayedItemUpdateNotFound;
+    }
+    if (displayedItemIndex) {
+        *displayedItemIndex = displayedIndex;
+    }
+
+    if (![self displayedItemWithTagUUID:tagUUID matchesSearchCriteria:[self searchCriteria]]) {
+        NSMutableArray<NSDictionary<NSString *, id> *> *displayedItems = [[self displayedItems] mutableCopy];
+        [displayedItems removeObjectAtIndex:displayedIndex];
+        [self setDisplayedItems:displayedItems];
+        return KayokoTableDataStoreDisplayedItemUpdateRemove;
+    }
+
+    NSMutableArray<NSDictionary<NSString *, id> *> *displayedItems = [[self displayedItems] mutableCopy];
+    displayedItems[displayedIndex] = updatedDictionary;
+    [self setDisplayedItems:displayedItems];
+    return KayokoTableDataStoreDisplayedItemUpdateReload;
+}
+
 @end

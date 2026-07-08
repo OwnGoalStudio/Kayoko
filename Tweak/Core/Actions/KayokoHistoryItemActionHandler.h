@@ -24,6 +24,10 @@ NS_ASSUME_NONNULL_BEGIN
          sourceHistoryKey:(NSString *)sourceHistoryKey
     destinationHistoryKey:(NSString *)destinationHistoryKey
                completion:(nullable void (^)(BOOL success))completion;
+- (void)setTagUUID:(nullable NSString *)tagUUID
+           forItem:(KayokoPasteboardItem *)item
+        historyKey:(NSString *)historyKey
+        completion:(nullable void (^)(BOOL success))completion;
 
 @end
 

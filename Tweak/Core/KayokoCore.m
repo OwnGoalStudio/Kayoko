@@ -39,6 +39,8 @@ typedef NS_ENUM(NSUInteger, KayokoCoreProcessKind) {
 
 @implementation KayokoCoreProcessContext
 
+#pragma mark - Lifecycle
+
 + (instancetype)currentContext {
     if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"]) {
         return [[self alloc] initWithKind:KayokoCoreProcessKindSpringBoard];
@@ -66,6 +68,8 @@ typedef NS_ENUM(NSUInteger, KayokoCoreProcessKind) {
 }
 
 @end
+
+#pragma mark - Darwin Callbacks
 
 static void kayokoCorePasteboardChangedCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,
                                                 const void *object, CFDictionaryRef userInfo) {
@@ -210,11 +214,15 @@ static void kayokoCorePasteTipPreferencesReloadCallback(CFNotificationCenterRef 
 
 @implementation KayokoCoreBootstrap
 
+#pragma mark - Observers
+
 + (void)addDarwinObserverForName:(CFStringRef)name callback:(CFNotificationCallback)callback {
     CFNotificationCenterAddObserver(
         CFNotificationCenterGetDarwinNotifyCenter(), NULL, callback, name, NULL,
         (CFNotificationSuspensionBehavior)CFNotificationSuspensionBehaviorDeliverImmediately);
 }
+
+#pragma mark - Installation
 
 + (void)installForSpringBoard {
     KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];
@@ -271,6 +279,8 @@ static void kayokoCorePasteTipPreferencesReloadCallback(CFNotificationCenterRef 
 }
 
 @end
+
+#pragma mark - Entrypoint
 
 __attribute((constructor)) static void initialize() {
     switch ([KayokoCoreProcessContext currentContext].kind) {

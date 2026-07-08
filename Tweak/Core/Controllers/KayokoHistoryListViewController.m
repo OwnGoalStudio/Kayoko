@@ -19,9 +19,18 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoHistoryListViewController () <UITableViewDelegate, UITableViewDataSource>
+
+#pragma mark - Views
+
 @property(nonatomic, strong, readwrite) KayokoHistoryListView *tableView;
+
+#pragma mark - State
+
 @property(nonatomic, copy, readwrite) NSString *historyKey;
 @property(nonatomic, copy, readwrite) NSString *name;
+
+#pragma mark - Data
+
 @property(nonatomic, strong) KayokoTableDataStore *dataStore;
 @property(nonatomic, strong) KayokoTableViewCellContentProvider *cellContentProvider;
 @property(nonatomic, strong) KayokoHistoryItemActionHandler *actionHandler;
@@ -30,6 +39,8 @@ NS_ASSUME_NONNULL_BEGIN
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoHistoryListViewController
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithName:(NSString *)name historyKey:(NSString *)historyKey {
     self = [super initWithNibName:nil bundle:nil];
@@ -54,6 +65,8 @@ NS_ASSUME_NONNULL_END
 - (void)loadView {
     [self setView:[self tableView]];
 }
+
+#pragma mark - State
 
 - (NSArray<NSDictionary<NSString *, id> *> *)items {
     return [[self dataStore] items];
@@ -101,6 +114,8 @@ NS_ASSUME_NONNULL_END
 - (void)scrollToTopAnimated:(BOOL)animated {
     [[self tableView] scrollToTopAnimated:animated];
 }
+
+#pragma mark - Diffing
 
 - (NSArray<NSIndexPath *> *)indexPathsFromRow:(NSUInteger)startRow count:(NSUInteger)count {
     NSMutableArray<NSIndexPath *> *indexPaths = [[NSMutableArray alloc] initWithCapacity:count];
@@ -172,9 +187,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)shouldRestoreContentOffsetAfterMovingRowToTopFromOffset:(CGPoint)contentOffset {
-    return ![self hasActiveSearch] &&
-           ([[self tableView] isSearchHeaderExposedAtContentOffset:contentOffset] ||
-            [[self tableView] isContentOffsetAtHiddenSearchHeaderBoundary:contentOffset]);
+    return ![self hasActiveSearch] && ([[self tableView] isSearchHeaderExposedAtContentOffset:contentOffset] ||
+                                       [[self tableView] isContentOffsetAtHiddenSearchHeaderBoundary:contentOffset]);
 }
 
 - (UITableViewRowAnimation)rowAnimationForTopInsertionFromContentOffset:(CGPoint)contentOffset {
@@ -192,6 +206,8 @@ NS_ASSUME_NONNULL_END
     }
     return displayedItems[[indexPath row]];
 }
+
+#pragma mark - Data Updates
 
 - (void)setItems:(NSArray<NSDictionary<NSString *, id> *> *)items {
     [[self dataStore] setItems:items];
@@ -245,6 +261,8 @@ NS_ASSUME_NONNULL_END
         }];
 }
 
+#pragma mark - Search
+
 - (void)applySearchText:(NSString *)searchText {
     [[self dataStore] applySearchText:searchText];
     [self reloadTableView];
@@ -270,6 +288,8 @@ NS_ASSUME_NONNULL_END
     [[self dataStore] clearSearch];
     [self reloadTableView];
 }
+
+#pragma mark - Item Mutations
 
 - (void)clearItems {
     NSArray<NSDictionary<NSString *, id> *> *oldItems = [self items] ?: @[];
@@ -421,10 +441,45 @@ NS_ASSUME_NONNULL_END
         }];
 }
 
+- (void)updateTagUUID:(NSString *)tagUUID forItem:(KayokoPasteboardItem *)item {
+    if (!item) {
+        return;
+    }
+
+    NSDictionary<NSString *, id> *dictionary = [item dictionaryRepresentation];
+    __block KayokoTableDataStoreDisplayedItemUpdate update = KayokoTableDataStoreDisplayedItemUpdateNotFound;
+    __block NSUInteger displayedIndex = NSNotFound;
+
+    [[self tableView]
+        performBatchUpdates:^{
+          update = [[self dataStore] updateTagUUID:tagUUID
+                         forItemMatchingDictionary:dictionary
+                                displayedItemIndex:&displayedIndex];
+          if (displayedIndex == NSNotFound) {
+              return;
+          }
+
+          NSIndexPath *indexPath = [NSIndexPath indexPathForRow:displayedIndex inSection:0];
+          if (update == KayokoTableDataStoreDisplayedItemUpdateRemove) {
+              [[self tableView] deleteRowsAtIndexPaths:@[ indexPath ]
+                                      withRowAnimation:UITableViewRowAnimationAutomatic];
+          } else if (update == KayokoTableDataStoreDisplayedItemUpdateReload) {
+              [[self tableView] reloadRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationNone];
+          }
+        }
+        completion:^(__unused BOOL finished) {
+          [self refreshSearchPlaceholder];
+        }];
+}
+
+#pragma mark - Swipe State
+
 - (BOOL)shouldMaintainSearchBarVisibilityAfterSwipe {
     return ![self hasActiveSearch] &&
            [[self tableView] isContentOffsetAtHiddenSearchHeaderBoundary:[[self tableView] contentOffset]];
 }
+
+#pragma mark - UITableViewDataSource
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     if (tableView != [self tableView]) {
@@ -459,6 +514,8 @@ NS_ASSUME_NONNULL_END
     [cell addGestureRecognizer:gesture];
     return cell;
 }
+
+#pragma mark - UITableViewDelegate
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [[tableView cellForRowAtIndexPath:indexPath] setSelected:NO animated:YES];
@@ -535,6 +592,8 @@ NS_ASSUME_NONNULL_END
     [deleteAction setBackgroundColor:[UIColor systemRedColor]];
     return [UISwipeActionsConfiguration configurationWithActions:@[ deleteAction ]];
 }
+
+#pragma mark - Swipe Actions
 
 - (UIContextualAction *)moveActionForItem:(KayokoPasteboardItem *)item
                                dictionary:(NSDictionary<NSString *, id> *)dictionary
@@ -618,6 +677,8 @@ NS_ASSUME_NONNULL_END
     [linkAction setBackgroundColor:[UIColor systemGreenColor]];
     return linkAction;
 }
+
+#pragma mark - Gestures
 
 - (void)handleLongPressGestureRecognizer:(UILongPressGestureRecognizer *)recognizer {
     if ([recognizer state] != UIGestureRecognizerStateBegan) {

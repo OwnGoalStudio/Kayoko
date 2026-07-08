@@ -33,6 +33,7 @@ NS_ASSUME_NONNULL_END
 
 @interface KayokoApplicationMetadataProvider ()
 @property(nonatomic, strong) NSCache<NSString *, UIImage *> *iconCache;
+- (nullable SBApplication *)applicationForBundleIdentifier:(NSString *)bundleIdentifier;
 @end
 
 @implementation KayokoApplicationMetadataProvider
@@ -53,9 +54,12 @@ NS_ASSUME_NONNULL_END
                                                                              table:@"Tweak"];
     }
 
-    NSString *displayName = [[[objc_getClass("SBApplicationController") sharedInstance]
-        applicationWithBundleIdentifier:bundleIdentifier] displayName];
+    NSString *displayName = [[self applicationForBundleIdentifier:bundleIdentifier] displayName];
     return [displayName length] > 0 ? displayName : bundleIdentifier;
+}
+
+- (nullable SBApplication *)applicationForBundleIdentifier:(NSString *)bundleIdentifier {
+    return [[objc_getClass("SBApplicationController") sharedInstance] applicationWithBundleIdentifier:bundleIdentifier];
 }
 
 - (BOOL)isSpringBoardBundleIdentifier:(NSString *)bundleIdentifier {
@@ -63,6 +67,13 @@ NS_ASSUME_NONNULL_END
         stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] lowercaseString];
     return [normalizedBundleIdentifier isEqualToString:kKayokoSpringBoardBundleIdentifier] ||
            [normalizedBundleIdentifier isEqualToString:@"springboard"];
+}
+
+- (BOOL)hasApplicationForBundleIdentifier:(NSString *)bundleIdentifier {
+    if ([self isSpringBoardBundleIdentifier:bundleIdentifier]) {
+        return YES;
+    }
+    return [self applicationForBundleIdentifier:bundleIdentifier] != nil;
 }
 
 - (NSString *)iconCacheKeyForBundleIdentifier:(NSString *)bundleIdentifier format:(int)format scale:(CGFloat)scale {

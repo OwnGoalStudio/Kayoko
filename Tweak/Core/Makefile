@@ -4,12 +4,16 @@ KayokoCore_USE_MODULES := 0
 
 KayokoCore_FILES += KayokoCore.m
 KayokoCore_FILES += KayokoCoreRuntime.m
+KayokoCore_FILES += KayokoKeyboardHostResolver.m
 KayokoCore_FILES += KayokoSpringBoardHooks.m
 KayokoCore_FILES += KayokoPasteTipHooks.m
 KayokoCore_FILES += ../Helper/KayokoSwipeUpGestureRecognizer.m
 KayokoCore_FILES += $(wildcard Manager/*.m Actions/*.m Controllers/*.m Coordinators/*.m DataSources/*.m Models/*.m Presentation/*.m Views/*.m)
+KayokoCore_FILES += $(wildcard ../../Shared/Tags/*.m)
+KayokoCore_FILES += $(wildcard ../../Shared/Purchases/*.m)
 
 KayokoCore_CFLAGS += -fobjc-arc
+KayokoCore_CFLAGS += -I.
 KayokoCore_CFLAGS += -IManager
 KayokoCore_CFLAGS += -I../../Preferences
 KayokoCore_CFLAGS += -I../Helper
@@ -20,6 +24,8 @@ KayokoCore_CFLAGS += -IDataSources
 KayokoCore_CFLAGS += -IModels
 KayokoCore_CFLAGS += -IPresentation
 KayokoCore_CFLAGS += -IViews
+KayokoCore_CFLAGS += -I../../Shared/Tags
+KayokoCore_CFLAGS += -I../../Shared/Purchases
 
 KayokoCore_FRAMEWORKS += AudioToolbox
 KayokoCore_FRAMEWORKS += AVFoundation
@@ -27,7 +33,9 @@ KayokoCore_FRAMEWORKS += CoreGraphics
 KayokoCore_FRAMEWORKS += ImageIO
 KayokoCore_FRAMEWORKS += IOKit
 KayokoCore_FRAMEWORKS += QuartzCore
+KayokoCore_FRAMEWORKS += Security
 KayokoCore_FRAMEWORKS += UIKit
+KayokoCore_PRIVATE_FRAMEWORKS += CoreServices
 
 KayokoCore_LIBRARIES += sqlite3
 KayokoCore_LIBRARIES += substrate

@@ -7,6 +7,9 @@
 
 #import "KayokoTableViewCell.h"
 #import "KayokoTableViewCellContent.h"
+#import "KayokoTagColorFormatter.h"
+
+static CGFloat const kKayokoTableViewCellTagDotSize = 7;
 
 @interface KayokoTableViewCell ()
 @property(nonatomic, copy, nullable) NSString *representedImageName;
@@ -78,6 +81,11 @@
         [[self headerLabel] setText:[content displayName]];
         [[self headerLabel] setFont:[UIFont systemFontOfSize:16 weight:UIFontWeightMedium]];
         [[self headerLabel] setTextColor:[UIColor labelColor]];
+        [[self headerLabel] setLineBreakMode:NSLineBreakByTruncatingTail];
+        [[self headerLabel] setContentHuggingPriority:UILayoutPriorityDefaultHigh
+                                              forAxis:UILayoutConstraintAxisHorizontal];
+        [[self headerLabel] setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                                            forAxis:UILayoutConstraintAxisHorizontal];
         [self addSubview:[self headerLabel]];
 
         [[self headerLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
@@ -87,14 +95,30 @@
                                                                constant:16]
         ]];
 
-        if ([self contentImageView]) {
-            [NSLayoutConstraint activateConstraints:@[ [[[self headerLabel] trailingAnchor]
-                                                        constraintEqualToAnchor:[[self contentImageView] leadingAnchor]
-                                                                       constant:-16] ]];
+        NSLayoutXAxisAnchor *textTrailingAnchor =
+            [self contentImageView] ? [[self contentImageView] leadingAnchor] : [self trailingAnchor];
+        CGFloat textTrailingConstant = [self contentImageView] ? -16 : -24;
+
+        if ([[content tagHexColor] length] > 0) {
+            [self setTagDotView:[[UIView alloc] init]];
+            [[self tagDotView]
+                setBackgroundColor:[KayokoTagColorFormatter visibleColorFromHexColor:[content tagHexColor]]];
+            [[[self tagDotView] layer] setCornerRadius:kKayokoTableViewCellTagDotSize / 2.0];
+            [self addSubview:[self tagDotView]];
+            [[self tagDotView] setTranslatesAutoresizingMaskIntoConstraints:NO];
+            [NSLayoutConstraint activateConstraints:@[
+                [[[self tagDotView] leadingAnchor] constraintEqualToAnchor:[[self headerLabel] trailingAnchor]
+                                                                  constant:6],
+                [[[self tagDotView] widthAnchor] constraintEqualToConstant:kKayokoTableViewCellTagDotSize],
+                [[[self tagDotView] heightAnchor] constraintEqualToConstant:kKayokoTableViewCellTagDotSize],
+                [[[self tagDotView] centerYAnchor] constraintEqualToAnchor:[[self headerLabel] centerYAnchor]],
+                [[[self tagDotView] trailingAnchor] constraintLessThanOrEqualToAnchor:textTrailingAnchor
+                                                                             constant:textTrailingConstant]
+            ]];
         } else {
             [NSLayoutConstraint activateConstraints:@[ [[[self headerLabel] trailingAnchor]
-                                                        constraintEqualToAnchor:[self trailingAnchor]
-                                                                       constant:-24] ]];
+                                                        constraintEqualToAnchor:textTrailingAnchor
+                                                                       constant:textTrailingConstant] ]];
         }
 
         [self setContentLabel:[[UILabel alloc] init]];
@@ -120,7 +144,8 @@
             [[[self contentLabel] topAnchor] constraintEqualToAnchor:[[self headerLabel] bottomAnchor] constant:2],
             [[[self contentLabel] bottomAnchor] constraintLessThanOrEqualToAnchor:[self bottomAnchor] constant:-10],
             [[[self contentLabel] leadingAnchor] constraintEqualToAnchor:[[self headerLabel] leadingAnchor]],
-            [[[self contentLabel] trailingAnchor] constraintEqualToAnchor:[[self headerLabel] trailingAnchor]]
+            [[[self contentLabel] trailingAnchor] constraintEqualToAnchor:textTrailingAnchor
+                                                                 constant:textTrailingConstant]
         ]];
     }
 

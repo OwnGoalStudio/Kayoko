@@ -65,6 +65,7 @@ NS_ASSUME_NONNULL_BEGIN
                         animating:(BOOL)animating;
 - (void)removeItemDictionary:(NSDictionary<NSString *, id> *)dictionary;
 - (void)removeItemAtIndexPath:(NSIndexPath *)indexPath completion:(nullable void (^)(BOOL success))completion;
+- (void)updateTagUUID:(nullable NSString *)tagUUID forItem:(KayokoPasteboardItem *)item;
 - (void)scrollToTopAnimated:(BOOL)animated;
 
 @end

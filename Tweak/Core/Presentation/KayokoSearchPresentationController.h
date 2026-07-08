@@ -57,7 +57,8 @@ NS_ASSUME_NONNULL_BEGIN
                    panVelocityY:(CGFloat)panVelocityY
                      completion:(nullable void (^)(void))completion;
 - (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
-                             activeTableView:(KayokoHistoryListView *)activeTableView;
+                             activeTableView:(KayokoHistoryListView *)activeTableView
+                           beganInHeaderView:(BOOL)beganInHeaderView;
 - (void)resetKeyboardInsets;
 
 @end

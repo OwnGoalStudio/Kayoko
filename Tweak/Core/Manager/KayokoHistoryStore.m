@@ -15,7 +15,7 @@
 static NSString *const kKayokoHistoryStoreErrorDomain = @"com.82flex.kayoko.history-store";
 static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imported";
 static NSString *const kKayokoHistoryStoreSearchIndexSchemaVersionKey = @"search_index_schema_version";
-static NSInteger const kKayokoHistoryStoreSearchIndexVersion = 1;
+static NSInteger const kKayokoHistoryStoreSearchIndexVersion = 2;
 static NSInteger const kKayokoHistoryStoreDefaultBusyTimeoutMilliseconds = 3000;
 
 static NSString *KayokoHistoryStoreLocalizedString(NSString *key) {
@@ -30,10 +30,20 @@ static NSString *KayokoHistoryStoreLocalizedString(NSString *key) {
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoHistoryStore ()
+
+#pragma mark - Paths
+
 @property(nonatomic, copy, readwrite) NSString *databasePath;
 @property(nonatomic, copy, readwrite) NSString *imagesPath;
+
+#pragma mark - Database State
+
 @property(nonatomic, assign, readwrite) KayokoHistoryStoreLockingMode lockingMode;
 @property(nonatomic, assign, readwrite) NSInteger busyTimeoutMilliseconds;
+
+#pragma mark - Schema
+
+- (BOOL)ensureTagUUIDColumnWithError:(NSError **)error;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -42,9 +52,13 @@ NS_ASSUME_NONNULL_END
     sqlite3 *_database;
 }
 
+#pragma mark - Paths
+
 + (NSString *)defaultDatabasePath {
     return jbroot(@"/var/mobile/Library/com.82flex.kayoko/history-v4.sqlite");
 }
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithDatabasePath:(NSString *)databasePath imagesPath:(NSString *)imagesPath {
     return [self initWithDatabasePath:databasePath
@@ -71,6 +85,8 @@ NS_ASSUME_NONNULL_END
     [self closeDatabase];
 }
 
+#pragma mark - Schema Preparation
+
 - (BOOL)prepareStoreWithError:(NSError **)error {
     if (![self prepareStorageDirectoriesWithError:error]) {
         return NO;
@@ -90,6 +106,7 @@ NS_ASSUME_NONNULL_END
                                              "created_at REAL NOT NULL,"
                                              "updated_at REAL NOT NULL,"
                                              "sequence INTEGER NOT NULL,"
+                                             "tag_uuid TEXT NULL,"
                                              "search_index_version INTEGER NOT NULL DEFAULT 0"
                                              ")";
     NSString *createSearchTokensStatement = @"CREATE TABLE IF NOT EXISTS history_item_search_tokens ("
@@ -136,8 +153,18 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
+    if (![self ensureTagUUIDColumnWithError:error]) {
+        return NO;
+    }
+
     return YES;
 }
+
+- (BOOL)upgradeTagReferencesWithError:(NSError **)error {
+    return [self prepareStoreWithError:error];
+}
+
+#pragma mark - Storage
 
 - (BOOL)prepareStorageDirectoriesWithError:(NSError **)error {
     NSString *directoryPath = [[self databasePath] stringByDeletingLastPathComponent];
@@ -169,6 +196,8 @@ NS_ASSUME_NONNULL_END
         _database = NULL;
     }
 }
+
+#pragma mark - Locking and Maintenance
 
 - (BOOL)verifyExclusiveAccessWithError:(NSError **)error {
     if (![self prepareStorageDirectoriesWithError:error]) {
@@ -206,6 +235,8 @@ NS_ASSUME_NONNULL_END
 
     return YES;
 }
+
+#pragma mark - Search Index
 
 - (BOOL)upgradeSearchIndexWithError:(NSError **)error {
     if (![self prepareStoreWithError:error]) {
@@ -268,6 +299,8 @@ NS_ASSUME_NONNULL_END
     return YES;
 }
 
+#pragma mark - Migration Metadata
+
 - (BOOL)isMigrationCompletedWithError:(NSError **)error {
     NSString *value = [self metadataValueForKey:kKayokoHistoryStoreMigrationKey error:error];
     return [value boolValue];
@@ -276,6 +309,8 @@ NS_ASSUME_NONNULL_END
 - (BOOL)markMigrationCompletedWithError:(NSError **)error {
     return [self setMetadataValue:@"1" forKey:kKayokoHistoryStoreMigrationKey error:error];
 }
+
+#pragma mark - History Writes
 
 - (BOOL)addItemDictionary:(NSDictionary<NSString *, id> *)dictionary
              toHistoryKey:(NSString *)historyKey
@@ -377,6 +412,73 @@ NS_ASSUME_NONNULL_END
     return NO;
 }
 
+#pragma mark - Tags
+
+- (BOOL)setTagUUID:(NSString *)tagUUID
+    forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
+         inHistoryKey:(NSString *)historyKey
+                error:(NSError **)error {
+    NSString *content = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyContent fallback:nil];
+    if ([content length] == 0 || [historyKey length] == 0) {
+        return YES;
+    }
+
+    NSString *normalizedTagUUID = [tagUUID length] > 0 ? tagUUID : nil;
+    if (![self beginTransactionWithError:error]) {
+        return NO;
+    }
+
+    sqlite3_stmt *statement = NULL;
+    const char *selectSQL = "SELECT id, bundle_identifier, image_name FROM history_items "
+                            "WHERE history_key = ? AND content = ? LIMIT 1";
+    if (![self prepareStatement:selectSQL statement:&statement error:error]) {
+        [self rollbackTransaction];
+        return NO;
+    }
+
+    sqlite3_bind_text(statement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(statement, 2, [content UTF8String], -1, SQLITE_TRANSIENT);
+    int stepResult = sqlite3_step(statement);
+    if (stepResult != SQLITE_ROW) {
+        sqlite3_finalize(statement);
+        [self populateError:error
+                       code:(stepResult == SQLITE_DONE ? SQLITE_NOTFOUND : stepResult)
+                    message:KayokoHistoryStoreLocalizedString(@"History item not found")];
+        [self rollbackTransaction];
+        return NO;
+    }
+
+    sqlite3_int64 itemID = sqlite3_column_int64(statement, 0);
+    NSString *bundleIdentifier = [self stringFromColumn:statement index:1] ?: @"com.apple.springboard";
+    NSString *imageName = [self stringFromColumn:statement index:2] ?: @"";
+    sqlite3_finalize(statement);
+
+    NSArray<id> *bindings =
+        normalizedTagUUID ? @[ normalizedTagUUID, historyKey, content ] : @[ [NSNull null], historyKey, content ];
+    BOOL success = [self executeStatement:@"UPDATE history_items SET tag_uuid = ? "
+                                           "WHERE history_key = ? AND content = ?"
+                                 bindings:bindings
+                                    error:error];
+    if (success) {
+        success = [self rebuildSearchIndexForItemID:itemID
+                                         historyKey:historyKey
+                                   bundleIdentifier:bundleIdentifier
+                                            content:content
+                                          imageName:imageName
+                                            tagUUID:normalizedTagUUID
+                                              error:error];
+    }
+
+    if (success) {
+        return [self commitTransactionWithError:error];
+    }
+
+    [self rollbackTransaction];
+    return NO;
+}
+
+#pragma mark - Bulk Removal
+
 - (BOOL)removeItemsFromHistoryKey:(NSString *)historyKey
                shouldRemoveImages:(BOOL)shouldRemoveImages
                             error:(NSError **)error {
@@ -414,6 +516,8 @@ NS_ASSUME_NONNULL_END
     return NO;
 }
 
+#pragma mark - History Reads
+
 - (NSMutableArray<NSDictionary<NSString *, id> *> *)itemsForHistoryKey:(NSString *)historyKey error:(NSError **)error {
     return [self itemsForHistoryKey:historyKey searchCriteria:nil error:error];
 }
@@ -423,8 +527,10 @@ NS_ASSUME_NONNULL_END
                                                                  error:(NSError **)error {
     sqlite3_stmt *statement = NULL;
     NSMutableArray<NSDictionary<NSString *, id> *> *items = [[NSMutableArray alloc] init];
-    NSMutableString *sql = [NSMutableString stringWithString:@"SELECT bundle_identifier, content, image_name, has_link "
-                                                              "FROM history_items WHERE history_key = ?"];
+    NSMutableString *sql =
+        [NSMutableString stringWithString:@"SELECT bundle_identifier, content, image_name, has_link, "
+                                           "tag_uuid "
+                                           "FROM history_items WHERE history_key = ?"];
     NSMutableArray<id> *bindings = [NSMutableArray arrayWithObject:historyKey ?: @""];
 
     if ([searchCriteria hasSearchText]) {
@@ -457,6 +563,17 @@ NS_ASSUME_NONNULL_END
         [bindings addObject:kKayokoSearchTokenTypeApp];
         [bindings addObject:[searchCriteria appBundleIdentifier] ?: @""];
     }
+    if ([searchCriteria hasTagToken]) {
+        [sql appendString:@" AND EXISTS ("
+                           "SELECT 1 FROM history_item_search_tokens token "
+                           "WHERE token.item_id = history_items.id "
+                           "AND token.history_key = history_items.history_key "
+                           "AND token.token_type = ? "
+                           "AND token.token_value = ?"
+                           ")"];
+        [bindings addObject:kKayokoSearchTokenTypeTag];
+        [bindings addObject:[searchCriteria tagUUID] ?: @""];
+    }
     [sql appendString:@" ORDER BY sequence DESC"];
 
     if (![self prepareStatement:[sql UTF8String] statement:&statement error:error]) {
@@ -478,7 +595,7 @@ NS_ASSUME_NONNULL_END
 
 - (NSDictionary<NSString *, id> *)latestItemForHistoryKey:(NSString *)historyKey error:(NSError **)error {
     sqlite3_stmt *statement = NULL;
-    const char *sql = "SELECT bundle_identifier, content, image_name, has_link "
+    const char *sql = "SELECT bundle_identifier, content, image_name, has_link, tag_uuid "
                       "FROM history_items WHERE history_key = ? ORDER BY sequence DESC LIMIT 1";
 
     if (![self prepareStatement:sql statement:&statement error:error]) {
@@ -494,6 +611,8 @@ NS_ASSUME_NONNULL_END
     sqlite3_finalize(statement);
     return dictionary;
 }
+
+#pragma mark - Search Metadata
 
 - (NSArray<NSString *> *)availableSearchAppBundleIdentifiersWithError:(NSError **)error {
     sqlite3_stmt *statement = NULL;
@@ -518,6 +637,8 @@ NS_ASSUME_NONNULL_END
     sqlite3_finalize(statement);
     return bundleIdentifiers;
 }
+
+#pragma mark - Import
 
 - (BOOL)importItemDictionaries:(NSArray<NSDictionary<NSString *, id> *> *)items
                   toHistoryKey:(NSString *)historyKey
@@ -546,7 +667,7 @@ NS_ASSUME_NONNULL_END
     return NO;
 }
 
-#pragma mark - Private
+#pragma mark - Schema Helpers
 
 - (BOOL)ensureColumnNamed:(NSString *)columnName
                   inTable:(NSString *)tableName
@@ -580,6 +701,15 @@ NS_ASSUME_NONNULL_END
     return [self executeStatement:alterStatement error:error];
 }
 
+- (BOOL)ensureTagUUIDColumnWithError:(NSError **)error {
+    return [self ensureColumnNamed:@"tag_uuid"
+                           inTable:@"history_items"
+               usingAlterStatement:@"ALTER TABLE history_items ADD COLUMN tag_uuid TEXT NULL"
+                             error:error];
+}
+
+#pragma mark - Search Index Helpers
+
 - (NSInteger)staleSearchIndexItemCountWithError:(NSError **)error {
     sqlite3_stmt *statement = NULL;
     if (![self prepareStatement:"SELECT COUNT(*) FROM history_items WHERE search_index_version <> ?"
@@ -604,7 +734,7 @@ NS_ASSUME_NONNULL_END
 
 - (BOOL)rebuildStaleSearchIndexesWithError:(NSError **)error {
     sqlite3_stmt *statement = NULL;
-    const char *sql = "SELECT id, history_key, bundle_identifier, content, image_name "
+    const char *sql = "SELECT id, history_key, bundle_identifier, content, image_name, tag_uuid "
                       "FROM history_items WHERE search_index_version <> ?";
     if (![self prepareStatement:sql statement:&statement error:error]) {
         return NO;
@@ -619,7 +749,8 @@ NS_ASSUME_NONNULL_END
             @"history_key" : [self stringFromColumn:statement index:1] ?: @"",
             @"bundle_identifier" : [self stringFromColumn:statement index:2] ?: @"com.apple.springboard",
             @"content" : [self stringFromColumn:statement index:3] ?: @"",
-            @"image_name" : [self stringFromColumn:statement index:4] ?: @""
+            @"image_name" : [self stringFromColumn:statement index:4] ?: @"",
+            @"tag_uuid" : [self stringFromColumn:statement index:5] ?: @""
         }];
     }
     if (stepResult != SQLITE_DONE) {
@@ -635,6 +766,7 @@ NS_ASSUME_NONNULL_END
                               bundleIdentifier:row[@"bundle_identifier"]
                                        content:row[@"content"]
                                      imageName:row[@"image_name"]
+                                       tagUUID:row[@"tag_uuid"]
                                          error:error]) {
             return NO;
         }
@@ -648,6 +780,7 @@ NS_ASSUME_NONNULL_END
                    bundleIdentifier:(NSString *)bundleIdentifier
                             content:(NSString *)content
                           imageName:(NSString *)imageName
+                            tagUUID:(NSString *)tagUUID
                               error:(NSError **)error {
     if (![self executeStatement:@"DELETE FROM history_item_search_tokens WHERE item_id = ?"
                        bindings:@[ @(itemID) ]
@@ -672,6 +805,14 @@ NS_ASSUME_NONNULL_END
                                 tokenType:kKayokoSearchTokenTypeApp
                                tokenValue:appValue
                                     error:error]) {
+        return NO;
+    }
+
+    if ([tagUUID length] > 0 && ![self insertSearchTokenForItemID:itemID
+                                                       historyKey:historyKey
+                                                        tokenType:kKayokoSearchTokenTypeTag
+                                                       tokenValue:tagUUID
+                                                            error:error]) {
         return NO;
     }
 
@@ -756,6 +897,8 @@ NS_ASSUME_NONNULL_END
     return pattern;
 }
 
+#pragma mark - Database Connection
+
 - (BOOL)openDatabaseWithError:(NSError **)error {
     if (_database) {
         return YES;
@@ -788,6 +931,8 @@ NS_ASSUME_NONNULL_END
     return [self executeStatement:@"PRAGMA locking_mode=EXCLUSIVE" error:error];
 }
 
+#pragma mark - Write Helpers
+
 - (BOOL)upsertItemDictionary:(NSDictionary<NSString *, id> *)dictionary
                 inHistoryKey:(NSString *)historyKey
                        limit:(NSUInteger)limit
@@ -809,6 +954,33 @@ NS_ASSUME_NONNULL_END
     return NO;
 }
 
+#pragma mark - Tag Helpers
+
+- (NSString *)tagUUIDForHistoryKey:(NSString *)historyKey content:(NSString *)content error:(NSError **)error {
+    if ([historyKey length] == 0 || [content length] == 0) {
+        return nil;
+    }
+
+    sqlite3_stmt *statement = NULL;
+    const char *sql = "SELECT tag_uuid FROM history_items WHERE history_key = ? AND content = ? LIMIT 1";
+    if (![self prepareStatement:sql statement:&statement error:error]) {
+        return nil;
+    }
+
+    sqlite3_bind_text(statement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(statement, 2, [content UTF8String], -1, SQLITE_TRANSIENT);
+    NSString *tagUUID = nil;
+    int stepResult = sqlite3_step(statement);
+    if (stepResult == SQLITE_ROW) {
+        tagUUID = [self stringFromColumn:statement index:0];
+    } else if (stepResult != SQLITE_DONE) {
+        [self populateError:error code:stepResult message:[NSString stringWithUTF8String:sql]];
+    }
+
+    sqlite3_finalize(statement);
+    return [tagUUID length] > 0 ? tagUUID : nil;
+}
+
 - (BOOL)upsertItemDictionaryWithoutTransaction:(NSDictionary<NSString *, id> *)dictionary
                                   inHistoryKey:(NSString *)historyKey
                                          error:(NSError **)error {
@@ -821,6 +993,13 @@ NS_ASSUME_NONNULL_END
                                                              key:kKayokoItemKeyBundleIdentifier
                                                         fallback:@"com.apple.springboard"];
     NSString *imageName = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyImageName fallback:@""];
+    NSString *tagUUID = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyTagUUID fallback:nil];
+    if ([tagUUID length] == 0) {
+        tagUUID = [self tagUUIDForHistoryKey:historyKey content:content error:error];
+        if (tagUUID == nil && error && *error) {
+            return NO;
+        }
+    }
     NSNumber *hasLink = @([[dictionary objectForKey:kKayokoItemKeyHasLink] boolValue]);
     NSNumber *sequence = @([self nextSequence]);
     NSNumber *now = @([[NSDate date] timeIntervalSince1970]);
@@ -834,9 +1013,12 @@ NS_ASSUME_NONNULL_END
     if (![self executeStatement:
                    @"INSERT INTO history_items "
                     "(history_key, bundle_identifier, content, image_name, has_link, created_at, updated_at, sequence, "
-                    "search_index_version) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)"
-                       bindings:@[ historyKey, bundleIdentifier, content, imageName, hasLink, now, now, sequence ]
+                    "tag_uuid, search_index_version) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
+                       bindings:@[
+                           historyKey, bundleIdentifier, content, imageName, hasLink, now, now, sequence,
+                           [tagUUID length] > 0 ? tagUUID : (id)[NSNull null]
+                       ]
                           error:error]) {
         return NO;
     }
@@ -847,8 +1029,11 @@ NS_ASSUME_NONNULL_END
                             bundleIdentifier:bundleIdentifier
                                      content:content
                                    imageName:imageName
+                                     tagUUID:tagUUID
                                        error:error];
 }
+
+#pragma mark - History Limits
 
 - (BOOL)trimHistoryKey:(NSString *)historyKey toLimit:(NSUInteger)limit error:(NSError **)error {
     if (limit == NSUIntegerMax) {
@@ -892,6 +1077,8 @@ NS_ASSUME_NONNULL_END
 
     return YES;
 }
+
+#pragma mark - Image Cleanup
 
 - (NSArray<NSString *> *)imageNamesForHistoryKey:(NSString *)historyKey error:(NSError **)error {
     sqlite3_stmt *statement = NULL;
@@ -940,6 +1127,8 @@ NS_ASSUME_NONNULL_END
     return count;
 }
 
+#pragma mark - Sequences
+
 - (sqlite3_int64)nextSequence {
     sqlite3_stmt *statement = NULL;
     if (![self prepareStatement:"SELECT COALESCE(MAX(sequence), 0) + 1 FROM history_items"
@@ -955,6 +1144,8 @@ NS_ASSUME_NONNULL_END
     sqlite3_finalize(statement);
     return sequence;
 }
+
+#pragma mark - Metadata
 
 - (NSString *)metadataValueForKey:(NSString *)key error:(NSError **)error {
     sqlite3_stmt *statement = NULL;
@@ -977,18 +1168,25 @@ NS_ASSUME_NONNULL_END
                             error:error];
 }
 
+#pragma mark - Value Mapping
+
 - (NSDictionary<NSString *, id> *)dictionaryFromCurrentRowInStatement:(sqlite3_stmt *)statement {
     NSString *bundleIdentifier = [self stringFromColumn:statement index:0] ?: @"com.apple.springboard";
     NSString *content = [self stringFromColumn:statement index:1] ?: @"";
     NSString *imageName = [self stringFromColumn:statement index:2] ?: @"";
     BOOL hasLink = sqlite3_column_int(statement, 3) != 0;
+    NSString *tagUUID = [self stringFromColumn:statement index:4];
 
-    return @{
+    NSMutableDictionary<NSString *, id> *dictionary = [@{
         kKayokoItemKeyBundleIdentifier : bundleIdentifier,
         kKayokoItemKeyContent : content,
         kKayokoItemKeyImageName : imageName,
         kKayokoItemKeyHasLink : @(hasLink)
-    };
+    } mutableCopy];
+    if ([tagUUID length] > 0) {
+        dictionary[kKayokoItemKeyTagUUID] = tagUUID;
+    }
+    return dictionary;
 }
 
 - (NSString *)stringValueFromDictionary:(NSDictionary<NSString *, id> *)dictionary
@@ -1009,6 +1207,8 @@ NS_ASSUME_NONNULL_END
     return [NSString stringWithUTF8String:(const char *)text];
 }
 
+#pragma mark - Transactions
+
 - (BOOL)beginTransactionWithError:(NSError **)error {
     return [self executeStatement:@"BEGIN IMMEDIATE TRANSACTION" error:error];
 }
@@ -1020,6 +1220,8 @@ NS_ASSUME_NONNULL_END
 - (void)rollbackTransaction {
     [self executeStatement:@"ROLLBACK" error:nil];
 }
+
+#pragma mark - SQLite Execution
 
 - (BOOL)executeStatement:(NSString *)statement error:(NSError **)error {
     return [self executeStatement:statement bindings:@[] error:error];
@@ -1085,6 +1287,8 @@ NS_ASSUME_NONNULL_END
         }
     }
 }
+
+#pragma mark - Errors
 
 - (void)populateError:(NSError **)error code:(NSInteger)code message:(NSString *)message {
     if (!error) {

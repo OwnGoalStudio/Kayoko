@@ -23,9 +23,13 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
     KayokoHistoryStore *_historyStore;
 }
 
+#pragma mark - Paths
+
 + (NSString *)defaultDatabasePath {
     return [KayokoHistoryStore defaultDatabasePath];
 }
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithDatabasePath:(NSString *)databasePath
                           imagesPath:(NSString *)imagesPath
@@ -40,6 +44,8 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
     }
     return self;
 }
+
+#pragma mark - Preparation
 
 - (void)prepareStore {
     [self performAsync:^{
@@ -68,6 +74,8 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
     }];
 }
 
+#pragma mark - Maintenance
+
 - (void)checkpointWriteAheadLog {
     [self performAsync:^{
       NSError *error = nil;
@@ -78,6 +86,8 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
       }
     }];
 }
+
+#pragma mark - Search Index
 
 - (BOOL)upgradeSearchIndexWithError:(NSError **)error {
     __block BOOL success = NO;
@@ -98,6 +108,8 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
     }
     return success;
 }
+
+#pragma mark - History Writes
 
 - (BOOL)addItemDictionary:(NSDictionary<NSString *, id> *)dictionary
              toHistoryKey:(NSString *)historyKey
@@ -134,7 +146,13 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
               HBLogDebug(@"Kayoko: Failed to add history item: %@", error);
               continue;
           }
-          [savedDictionaries addObject:dictionary];
+          NSError *latestError = nil;
+          NSDictionary<NSString *, id> *savedDictionary =
+              [historyStore latestItemForHistoryKey:historyKey error:&latestError] ?: dictionary;
+          if (latestError) {
+              HBLogDebug(@"Kayoko: Failed to load saved history item: %@", latestError);
+          }
+          [savedDictionaries addObject:savedDictionary];
       }
 
       if (!completion) {
@@ -220,6 +238,28 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
     }];
 }
 
+#pragma mark - Tags
+
+- (void)setTagUUID:(NSString *)tagUUID
+    forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
+         inHistoryKey:(NSString *)historyKey
+           completion:(void (^)(BOOL success))completion {
+    [self performAsync:^{
+      NSError *error = nil;
+      KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&error];
+      BOOL success = historyStore && [historyStore setTagUUID:tagUUID
+                                            forItemDictionary:dictionary
+                                                 inHistoryKey:historyKey
+                                                        error:&error];
+      if (!success) {
+          HBLogDebug(@"Kayoko: Failed to set history item tag: %@", error);
+      }
+      [self dispatchCompletion:completion success:success];
+    }];
+}
+
+#pragma mark - Bulk Removal
+
 - (void)removeItemsFromHistoryKey:(NSString *)historyKey
                shouldRemoveImages:(BOOL)shouldRemoveImages
                        completion:(void (^)(BOOL success))completion {
@@ -235,6 +275,8 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
       [self dispatchCompletion:completion success:success];
     }];
 }
+
+#pragma mark - History Reads
 
 - (NSMutableArray<NSDictionary<NSString *, id> *> *)itemsForHistoryKey:(NSString *)historyKey error:(NSError **)error {
     __block NSMutableArray<NSDictionary<NSString *, id> *> *history = nil;
@@ -303,6 +345,8 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
     }
     return dictionary;
 }
+
+#pragma mark - Search Metadata
 
 - (void)availableSearchAppBundleIdentifiersWithCompletion:(KayokoHistoryAppBundleIdentifiersCompletion)completion {
     [self performAsync:^{

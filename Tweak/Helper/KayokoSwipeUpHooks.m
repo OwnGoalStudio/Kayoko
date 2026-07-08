@@ -50,6 +50,8 @@ static NSString *kayokoLoggedKeyboardExtensionHostApplicationBundleIdentifier = 
 - (void)_cancelAllTouches;
 @end
 
+#pragma mark - Swipe Region
+
 static BOOL kayokoPointIsInsideAllowedSwipeRegion(UIView *view, CGPoint point) {
     UIEdgeInsets safeAreaInsets = view.safeAreaInsets;
     safeAreaInsets.bottom += kKayokoSwipeUpAdditionalBottomSafetyInset;
@@ -70,11 +72,20 @@ static void kayokoSetManualSwipeUpActive(UIWindow *window, BOOL active);
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSwipeUpGestureHandler : NSObject <UIGestureRecognizerDelegate>
+
+#pragma mark - Lifecycle
+
 - (instancetype)initWithView:(UIView *)view keyboardExtension:(BOOL)keyboardExtension;
+
+#pragma mark - Actions
+
 - (void)handleSwipeUpGesture:(UIGestureRecognizer *)recognizer;
 @end
 
 @interface KayokoSwipeUpGestureHandler ()
+
+#pragma mark - State
+
 @property(nonatomic, weak, readonly) UIView *view;
 @property(nonatomic, assign, readonly, getter=isKeyboardExtension) BOOL keyboardExtension;
 @end
@@ -82,6 +93,8 @@ NS_ASSUME_NONNULL_BEGIN
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoSwipeUpGestureHandler
+
+#pragma mark - Lifecycle
 
 - (instancetype)initWithView:(UIView *)view keyboardExtension:(BOOL)keyboardExtension {
     self = [super init];
@@ -92,6 +105,8 @@ NS_ASSUME_NONNULL_END
     return self;
 }
 
+#pragma mark - UIGestureRecognizerDelegate
+
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
     UIView *view = self.view;
     if (!view || gestureRecognizer != objc_getAssociatedObject(view, &kayokoSwipeUpGestureRecognizerKey)) {
@@ -100,6 +115,8 @@ NS_ASSUME_NONNULL_END
 
     return kayokoPointIsInsideAllowedSwipeRegion(view, [touch locationInView:view]);
 }
+
+#pragma mark - Actions
 
 - (void)handleSwipeUpGesture:(UIGestureRecognizer *)recognizer {
     if (recognizer.state != UIGestureRecognizerStateRecognized) {
@@ -127,6 +144,8 @@ NS_ASSUME_NONNULL_END
 }
 
 @end
+
+#pragma mark - Gesture Recognizer Management
 
 static KayokoSwipeUpGestureRecognizer *kayokoEnsureSwipeUpGestureRecognizer(UIView *view, BOOL keyboardExtension) {
     KayokoSwipeUpGestureRecognizer *recognizer = objc_getAssociatedObject(view, &kayokoSwipeUpGestureRecognizerKey);
@@ -160,6 +179,8 @@ static void kayokoDiscardSwipeUpGestureRecognizer(UIView *view) {
     objc_setAssociatedObject(view, &kayokoSwipeUpGestureHandlerKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
+#pragma mark - Manual Touch State
+
 static BOOL kayokoManualSwipeUpIsActive(UIWindow *window) {
     NSNumber *active = objc_getAssociatedObject(window, &kayokoManualSwipeUpActiveKey);
     return [active boolValue];
@@ -178,6 +199,8 @@ static NSSet<UITouch *> *kayokoTouchesForWindowWithPhase(UIWindow *window, UIEve
     }
     return touches;
 }
+
+#pragma mark - Keyboard Extension Hooks
 
 CHOptimizedMethod1(self, void, _UIHostedWindow, sendEvent, UIEvent *, event) {
     if (event.type != UIEventTypeTouches) {
@@ -276,6 +299,8 @@ CHOptimizedMethod1(self, void, UIViewController, _setHostApplicationBundleIdenti
     HBLogDebug(@"Kayoko: keyboard extension host application bundle identifier=%@", bundleIdentifier);
 }
 
+#pragma mark - Keyboard Host Hooks
+
 CHOptimizedMethod0(self, void, UIInputSetHostView, didMoveToWindow) {
     CHSuper0(UIInputSetHostView, didMoveToWindow);
 
@@ -287,6 +312,8 @@ CHOptimizedMethod0(self, void, UIInputSetHostView, didMoveToWindow) {
 }
 
 @implementation KayokoHelperHookInstaller (SwipeUp)
+
+#pragma mark - Hook Installation
 
 + (void)installSwipeUpHooks {
     static dispatch_once_t sOnceToken;

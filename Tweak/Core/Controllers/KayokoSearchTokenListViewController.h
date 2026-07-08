@@ -24,6 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, nullable) void (^contentHeightDidChange)(void);
 
 - (void)updateWithSearchCriteria:(KayokoSearchCriteria *)searchCriteria
+                       tagTokens:(NSArray<KayokoSearchToken *> *)tagTokens
                        appTokens:(NSArray<KayokoSearchToken *> *)appTokens;
 - (CGFloat)preferredContentHeightForWidth:(CGFloat)width;
 

@@ -9,6 +9,12 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef NS_ENUM(NSInteger, KayokoTableDataStoreDisplayedItemUpdate) {
+    KayokoTableDataStoreDisplayedItemUpdateNotFound = 0,
+    KayokoTableDataStoreDisplayedItemUpdateReload,
+    KayokoTableDataStoreDisplayedItemUpdateRemove,
+};
+
 @interface KayokoTableDataStore : NSObject
 
 @property(nonatomic, copy) NSArray<NSDictionary<NSString *, id> *> *items;
@@ -26,6 +32,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)clearSearch;
 - (NSUInteger)indexOfItemMatchingDictionary:(NSDictionary<NSString *, id> *)dictionary
                                     inItems:(NSArray<NSDictionary<NSString *, id> *> *)items;
+- (KayokoTableDataStoreDisplayedItemUpdate)updateTagUUID:(nullable NSString *)tagUUID
+                               forItemMatchingDictionary:(NSDictionary<NSString *, id> *)dictionary
+                                      displayedItemIndex:(NSUInteger *)displayedItemIndex;
 
 @end
 

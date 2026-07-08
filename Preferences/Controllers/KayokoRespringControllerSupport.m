@@ -36,7 +36,8 @@ static BOOL kayokoSendRelaunchActionWithOptions(SBSRelaunchActionOptions options
     }
 
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-      SBSRelaunchAction *action = [(id)actionClass actionWithReason:@"Kayoko" options:options targetURL:nil];
+      NSURL *kayokoURL = [NSURL URLWithString:@"prefs:root=Kayoko"];
+      SBSRelaunchAction *action = [(id)actionClass actionWithReason:@"Kayoko" options:options targetURL:kayokoURL];
       FBSSystemService *service = [(id)serviceClass sharedService];
       if (!action || ![service respondsToSelector:@selector(sendActions:withResult:)]) {
           NSLog(@"Kayoko: FBSSystemService cannot perform %@", actionName ?: @"relaunch");

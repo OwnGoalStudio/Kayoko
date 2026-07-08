@@ -32,18 +32,27 @@
     NSString *bundleIdentifier = dictionary[kKayokoItemKeyBundleIdentifier];
     NSString *content = dictionary[kKayokoItemKeyContent];
     NSString *imageName = dictionary[kKayokoItemKeyImageName];
-    return [[KayokoPasteboardItem alloc] initWithBundleIdentifier:bundleIdentifier
-                                                       andContent:content
-                                                   withImageNamed:imageName];
+    KayokoPasteboardItem *item = [[KayokoPasteboardItem alloc] initWithBundleIdentifier:bundleIdentifier
+                                                                             andContent:content
+                                                                         withImageNamed:imageName];
+    id tagUUID = dictionary[kKayokoItemKeyTagUUID];
+    if ([tagUUID isKindOfClass:[NSString class]] && [tagUUID length] > 0) {
+        [item setTagUUID:tagUUID];
+    }
+    return item;
 }
 
 - (NSDictionary<NSString *, id> *)dictionaryRepresentation {
-    return @{
+    NSMutableDictionary<NSString *, id> *dictionary = [@{
         kKayokoItemKeyBundleIdentifier : [self bundleIdentifier] ?: @"com.apple.springboard",
         kKayokoItemKeyContent : [self content] ?: @"",
         kKayokoItemKeyImageName : [self imageName] ?: @"",
         kKayokoItemKeyHasLink : @([self hasLink])
-    };
+    } mutableCopy];
+    if ([[self tagUUID] length] > 0) {
+        dictionary[kKayokoItemKeyTagUUID] = [self tagUUID];
+    }
+    return dictionary;
 }
 
 @end

@@ -4,6 +4,8 @@
 .theos/
 .vscode/
 packages/
+references/
+__handlers__/
 compile_commands.json
 
 # Created by https://www.toptal.com/developers/gitignore/api/swift,xcode,macos

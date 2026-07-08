@@ -9,11 +9,17 @@ kayoko_updater_FILES += ../Tweak/Core/Manager/KayokoHistoryStore.m
 kayoko_updater_FILES += ../Tweak/Core/Manager/KayokoHistoryMigrator.m
 kayoko_updater_FILES += ../Tweak/Core/Manager/KayokoPasteboardItem.m
 kayoko_updater_FILES += ../Tweak/Core/Manager/KayokoSearchCriteria.m
+kayoko_updater_FILES += ../Shared/Tags/KayokoTag.m
+kayoko_updater_FILES += ../Shared/Tags/KayokoTagStore.m
+kayoko_updater_FILES += ../Shared/Purchases/KayokoPurchaseAuthorization.m
 
 kayoko_updater_CFLAGS += -fobjc-arc
 kayoko_updater_CFLAGS += -I../Tweak/Core/Manager
 kayoko_updater_CFLAGS += -I../Preferences
+kayoko_updater_CFLAGS += -I../Shared/Tags
+kayoko_updater_CFLAGS += -I../Shared/Purchases
 
+kayoko_updater_FRAMEWORKS += Security
 kayoko_updater_LIBRARIES += sqlite3
 ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
 kayoko_updater_LIBRARIES += roothide

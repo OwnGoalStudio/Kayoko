@@ -34,6 +34,7 @@ typedef NS_ENUM(NSInteger, KayokoHistoryStoreLockingMode) {
 - (void)closeDatabase;
 - (BOOL)verifyExclusiveAccessWithError:(NSError **)error;
 - (BOOL)checkpointWriteAheadLogWithError:(NSError **)error;
+- (BOOL)upgradeTagReferencesWithError:(NSError **)error;
 - (BOOL)upgradeSearchIndexWithError:(NSError **)error;
 - (BOOL)validateSearchIndexWithError:(NSError *_Nullable *_Nullable)error;
 - (BOOL)isMigrationCompletedWithError:(NSError **)error;
@@ -56,6 +57,10 @@ typedef NS_ENUM(NSInteger, KayokoHistoryStoreLockingMode) {
               fromHistoryKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage
                        error:(NSError *_Nullable *_Nullable)error;
+- (BOOL)setTagUUID:(nullable NSString *)tagUUID
+    forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
+         inHistoryKey:(NSString *)historyKey
+                error:(NSError *_Nullable *_Nullable)error;
 - (BOOL)removeItemsFromHistoryKey:(NSString *)historyKey
                shouldRemoveImages:(BOOL)shouldRemoveImages
                             error:(NSError *_Nullable *_Nullable)error;
