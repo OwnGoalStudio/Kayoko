@@ -25,6 +25,7 @@
 "No History Items" = "暂无历史记录";
 "No Search Results" = "无搜索结果";
 "No Tag" = "无标签";
+"Note" = "备注";
 "Open" = "打开";
 "Open Settings → “Kayoko” to complete verification." = "打开设置 → “Kayoko” 以完成验证。";
 "Paste" = "粘贴";
@@ -32,6 +33,7 @@
 "Preview" = "预览";
 "SQLite operation failed" = "数据库操作失败";
 "Save to Photos" = "保存到照片";
+"Save" = "保存";
 "Search" = "搜索";
 "SpringBoard" = "主屏幕";
 "Spotlight" = "聚焦";

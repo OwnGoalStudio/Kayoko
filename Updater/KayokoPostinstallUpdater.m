@@ -49,11 +49,11 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
     NSError *migrationError = nil;
     BOOL migrated = [migrator migrateIfNeededWithError:&migrationError];
 
-    NSError *tagReferenceError = nil;
-    BOOL upgradedTagReferences = migrated && [store upgradeTagReferencesWithError:&tagReferenceError];
+    NSError *historySchemaError = nil;
+    BOOL upgradedHistorySchema = migrated && [store upgradeHistorySchemaWithError:&historySchemaError];
 
     NSError *searchIndexError = nil;
-    BOOL upgradedSearchIndex = upgradedTagReferences && [store upgradeSearchIndexWithError:&searchIndexError];
+    BOOL upgradedSearchIndex = upgradedHistorySchema && [store upgradeSearchIndexWithError:&searchIndexError];
 
     NSError *ownershipError = nil;
     BOOL repairedOwnership = upgradedSearchIndex && [self repairCurrentDataDirectoryOwnershipWithError:&ownershipError];
@@ -63,9 +63,9 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
         }
         return NO;
     }
-    if (!upgradedTagReferences) {
+    if (!upgradedHistorySchema) {
         if (error) {
-            *error = tagReferenceError;
+            *error = historySchemaError;
         }
         return NO;
     }

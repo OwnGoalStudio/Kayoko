@@ -34,6 +34,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) KayokoTableDataStore *dataStore;
 @property(nonatomic, strong) KayokoTableViewCellContentProvider *cellContentProvider;
 @property(nonatomic, strong) KayokoHistoryItemActionHandler *actionHandler;
+
+- (KayokoTableViewCell *)newCellForItem:(KayokoPasteboardItem *)item addsPreviewGesture:(BOOL)addsPreviewGesture;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -476,6 +478,82 @@ NS_ASSUME_NONNULL_END
         }];
 }
 
+- (void)updateNote:(NSString *)note
+            forItem:(KayokoPasteboardItem *)item
+         completion:(void (^)(void))completion {
+    if (!item) {
+        if (completion) {
+            completion();
+        }
+        return;
+    }
+
+    NSDictionary<NSString *, id> *dictionary = [item dictionaryRepresentation];
+    __block KayokoTableDataStoreDisplayedItemUpdate update = KayokoTableDataStoreDisplayedItemUpdateNotFound;
+    __block NSUInteger displayedIndex = NSNotFound;
+
+    [[self tableView]
+        performBatchUpdates:^{
+          update = [[self dataStore] updateNote:note
+                         forItemMatchingDictionary:dictionary
+                                displayedItemIndex:&displayedIndex];
+          if (displayedIndex == NSNotFound) {
+              return;
+          }
+
+          NSIndexPath *indexPath = [NSIndexPath indexPathForRow:displayedIndex inSection:0];
+          if (update == KayokoTableDataStoreDisplayedItemUpdateRemove) {
+              [[self tableView] deleteRowsAtIndexPaths:@[ indexPath ]
+                                      withRowAnimation:UITableViewRowAnimationAutomatic];
+          } else if (update == KayokoTableDataStoreDisplayedItemUpdateReload) {
+              [[self tableView] reloadRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationNone];
+          }
+        }
+        completion:^(__unused BOOL finished) {
+          [self refreshSearchPlaceholder];
+          if (completion) {
+              completion();
+          }
+        }];
+}
+
+- (nullable KayokoTableViewCell *)visibleCellForItem:(KayokoPasteboardItem *)item {
+    if (!item) {
+        return nil;
+    }
+
+    NSUInteger displayedIndex = [[self dataStore] indexOfItemMatchingDictionary:[item dictionaryRepresentation]
+                                                                         inItems:[self displayedItems]];
+    if (displayedIndex == NSNotFound) {
+        return nil;
+    }
+    return (KayokoTableViewCell *)[[self tableView]
+        cellForRowAtIndexPath:[NSIndexPath indexPathForRow:displayedIndex inSection:0]];
+}
+
+- (KayokoTableViewCell *)presentationCellForItem:(KayokoPasteboardItem *)item {
+    return [self newCellForItem:item addsPreviewGesture:NO];
+}
+
+- (nullable KayokoTableViewCell *)scrollItemToVisible:(KayokoPasteboardItem *)item {
+    if (!item) {
+        return nil;
+    }
+
+    NSUInteger displayedIndex = [[self dataStore] indexOfItemMatchingDictionary:[item dictionaryRepresentation]
+                                                                         inItems:[self displayedItems]];
+    if (displayedIndex == NSNotFound) {
+        return nil;
+    }
+
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:displayedIndex inSection:0];
+    KayokoHistoryListView *tableView = [self tableView];
+    [tableView layoutIfNeeded];
+    [tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionMiddle animated:NO];
+    [tableView layoutIfNeeded];
+    return (KayokoTableViewCell *)[tableView cellForRowAtIndexPath:indexPath];
+}
+
 #pragma mark - UITableViewDataSource
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
@@ -485,9 +563,7 @@ NS_ASSUME_NONNULL_END
     return [[self displayedItems] count];
 }
 
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    NSDictionary<NSString *, id> *dictionary = [self itemDictionaryAtIndexPath:indexPath];
-    KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:dictionary];
+- (KayokoTableViewCell *)newCellForItem:(KayokoPasteboardItem *)item addsPreviewGesture:(BOOL)addsPreviewGesture {
     KayokoTableViewCellContent *content = [[self cellContentProvider] cellContentForItem:item
                                                                         previewLineCount:[self previewLineCount]
                                                                               searchText:[self searchText]];
@@ -506,10 +582,19 @@ NS_ASSUME_NONNULL_END
                                               }];
     }
 
-    UILongPressGestureRecognizer *gesture =
-        [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPressGestureRecognizer:)];
-    [cell addGestureRecognizer:gesture];
+    if (addsPreviewGesture) {
+        UILongPressGestureRecognizer *gesture = [[UILongPressGestureRecognizer alloc]
+            initWithTarget:self
+                    action:@selector(handleLongPressGestureRecognizer:)];
+        [cell addGestureRecognizer:gesture];
+    }
     return cell;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    NSDictionary<NSString *, id> *dictionary = [self itemDictionaryAtIndexPath:indexPath];
+    KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:dictionary];
+    return [self newCellForItem:item addsPreviewGesture:YES];
 }
 
 #pragma mark - UITableViewDelegate
@@ -551,6 +636,11 @@ NS_ASSUME_NONNULL_END
     UIContextualAction *moveAction = [self moveActionForItem:item dictionary:dictionary indexPath:indexPath];
     if (moveAction) {
         [actions addObject:moveAction];
+    }
+
+    UIContextualAction *noteAction = [self noteActionForItem:item indexPath:indexPath];
+    if (noteAction) {
+        [actions addObject:noteAction];
     }
 
     UIContextualAction *saveAction = [self saveActionForItem:item];
@@ -641,6 +731,29 @@ NS_ASSUME_NONNULL_END
     return moveAction;
 }
 
+- (UIContextualAction *)noteActionForItem:(KayokoPasteboardItem *)item indexPath:(NSIndexPath *)indexPath {
+    UIContextualAction *noteAction = [UIContextualAction
+        contextualActionWithStyle:UIContextualActionStyleNormal
+                            title:@""
+                          handler:^(__unused UIContextualAction *action, __unused __kindof UIView *sourceView,
+                                    void (^completionHandler)(BOOL)) {
+                            KayokoTableViewCell *sourceCell =
+                                (KayokoTableViewCell *)[[self tableView] cellForRowAtIndexPath:indexPath];
+                            KayokoTableViewCell *presentationCell =
+                                [self newCellForItem:item addsPreviewGesture:NO];
+                            completionHandler(YES);
+                            dispatch_async(dispatch_get_main_queue(), ^{
+                              [[self delegate] historyListViewController:self
+                                                  didRequestEditNoteForItem:item
+                                                           presentationCell:presentationCell
+                                                                 sourceCell:sourceCell];
+                            });
+                          }];
+    [noteAction setImage:[UIImage systemImageNamed:@"note.text"]];
+    [noteAction setBackgroundColor:[UIColor systemOrangeColor]];
+    return noteAction;
+}
+
 - (UIContextualAction *)saveActionForItem:(KayokoPasteboardItem *)item {
     if (![self automaticallyPaste] && [[item imageName] length] == 0) {
         return nil;
@@ -659,7 +772,7 @@ NS_ASSUME_NONNULL_END
                             }
                           }];
     [saveAction setImage:[UIImage systemImageNamed:savesImage ? @"square.and.arrow.down.fill" : @"doc.on.doc.fill"]];
-    [saveAction setBackgroundColor:[UIColor systemOrangeColor]];
+    [saveAction setBackgroundColor:[UIColor systemBlueColor]];
     return saveAction;
 }
 

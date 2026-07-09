@@ -258,6 +258,24 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
     }];
 }
 
+- (void)setNote:(NSString *)note
+    forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
+         inHistoryKey:(NSString *)historyKey
+           completion:(void (^)(BOOL success))completion {
+    [self performAsync:^{
+      NSError *error = nil;
+      KayokoHistoryStore *historyStore = [self preparedHistoryStoreOnQueueWithError:&error];
+      BOOL success = historyStore && [historyStore setNote:note
+                                         forItemDictionary:dictionary
+                                              inHistoryKey:historyKey
+                                                     error:&error];
+      if (!success) {
+          HBLogDebug(@"Kayoko: Failed to set history item note: %@", error);
+      }
+      [self dispatchCompletion:completion success:success];
+    }];
+}
+
 #pragma mark - Bulk Removal
 
 - (void)removeItemsFromHistoryKey:(NSString *)historyKey

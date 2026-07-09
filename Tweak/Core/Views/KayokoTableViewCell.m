@@ -96,10 +96,20 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
         }
 
         [self setHeaderLabel:[[UILabel alloc] init]];
-        [[self headerLabel] setText:[content displayName]];
         [[self headerLabel] setFont:[UIFont systemFontOfSize:16 weight:UIFontWeightMedium]];
         [[self headerLabel] setTextColor:[UIColor labelColor]];
         [[self headerLabel] setLineBreakMode:NSLineBreakByTruncatingTail];
+        if ([content attributedDisplayName]) {
+            NSMutableAttributedString *attributedDisplayName = [[content attributedDisplayName] mutableCopy];
+            NSRange fullRange = NSMakeRange(0, [attributedDisplayName length]);
+            [attributedDisplayName addAttribute:NSFontAttributeName value:[[self headerLabel] font] range:fullRange];
+            [attributedDisplayName addAttribute:NSForegroundColorAttributeName
+                                          value:[[self headerLabel] textColor]
+                                          range:fullRange];
+            [[self headerLabel] setAttributedText:attributedDisplayName];
+        } else {
+            [[self headerLabel] setText:[content displayName]];
+        }
         [[self headerLabel] setContentHuggingPriority:UILayoutPriorityDefaultHigh
                                               forAxis:UILayoutConstraintAxisHorizontal];
         [[self headerLabel] setContentCompressionResistancePriority:UILayoutPriorityDefaultLow

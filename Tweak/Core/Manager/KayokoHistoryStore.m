@@ -44,6 +44,7 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma mark - Schema
 
 - (BOOL)ensureTagUUIDColumnWithError:(NSError **)error;
+- (BOOL)ensureNoteColumnWithError:(NSError **)error;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -107,6 +108,7 @@ NS_ASSUME_NONNULL_END
                                              "updated_at REAL NOT NULL,"
                                              "sequence INTEGER NOT NULL,"
                                              "tag_uuid TEXT NULL,"
+                                             "note TEXT NULL,"
                                              "search_index_version INTEGER NOT NULL DEFAULT 0"
                                              ")";
     NSString *createSearchTokensStatement = @"CREATE TABLE IF NOT EXISTS history_item_search_tokens ("
@@ -157,10 +159,14 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
+    if (![self ensureNoteColumnWithError:error]) {
+        return NO;
+    }
+
     return YES;
 }
 
-- (BOOL)upgradeTagReferencesWithError:(NSError **)error {
+- (BOOL)upgradeHistorySchemaWithError:(NSError **)error {
     return [self prepareStoreWithError:error];
 }
 
@@ -477,6 +483,32 @@ NS_ASSUME_NONNULL_END
     return NO;
 }
 
+- (BOOL)setNote:(NSString *)note
+    forItemDictionary:(NSDictionary<NSString *, id> *)dictionary
+         inHistoryKey:(NSString *)historyKey
+                error:(NSError **)error {
+    NSString *content = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyContent fallback:nil];
+    if ([content length] == 0 || [historyKey length] == 0) {
+        return YES;
+    }
+
+    NSString *normalizedNote = [note length] > 0 ? note : nil;
+    NSArray<id> *bindings =
+        normalizedNote ? @[ normalizedNote, historyKey, content ] : @[ [NSNull null], historyKey, content ];
+    NSInteger changedCount = 0;
+    BOOL success = [self executeStatement:@"UPDATE history_items SET note = ? WHERE history_key = ? AND content = ?"
+                                 bindings:bindings
+                                  changes:&changedCount
+                                    error:error];
+    if (success && changedCount == 0) {
+        [self populateError:error
+                       code:SQLITE_NOTFOUND
+                    message:KayokoHistoryStoreLocalizedString(@"History item not found")];
+        return NO;
+    }
+    return success;
+}
+
 #pragma mark - Bulk Removal
 
 - (BOOL)removeItemsFromHistoryKey:(NSString *)historyKey
@@ -529,16 +561,20 @@ NS_ASSUME_NONNULL_END
     NSMutableArray<NSDictionary<NSString *, id> *> *items = [[NSMutableArray alloc] init];
     NSMutableString *sql =
         [NSMutableString stringWithString:@"SELECT bundle_identifier, content, image_name, has_link, "
-                                           "tag_uuid "
+                                           "tag_uuid, note "
                                            "FROM history_items WHERE history_key = ?"];
     NSMutableArray<id> *bindings = [NSMutableArray arrayWithObject:historyKey ?: @""];
 
     if ([searchCriteria hasSearchText]) {
+        NSString *searchPattern = [self likePatternForSearchText:[searchCriteria searchText]];
         if ([[searchCriteria categoryValue] isEqualToString:kKayokoSearchCategoryImage]) {
-            [sql appendString:@" AND 0"];
+            [sql appendString:@" AND note LIKE ? ESCAPE '\\'"];
+            [bindings addObject:searchPattern];
         } else {
-            [sql appendString:@" AND image_name = '' AND content LIKE ? ESCAPE '\\'"];
-            [bindings addObject:[self likePatternForSearchText:[searchCriteria searchText]]];
+            [sql appendString:@" AND ((image_name = '' AND content LIKE ? ESCAPE '\\') "
+                               "OR note LIKE ? ESCAPE '\\')"];
+            [bindings addObject:searchPattern];
+            [bindings addObject:searchPattern];
         }
     }
     if ([searchCriteria hasCategoryToken]) {
@@ -595,7 +631,7 @@ NS_ASSUME_NONNULL_END
 
 - (NSDictionary<NSString *, id> *)latestItemForHistoryKey:(NSString *)historyKey error:(NSError **)error {
     sqlite3_stmt *statement = NULL;
-    const char *sql = "SELECT bundle_identifier, content, image_name, has_link, tag_uuid "
+    const char *sql = "SELECT bundle_identifier, content, image_name, has_link, tag_uuid, note "
                       "FROM history_items WHERE history_key = ? ORDER BY sequence DESC LIMIT 1";
 
     if (![self prepareStatement:sql statement:&statement error:error]) {
@@ -705,6 +741,13 @@ NS_ASSUME_NONNULL_END
     return [self ensureColumnNamed:@"tag_uuid"
                            inTable:@"history_items"
                usingAlterStatement:@"ALTER TABLE history_items ADD COLUMN tag_uuid TEXT NULL"
+                             error:error];
+}
+
+- (BOOL)ensureNoteColumnWithError:(NSError **)error {
+    return [self ensureColumnNamed:@"note"
+                           inTable:@"history_items"
+               usingAlterStatement:@"ALTER TABLE history_items ADD COLUMN note TEXT NULL"
                              error:error];
 }
 
@@ -954,31 +997,40 @@ NS_ASSUME_NONNULL_END
     return NO;
 }
 
-#pragma mark - Tag Helpers
+#pragma mark - User Metadata
 
-- (NSString *)tagUUIDForHistoryKey:(NSString *)historyKey content:(NSString *)content error:(NSError **)error {
+- (NSDictionary<NSString *, NSString *> *)storedUserMetadataForHistoryKey:(NSString *)historyKey
+                                                                   content:(NSString *)content
+                                                                     error:(NSError **)error {
     if ([historyKey length] == 0 || [content length] == 0) {
-        return nil;
+        return @{};
     }
 
     sqlite3_stmt *statement = NULL;
-    const char *sql = "SELECT tag_uuid FROM history_items WHERE history_key = ? AND content = ? LIMIT 1";
+    const char *sql = "SELECT tag_uuid, note FROM history_items WHERE history_key = ? AND content = ? LIMIT 1";
     if (![self prepareStatement:sql statement:&statement error:error]) {
-        return nil;
+        return @{};
     }
 
     sqlite3_bind_text(statement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(statement, 2, [content UTF8String], -1, SQLITE_TRANSIENT);
-    NSString *tagUUID = nil;
+    NSMutableDictionary<NSString *, NSString *> *metadata = [[NSMutableDictionary alloc] init];
     int stepResult = sqlite3_step(statement);
     if (stepResult == SQLITE_ROW) {
-        tagUUID = [self stringFromColumn:statement index:0];
+        NSString *tagUUID = [self stringFromColumn:statement index:0];
+        NSString *note = [self stringFromColumn:statement index:1];
+        if ([tagUUID length] > 0) {
+            metadata[kKayokoItemKeyTagUUID] = tagUUID;
+        }
+        if ([note length] > 0) {
+            metadata[kKayokoItemKeyNote] = note;
+        }
     } else if (stepResult != SQLITE_DONE) {
         [self populateError:error code:stepResult message:[NSString stringWithUTF8String:sql]];
     }
 
     sqlite3_finalize(statement);
-    return [tagUUID length] > 0 ? tagUUID : nil;
+    return metadata;
 }
 
 - (BOOL)upsertItemDictionaryWithoutTransaction:(NSDictionary<NSString *, id> *)dictionary
@@ -993,12 +1045,18 @@ NS_ASSUME_NONNULL_END
                                                              key:kKayokoItemKeyBundleIdentifier
                                                         fallback:@"com.apple.springboard"];
     NSString *imageName = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyImageName fallback:@""];
+    NSDictionary<NSString *, NSString *> *storedMetadata =
+        [self storedUserMetadataForHistoryKey:historyKey content:content error:error];
+    if (error && *error) {
+        return NO;
+    }
     NSString *tagUUID = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyTagUUID fallback:nil];
     if ([tagUUID length] == 0) {
-        tagUUID = [self tagUUIDForHistoryKey:historyKey content:content error:error];
-        if (tagUUID == nil && error && *error) {
-            return NO;
-        }
+        tagUUID = storedMetadata[kKayokoItemKeyTagUUID];
+    }
+    NSString *note = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyNote fallback:nil];
+    if ([note length] == 0) {
+        note = storedMetadata[kKayokoItemKeyNote];
     }
     NSNumber *hasLink = @([[dictionary objectForKey:kKayokoItemKeyHasLink] boolValue]);
     NSNumber *sequence = @([self nextSequence]);
@@ -1013,11 +1071,12 @@ NS_ASSUME_NONNULL_END
     if (![self executeStatement:
                    @"INSERT INTO history_items "
                     "(history_key, bundle_identifier, content, image_name, has_link, created_at, updated_at, sequence, "
-                    "tag_uuid, search_index_version) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
+                    "tag_uuid, note, search_index_version) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
                        bindings:@[
                            historyKey, bundleIdentifier, content, imageName, hasLink, now, now, sequence,
-                           [tagUUID length] > 0 ? tagUUID : (id)[NSNull null]
+                           [tagUUID length] > 0 ? tagUUID : (id)[NSNull null],
+                           [note length] > 0 ? note : (id)[NSNull null]
                        ]
                           error:error]) {
         return NO;
@@ -1176,6 +1235,7 @@ NS_ASSUME_NONNULL_END
     NSString *imageName = [self stringFromColumn:statement index:2] ?: @"";
     BOOL hasLink = sqlite3_column_int(statement, 3) != 0;
     NSString *tagUUID = [self stringFromColumn:statement index:4];
+    NSString *note = [self stringFromColumn:statement index:5];
 
     NSMutableDictionary<NSString *, id> *dictionary = [@{
         kKayokoItemKeyBundleIdentifier : bundleIdentifier,
@@ -1185,6 +1245,9 @@ NS_ASSUME_NONNULL_END
     } mutableCopy];
     if ([tagUUID length] > 0) {
         dictionary[kKayokoItemKeyTagUUID] = tagUUID;
+    }
+    if ([note length] > 0) {
+        dictionary[kKayokoItemKeyNote] = note;
     }
     return dictionary;
 }

@@ -39,6 +39,10 @@
     if ([tagUUID isKindOfClass:[NSString class]] && [tagUUID length] > 0) {
         [item setTagUUID:tagUUID];
     }
+    id note = dictionary[kKayokoItemKeyNote];
+    if ([note isKindOfClass:[NSString class]] && [note length] > 0) {
+        [item setNote:note];
+    }
     return item;
 }
 
@@ -51,6 +55,9 @@
     } mutableCopy];
     if ([[self tagUUID] length] > 0) {
         dictionary[kKayokoItemKeyTagUUID] = [self tagUUID];
+    }
+    if ([[self note] length] > 0) {
+        dictionary[kKayokoItemKeyNote] = [self note];
     }
     return dictionary;
 }

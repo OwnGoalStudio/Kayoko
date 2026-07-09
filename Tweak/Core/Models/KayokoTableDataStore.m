@@ -48,11 +48,17 @@ NS_ASSUME_NONNULL_END
 
     NSMutableArray<NSDictionary<NSString *, id> *> *displayedItems = [[NSMutableArray alloc] init];
     for (NSDictionary<NSString *, id> *item in items) {
-        NSString *imageName = item[kKayokoItemKeyImageName];
-        NSString *content = item[kKayokoItemKeyContent];
-        if ([imageName length] > 0 || [content rangeOfString:searchText
+        NSString *imageName = item[kKayokoItemKeyImageName] ?: @"";
+        NSString *content = item[kKayokoItemKeyContent] ?: @"";
+        NSString *note = item[kKayokoItemKeyNote] ?: @"";
+        BOOL contentMatches =
+            [imageName length] == 0 && [content rangeOfString:searchText
                                                      options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch]
-                                              .location == NSNotFound) {
+                                              .location != NSNotFound;
+        BOOL noteMatches = [note rangeOfString:searchText
+                                       options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch]
+                               .location != NSNotFound;
+        if (!contentMatches && !noteMatches) {
             continue;
         }
 
@@ -136,6 +142,37 @@ NS_ASSUME_NONNULL_END
     return updatedDictionary;
 }
 
+- (NSDictionary<NSString *, id> *)dictionaryBySettingNote:(NSString *)note
+                                              inDictionary:(NSDictionary<NSString *, id> *)dictionary {
+    NSMutableDictionary<NSString *, id> *updatedDictionary = [dictionary mutableCopy];
+    if ([note length] > 0) {
+        updatedDictionary[kKayokoItemKeyNote] = note;
+    } else {
+        [updatedDictionary removeObjectForKey:kKayokoItemKeyNote];
+    }
+    return updatedDictionary;
+}
+
+- (BOOL)dictionaryMatchesSearchText:(NSDictionary<NSString *, id> *)dictionary {
+    NSString *searchText =
+        [[[self searchCriteria] searchText] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if ([searchText length] == 0) {
+        return YES;
+    }
+
+    NSString *imageName = dictionary[kKayokoItemKeyImageName] ?: @"";
+    NSString *content = dictionary[kKayokoItemKeyContent] ?: @"";
+    NSString *note = dictionary[kKayokoItemKeyNote] ?: @"";
+    BOOL contentMatches =
+        [imageName length] == 0 && [content rangeOfString:searchText
+                                                 options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch]
+                                          .location != NSNotFound;
+    BOOL noteMatches = [note rangeOfString:searchText
+                                   options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch]
+                           .location != NSNotFound;
+    return contentMatches || noteMatches;
+}
+
 - (BOOL)displayedItemWithTagUUID:(NSString *)tagUUID matchesSearchCriteria:(KayokoSearchCriteria *)searchCriteria {
     if (![searchCriteria hasTagToken]) {
         return YES;
@@ -173,6 +210,48 @@ NS_ASSUME_NONNULL_END
     }
 
     if (![self displayedItemWithTagUUID:tagUUID matchesSearchCriteria:[self searchCriteria]]) {
+        NSMutableArray<NSDictionary<NSString *, id> *> *displayedItems = [[self displayedItems] mutableCopy];
+        [displayedItems removeObjectAtIndex:displayedIndex];
+        [self setDisplayedItems:displayedItems];
+        return KayokoTableDataStoreDisplayedItemUpdateRemove;
+    }
+
+    NSMutableArray<NSDictionary<NSString *, id> *> *displayedItems = [[self displayedItems] mutableCopy];
+    displayedItems[displayedIndex] = updatedDictionary;
+    [self setDisplayedItems:displayedItems];
+    return KayokoTableDataStoreDisplayedItemUpdateReload;
+}
+
+- (KayokoTableDataStoreDisplayedItemUpdate)updateNote:(NSString *)note
+                              forItemMatchingDictionary:(NSDictionary<NSString *, id> *)dictionary
+                                     displayedItemIndex:(NSUInteger *)displayedItemIndex {
+    if (displayedItemIndex) {
+        *displayedItemIndex = NSNotFound;
+    }
+    if (!dictionary) {
+        return KayokoTableDataStoreDisplayedItemUpdateNotFound;
+    }
+
+    NSUInteger itemIndex = [self indexOfItemMatchingDictionary:dictionary inItems:[self items]];
+    if (itemIndex == NSNotFound) {
+        return KayokoTableDataStoreDisplayedItemUpdateNotFound;
+    }
+
+    NSDictionary<NSString *, id> *updatedDictionary = [self dictionaryBySettingNote:note
+                                                                        inDictionary:[self items][itemIndex]];
+    NSMutableArray<NSDictionary<NSString *, id> *> *items = [[self items] mutableCopy];
+    items[itemIndex] = updatedDictionary;
+    [self setItems:items];
+
+    NSUInteger displayedIndex = [self indexOfItemMatchingDictionary:dictionary inItems:[self displayedItems]];
+    if (displayedIndex == NSNotFound) {
+        return KayokoTableDataStoreDisplayedItemUpdateNotFound;
+    }
+    if (displayedItemIndex) {
+        *displayedItemIndex = displayedIndex;
+    }
+
+    if (![self dictionaryMatchesSearchText:updatedDictionary]) {
         NSMutableArray<NSDictionary<NSString *, id> *> *displayedItems = [[self displayedItems] mutableCopy];
         [displayedItems removeObjectAtIndex:displayedIndex];
         [self setDisplayedItems:displayedItems];

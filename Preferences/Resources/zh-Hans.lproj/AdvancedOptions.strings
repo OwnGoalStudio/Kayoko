@@ -11,12 +11,12 @@
 "Classic" = "经典";
 "Clear Favorites" = "清空收藏夹";
 "Clear History" = "清空历史记录";
-"Copy Path" = "复制路径";
+"Copy Path" = "拷贝路径";
 "Dangerous Zone" = "危险区域";
 "Deactivate" = "反激活";
 "Gesture Recognizer" = "手势识别器";
 "Ignore Universal Clipboard" = "忽略通用剪贴板";
-"Ignore clipboard events received through iOS Continuity’s Universal Clipboard, so Kayoko does not save content copied from nearby Apple devices." = "忽略通过 iOS「连续互通」功能的「通用剪贴板」传来的剪贴板事件，避免 Kayoko 保存附近 Apple 设备复制的内容。";
+"Ignore clipboard events received through iOS Continuity’s Universal Clipboard, so Kayoko does not save content copied from nearby Apple devices." = "忽略通过 iOS「连续互通」功能的「通用剪贴板」传来的剪贴板事件，避免 Kayoko 保存附近 Apple 设备拷贝的内容。";
 "Maintenance" = "维护";
 "OK" = "好";
 "Reset" = "还原";
