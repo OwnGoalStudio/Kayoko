@@ -10,9 +10,9 @@
 
 @implementation KayokoHistoryItemActionHandler
 
-- (void)performDirectPasteWithItem:(KayokoPasteboardItem *)item
-                        historyKey:(NSString *)historyKey
-                        completion:(void (^)(BOOL success))completion {
+- (void)activateItem:(KayokoPasteboardItem *)item
+          historyKey:(NSString *)historyKey
+          completion:(void (^)(BOOL success))completion {
     if (!item || [historyKey length] == 0) {
         if (completion) {
             completion(NO);
@@ -20,10 +20,10 @@
         return;
     }
 
-    [[KayokoPasteboardManager sharedInstance] performDirectPasteWithPasteboardItem:item
-                                                                       historyItem:item
-                                                                fromHistoryWithKey:historyKey
-                                                                   shouldAutoPaste:YES];
+    [[KayokoPasteboardManager sharedInstance] writePasteboardItem:item
+                                                sourceHistoryItem:item
+                                               fromHistoryWithKey:historyKey
+                                             allowsAutomaticPaste:YES];
     if (completion) {
         completion(YES);
     }

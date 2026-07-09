@@ -4,13 +4,17 @@
 "Activation Method" = "Activation Method";
 "Activation Methods" = "Activation Methods";
 "Advanced Options" = "Advanced Options";
+"Always" = "Always";
 "Appearance" = "Appearance";
 "Authorization Not Found" = "Authorization Not Found";
+"Auto Promote" = "Auto Promote";
 "Automatically Paste" = "Automatically Paste";
 "Behaviors" = "Behaviors";
 "CUSTOM_TAGS" = "Custom Tags…";
 "Cancel" = "Cancel";
 "Check Product Authorization" = "Check Product Authorization";
+"Choose how much text each clipboard item shows in the list. More lines make items easier to identify, but show fewer items at once." = "Choose how much text each clipboard item shows in the list. More lines make items easier to identify, but show fewer items at once.";
+"Choose when a tapped item moves to the top. “History Only” keeps Favorites in your chosen order while still surfacing recently used history items." = "Choose when a tapped item moves to the top. “History Only” keeps Favorites in your chosen order while still surfacing recently used history items.";
 "Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used." = "Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used.";
 "Credits" = "Credits";
 "Default View" = "Default View";
@@ -24,6 +28,7 @@
 "Feedbacks" = "Feedbacks";
 "Height (Points)" = "Height (Points)";
 "History" = "History";
+"History Only" = "History Only";
 "Input Switcher" = "Input Switcher";
 "Invalid Response" = "Invalid Response";
 "Kayoko" = "Kayoko";
@@ -32,6 +37,7 @@
 "Maximum Amount" = "Maximum Amount";
 "Network Request Failed" = "Network Request Failed";
 "Not Now" = "Not Now";
+"Off" = "Off";
 "One-Finger Swipe Up" = "One-Finger Swipe Up";
 "Play Haptic Feedback" = "Play Haptic Feedback";
 "Play Sound Effects" = "Play Sound Effects";

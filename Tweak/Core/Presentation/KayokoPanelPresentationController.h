@@ -5,6 +5,8 @@
 
 #import <UIKit/UIKit.h>
 
+#import "KayokoPanelPresentationMode.h"
+
 @class KayokoPanelPresentationController;
 @class KayokoMainView;
 
@@ -29,6 +31,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak, nullable) id<KayokoPanelPresentationControllerDelegate> delegate;
 @property(nonatomic, assign, getter=isDismissOnOutsideTouch) BOOL dismissOnOutsideTouch;
 @property(nonatomic, assign) BOOL shouldPlayFeedback;
+@property(nonatomic, assign) KayokoPanelPresentationMode presentationMode;
 @property(nonatomic, strong, readonly) UIPanGestureRecognizer *panGestureRecognizer;
 @property(nonatomic, assign, readonly, getter=isAnimating) BOOL animating;
 
@@ -36,6 +39,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setOutsideDismissOverlayView:(nullable UIControl *)outsideDismissOverlayView;
 - (void)showPanelWithCompletion:(nullable void (^)(void))completion;
 - (void)hidePanelWithCompletion:(nullable void (^)(void))completion;
+- (void)hidePanelWithAnimationStyle:(KayokoPanelHideAnimationStyle)animationStyle
+                         completion:(nullable void (^)(void))completion;
 - (void)hidePanelImmediatelyWithCompletion:(nullable void (^)(void))completion;
 - (void)finishOutsideDismissOverlayShow;
 - (void)triggerHapticFeedbackWithStyle:(UIImpactFeedbackStyle)style;

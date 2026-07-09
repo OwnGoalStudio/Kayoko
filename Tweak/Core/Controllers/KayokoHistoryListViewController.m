@@ -521,18 +521,28 @@ NS_ASSUME_NONNULL_END
     [[tableView cellForRowAtIndexPath:indexPath] setSelected:NO animated:YES];
 
     KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:[self itemDictionaryAtIndexPath:indexPath]];
-    [[self actionHandler]
-        performDirectPasteWithItem:item
-                        historyKey:[self historyKey]
-                        completion:^(BOOL success) {
-                          if (success) {
-                              if ([self automaticallyPaste]) {
-                                  [[self delegate] historyListViewControllerDidRequestHideAfterDirectPaste:self];
-                              } else {
-                                  [[self delegate] historyListViewControllerDidRequestHide:self];
+    [[self actionHandler] activateItem:item
+                            historyKey:[self historyKey]
+                            completion:^(BOOL success) {
+                              if (success) {
+                                  if ([self automaticallyPaste]) {
+                                      [[self delegate] historyListViewControllerDidRequestHideAfterDirectPaste:self];
+                                  } else {
+                                      [[self delegate] historyListViewControllerDidRequestHide:self];
+                                  }
                               }
-                          }
-                        }];
+                            }];
+}
+
+- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView
+                      withVelocity:(CGPoint)velocity
+               targetContentOffset:(inout CGPoint *)targetContentOffset {
+    (void)velocity;
+    if (scrollView != [self tableView] || [self hasActiveSearch]) {
+        return;
+    }
+
+    [[self tableView] adjustTargetContentOffsetForSearchBarSnap:targetContentOffset];
 }
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView

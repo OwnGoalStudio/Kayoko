@@ -193,6 +193,8 @@
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Choose how much text each clipboard item shows in the list. More lines make items easier to identify, but show fewer items at once.</string>
 			<key>label</key>
 			<string>Preview</string>
 		</dict>
@@ -330,6 +332,39 @@
 			<string>Swipe to Select Words</string>
 			<key>PostNotification</key>
 			<string>com.82flex.kayoko.preferences.reload</string>
+		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Choose when a tapped item moves to the top. “History Only” keeps Favorites in your chosen order while still surfacing recently used history items.</string>
+			<key>label</key>
+			<string>Auto Promote</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSegmentCell</string>
+			<key>default</key>
+			<integer>1</integer>
+			<key>defaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>key</key>
+			<string>AutomaticPromotionMode</string>
+			<key>PostNotification</key>
+			<string>com.82flex.kayoko.preferences.reload</string>
+			<key>validTitles</key>
+			<array>
+				<string>Off</string>
+				<string>History Only</string>
+				<string>Always</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<integer>0</integer>
+				<integer>1</integer>
+				<integer>2</integer>
+			</array>
 		</dict>
 
 		<dict>

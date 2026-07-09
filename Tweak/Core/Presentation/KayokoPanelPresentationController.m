@@ -47,6 +47,7 @@ NS_ASSUME_NONNULL_END
     self = [super init];
     if (self) {
         _panelView = panelView;
+        _presentationMode = KayokoPanelPresentationModePortraitDrawer;
         _panGestureRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self
                                                                         action:@selector(handlePanGestureRecognizer:)];
         [_panGestureRecognizer setDelegate:self];
@@ -110,6 +111,14 @@ NS_ASSUME_NONNULL_END
     CGFloat targetTranslationY = MAX([[self panelView] bounds].size.height / 3, 120);
     [self setPendingDismissTranslationY:targetTranslationY];
     [self setPendingDismissVelocityY:0];
+}
+
+- (CGFloat)defaultDismissTranslationForCurrentPresentationMode {
+    if ([self presentationMode] != KayokoPanelPresentationModeCompactLandscapeFullscreen) {
+        return 0;
+    }
+
+    return MAX([[self panelView] bounds].size.height / 3, 120);
 }
 
 #pragma mark - Outside Dismiss Overlay
@@ -415,6 +424,11 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)hidePanelWithCompletion:(void (^)(void))completion {
+    [self hidePanelWithAnimationStyle:KayokoPanelHideAnimationStyleDefault completion:completion];
+}
+
+- (void)hidePanelWithAnimationStyle:(KayokoPanelHideAnimationStyle)animationStyle
+                         completion:(void (^)(void))completion {
     if ([self isAnimating]) {
         return;
     }
@@ -424,6 +438,10 @@ NS_ASSUME_NONNULL_END
     CGFloat dismissVelocityY = [self pendingDismissVelocityY];
     [self setPendingDismissTranslationY:0];
     [self setPendingDismissVelocityY:0];
+
+    if (animationStyle == KayokoPanelHideAnimationStyleDefault && dismissTranslationY <= 0) {
+        dismissTranslationY = [self defaultDismissTranslationForCurrentPresentationMode];
+    }
 
     [self setAnimating:YES];
     CGFloat animationDuration = 0.33;

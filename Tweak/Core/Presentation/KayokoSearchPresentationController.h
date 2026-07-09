@@ -5,6 +5,8 @@
 
 #import <UIKit/UIKit.h>
 
+#import "KayokoPanelPresentationMode.h"
+
 @class KayokoHistoryListView;
 @class KayokoSearchPresentationController;
 
@@ -22,6 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface KayokoSearchPresentationController : NSObject
 
 @property(nonatomic, weak, nullable) id<KayokoSearchPresentationControllerDelegate> delegate;
+@property(nonatomic, assign) KayokoPanelPresentationMode presentationMode;
 @property(nonatomic, assign, readonly, getter=isSearchActive) BOOL searchActive;
 @property(nonatomic, assign, readonly) CGFloat keyboardBottomInset;
 
@@ -60,6 +63,7 @@ NS_ASSUME_NONNULL_BEGIN
                              activeTableView:(KayokoHistoryListView *)activeTableView
                            beganInHeaderView:(BOOL)beganInHeaderView;
 - (void)resetKeyboardInsets;
+- (void)resetAfterSearchStateClearedWithActiveTableView:(nullable KayokoHistoryListView *)activeTableView;
 
 @end
 

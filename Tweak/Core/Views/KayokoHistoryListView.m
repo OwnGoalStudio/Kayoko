@@ -147,6 +147,21 @@ NS_ASSUME_NONNULL_END
     return contentOffset.y >= headerHeight - 1 && contentOffset.y <= headerHeight + rowHeight + 1;
 }
 
+- (void)adjustTargetContentOffsetForSearchBarSnap:(CGPoint *)targetContentOffset {
+    CGFloat searchBarHeight = [self searchBarSnapHeight];
+    if (!targetContentOffset || searchBarHeight <= 0) {
+        return;
+    }
+
+    CGFloat targetOffsetY = targetContentOffset->y;
+    if (targetOffsetY <= 0 || targetOffsetY >= searchBarHeight) {
+        return;
+    }
+
+    CGFloat snapThresholdY = searchBarHeight / 3.0;
+    targetContentOffset->y = targetOffsetY < snapThresholdY ? 0 : searchBarHeight;
+}
+
 - (CGFloat)heightForRowRemovalAtIndexPath:(NSIndexPath *)indexPath {
     CGFloat height = CGRectGetHeight([self rectForRowAtIndexPath:indexPath]);
     if (height > 0) {

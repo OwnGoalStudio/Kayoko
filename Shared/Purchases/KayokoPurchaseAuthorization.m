@@ -152,9 +152,14 @@ static NSString *KayokoHTTPStatusMessage(NSInteger statusCode);
 #pragma mark - Authorization State
 
 + (BOOL)hasAuthorizationPassFlagWithError:(NSError **)error {
+#if DEBUG
+    HBLogDebug(@"Kayoko: Havoc authorization check for pass flag (DEBUG mode)");
+    return YES;
+#else
     NSData *flagData = KayokoCopyKeychainData(kKayokoAuthorizationFlagService, kKayokoAuthorizationFlagAccount,
                                               kKayokoAppleAccessGroup, error);
     return [flagData length] > 0;
+#endif
 }
 
 + (BOOL)setAuthorizationPassFlagWithError:(NSError **)error {

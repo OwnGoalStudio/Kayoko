@@ -8,6 +8,7 @@
 "Clear Favorites Confirmation" = "Clear favorites? This action cannot be undone.";
 "Clear History Confirmation" = "Clear history? This action cannot be undone.";
 "Continue" = "Continue";
+"Continuity" = "Continuity";
 "Copy" = "Copy";
 "Dates" = "Dates";
 "Favorites" = "Favorites";
@@ -33,6 +34,7 @@
 "Save to Photos" = "Save to Photos";
 "Search" = "Search";
 "SpringBoard" = "SpringBoard";
+"Spotlight" = "Spotlight";
 "Tags" = "Tags";
 "Text" = "Text";
 "Unable to Load History" = "Unable to Load History";

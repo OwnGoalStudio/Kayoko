@@ -13,6 +13,8 @@
 
 static CGFloat const kKayokoTitleTapControlHeight = 44;
 static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
+static CGFloat const kKayokoHeaderHeight = 60;
+static CGFloat const kKayokoContentTopSpacing = 8;
 
 @interface KayokoMainView ()
 
@@ -24,9 +26,11 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
 @property(nonatomic, strong) NSLayoutConstraint *headerSafeAreaLeadingConstraint;
 @property(nonatomic, strong) NSLayoutConstraint *headerTrailingConstraint;
 @property(nonatomic, strong) NSLayoutConstraint *headerSafeAreaTrailingConstraint;
+@property(nonatomic, strong) NSLayoutConstraint *headerHeightConstraint;
 
 #pragma mark - Content Constraints
 
+@property(nonatomic, strong) NSLayoutConstraint *contentTopConstraint;
 @property(nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *contentLeadingConstraints;
 @property(nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *contentSafeAreaLeadingConstraints;
 @property(nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *contentTrailingConstraints;
@@ -85,9 +89,12 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
         [self setHeaderSafeAreaTrailingConstraint:[[[self headerView] trailingAnchor]
                                                       constraintEqualToAnchor:[[self safeAreaLayoutGuide]
                                                                                   trailingAnchor]]];
+        [[self headerView] setClipsToBounds:YES];
+        [self
+            setHeaderHeightConstraint:[[[self headerView] heightAnchor] constraintEqualToConstant:kKayokoHeaderHeight]];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self headerView] heightAnchor] constraintEqualToConstant:60], [self headerTopConstraint],
-            [self headerLeadingConstraint], [self headerTrailingConstraint]
+            [self headerHeightConstraint], [self headerTopConstraint], [self headerLeadingConstraint],
+            [self headerTrailingConstraint]
         ]];
 
         [self setGrabber:[[KayokoGrabberView alloc] init]];
@@ -197,12 +204,12 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
         [[self contentSafeAreaTrailingConstraints] addObject:safeAreaTrailingConstraint];
         [[self contentBottomConstraints] addObject:bottomConstraint];
         [[self contentSafeAreaBottomConstraints] addObject:safeAreaBottomConstraint];
+        [self setContentTopConstraint:[[[self contentContainerView] topAnchor]
+                                          constraintEqualToAnchor:[[self headerView] bottomAnchor]
+                                                         constant:kKayokoContentTopSpacing]];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self contentContainerView] topAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor]
-                                                                    constant:8],
-            [self contentRespectsSafeArea] ? safeAreaLeadingConstraint : leadingConstraint,
-            [self contentRespectsSafeArea] ? safeAreaTrailingConstraint : trailingConstraint,
-            [self contentRespectsSafeArea] ? safeAreaBottomConstraint : bottomConstraint
+            [self contentTopConstraint], [self contentRespectsSafeArea] ? safeAreaLeadingConstraint : leadingConstraint,
+            [self contentRespectsSafeArea] ? safeAreaTrailingConstraint : trailingConstraint, bottomConstraint
         ]];
     }
 
@@ -215,11 +222,16 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
     [[self grabber] setFoldProgress:progress];
 }
 
-- (void)layoutSubviews {
-    [super layoutSubviews];
-    if ([self layoutHandler]) {
-        [self layoutHandler]();
+- (void)setSearchTitleRowCollapsed:(BOOL)searchTitleRowCollapsed {
+    if (_searchTitleRowCollapsed == searchTitleRowCollapsed) {
+        return;
     }
+
+    _searchTitleRowCollapsed = searchTitleRowCollapsed;
+    [[self headerHeightConstraint] setConstant:searchTitleRowCollapsed ? 0 : kKayokoHeaderHeight];
+    [[self contentTopConstraint] setConstant:searchTitleRowCollapsed ? 0 : kKayokoContentTopSpacing];
+    [[self headerView] setUserInteractionEnabled:!searchTitleRowCollapsed];
+    [self setNeedsLayout];
 }
 
 #pragma mark - Content Installation
@@ -254,6 +266,9 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
 
 - (CGFloat)sceneSafeAreaBottomInsetForWindow:(UIWindow *)window {
     UIWindowScene *windowScene = [window windowScene];
+    CGSize targetBoundsSize = [window bounds].size;
+    CGFloat firstVisibleBottomInset = 0;
+    CGFloat matchingVisibleBottomInset = 0;
     for (UIWindow *sceneWindow in [windowScene windows]) {
         if ([sceneWindow isHidden]) {
             continue;
@@ -261,25 +276,38 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
 
         CGFloat bottomInset = MAX([sceneWindow safeAreaInsets].bottom, 0);
         if (bottomInset > 0) {
-            return bottomInset;
+            if (firstVisibleBottomInset <= 0) {
+                firstVisibleBottomInset = bottomInset;
+            }
+
+            CGSize sceneWindowBoundsSize = [sceneWindow bounds].size;
+            if (fabs(sceneWindowBoundsSize.width - targetBoundsSize.width) <= 0.5 &&
+                fabs(sceneWindowBoundsSize.height - targetBoundsSize.height) <= 0.5) {
+                matchingVisibleBottomInset = MAX(matchingVisibleBottomInset, bottomInset);
+            }
         }
     }
 
-    return 0;
+    return matchingVisibleBottomInset > 0 ? matchingVisibleBottomInset : firstVisibleBottomInset;
 }
 
 - (CGFloat)safeAreaBottomInsetForContentView:(nullable UIView *)contentView {
-    CGFloat bottomInset = MAX([contentView safeAreaInsets].bottom, 0);
-    if (bottomInset > 0) {
-        return bottomInset;
+    UIView *referenceView = contentView ?: self;
+    if (contentView && [contentView isDescendantOfView:[self contentContainerView]]) {
+        // Content transitions temporarily offset installed content views; the safe-area overlap belongs to the
+        // stable content container.
+        referenceView = [self contentContainerView];
     }
 
-    UIView *referenceView = contentView ?: self;
     UIWindow *window = [referenceView window] ?: [self window];
+    CGFloat viewBottomSafeAreaInset = MAX([referenceView safeAreaInsets].bottom, 0);
     CGFloat windowBottomSafeAreaInset =
         MAX(MAX([window safeAreaInsets].bottom, [self sceneSafeAreaBottomInsetForWindow:window]), 0);
-    if (!referenceView || !window || windowBottomSafeAreaInset <= 0) {
-        return 0;
+    if (!referenceView || !window) {
+        return viewBottomSafeAreaInset;
+    }
+    if (windowBottomSafeAreaInset <= 0) {
+        return viewBottomSafeAreaInset;
     }
 
     CGRect referenceBoundsInWindow = [referenceView convertRect:[referenceView bounds] toView:window];
@@ -368,10 +396,10 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
         [constraint setActive:contentRespectsSafeArea];
     }
     for (NSLayoutConstraint *constraint in [self contentBottomConstraints]) {
-        [constraint setActive:!contentRespectsSafeArea];
+        [constraint setActive:YES];
     }
     for (NSLayoutConstraint *constraint in [self contentSafeAreaBottomConstraints]) {
-        [constraint setActive:contentRespectsSafeArea];
+        [constraint setActive:NO];
     }
     [self setNeedsLayout];
 }

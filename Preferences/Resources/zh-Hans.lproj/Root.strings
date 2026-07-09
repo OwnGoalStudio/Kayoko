@@ -4,13 +4,17 @@
 "Activation Method" = "激活方法";
 "Activation Methods" = "激活方法";
 "Advanced Options" = "高级选项";
+"Always" = "总是";
 "Appearance" = "外观";
 "Authorization Not Found" = "找不到授权";
+"Auto Promote" = "自动置顶";
 "Automatically Paste" = "自动粘贴";
 "Behaviors" = "行为";
 "CUSTOM_TAGS" = "自定义标签…";
 "Cancel" = "取消";
 "Check Product Authorization" = "检查产品授权";
+"Choose how much text each clipboard item shows in the list. More lines make items easier to identify, but show fewer items at once." = "选择列表中每个剪贴板条目显示多少文字。行数越多越容易辨认内容，但同屏可见的条目会更少。";
+"Choose when a tapped item moves to the top. “History Only” keeps Favorites in your chosen order while still surfacing recently used history items." = "选择点选条目后何时将它移到顶部。“仅历史记录” 会保留收藏夹的现有顺序，同时让最近使用的历史记录浮到前面。";
 "Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used." = "选择唤醒 Kayoko 时打开哪个列表。“先前的选择” 会保留上次使用的列表。";
 "Credits" = "致谢";
 "Default View" = "默认界面";
@@ -24,6 +28,7 @@
 "Feedbacks" = "反馈";
 "Height (Points)" = "高度";
 "History" = "历史记录";
+"History Only" = "仅历史记录";
 "Input Switcher" = "输入法菜单";
 "Invalid Response" = "无效响应";
 "Kayoko" = "Kayoko";
@@ -32,6 +37,7 @@
 "Maximum Amount" = "最大数量";
 "Network Request Failed" = "网络请求失败";
 "Not Now" = "稍后";
+"Off" = "关闭";
 "One-Finger Swipe Up" = "单指上划";
 "Play Haptic Feedback" = "播放触觉反馈";
 "Play Sound Effects" = "播放声音效果";

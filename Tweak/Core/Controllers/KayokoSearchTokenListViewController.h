@@ -26,6 +26,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updateWithSearchCriteria:(KayokoSearchCriteria *)searchCriteria
                        tagTokens:(NSArray<KayokoSearchToken *> *)tagTokens
                        appTokens:(NSArray<KayokoSearchToken *> *)appTokens;
+- (void)resetSearchSessionState;
 - (CGFloat)preferredContentHeightForWidth:(CGFloat)width;
 
 @end

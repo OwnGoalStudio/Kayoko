@@ -98,7 +98,7 @@ static void kayokoCoreHideCallback(CFNotificationCenterRef center, void *observe
     (void)name;
     (void)object;
     (void)userInfo;
-    [[KayokoCoreRuntime sharedRuntime] hide];
+    [[KayokoCoreRuntime sharedRuntime] hideForExternalRequest];
 }
 
 static void kayokoCoreReloadCallback(CFNotificationCenterRef center, void *observer, CFStringRef name,

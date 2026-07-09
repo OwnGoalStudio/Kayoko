@@ -21,6 +21,8 @@
 
 static NSTimeInterval const kKayokoPasteboardWriteConfirmationTimeout = 0.25;
 static NSTimeInterval const kKayokoSimulatedAutomaticPasteDelay = 0.2;
+static NSString *const kKayokoContinuityBundleIdentifier = @"com.apple.continuity";
+static NSString *const kKayokoRemoteClipboardPasteboardType = @"com.apple.is-remote-clipboard";
 static NSString *const kKayokoPasteboardManagerErrorDomain = @"com.82flex.kayoko.pasteboard-manager";
 
 @interface SBApplication : NSObject
@@ -131,7 +133,7 @@ NS_ASSUME_NONNULL_END
     dispatch_queue_t _thumbnailQueue;
     NSCache<NSString *, UIImage *> *_thumbnailCache;
 
-    BOOL _isPerformingDirectPaste;
+    BOOL _isWritingPasteboardItem;
     KayokoPasteboardPendingWrite *_pendingPasteboardWrite;
 
     KayokoHistoryRepository *_historyRepository;
@@ -214,6 +216,7 @@ NS_ASSUME_NONNULL_END
             dispatch_queue_create("com.82flex.kayoko.queue.thumbnail", DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL);
         _thumbnailCache = [[NSCache alloc] init];
         [_thumbnailCache setCountLimit:80];
+        _automaticPromotionMode = kKayokoPreferenceKeyAutomaticPromotionModeDefaultValue;
         _pendingPasteboardWrite = [[KayokoPasteboardPendingWrite alloc] init];
         __weak typeof(self) weakSelf = self;
         _historyRepository =
@@ -317,14 +320,17 @@ NS_ASSUME_NONNULL_END
       });
     };
 
+    NSString *sourceBundleIdentifier = [self sourceApplicationBundleIdentifierForCurrentPasteboardChangeOnMain];
+
     if (@available(iOS 16, *)) {
         dispatch_async(_pasteboardQueue, ^{
-          complete([self _reallyPullPasteboardChanges]);
+          complete([self _reallyPullPasteboardChangesWithSourceBundleIdentifier:sourceBundleIdentifier]);
         });
         return;
     }
 
-    NSArray<KayokoPasteboardItem *> *items = [self pasteboardItemsForCurrentChange];
+    NSArray<KayokoPasteboardItem *> *items =
+        [self pasteboardItemsForCurrentChangeWithSourceBundleIdentifier:sourceBundleIdentifier];
     [self savePasteboardItems:items
              toHistoryWithKey:kKayokoHistoryKeyHistory
                    completion:^(BOOL didSaveAnyItem) {
@@ -353,14 +359,47 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)shouldIgnoreCurrentPasteboardChange {
-    if ([self ignoreRemoteReplication] && [self pasteboardContainsType:@"com.apple.is-remote-clipboard"]) {
+    if ([self ignoreRemoteReplication] && [self pasteboardContainsType:kKayokoRemoteClipboardPasteboardType]) {
         return YES;
     }
 
     return [self pasteboardContainsType:@"com.apple.icns"];
 }
 
-- (NSArray<KayokoPasteboardItem *> *)pasteboardItemsForCurrentChange {
+- (NSString *)sourceApplicationBundleIdentifierForCurrentPasteboardChangeOnMain {
+    if ([self pasteboardContainsType:kKayokoRemoteClipboardPasteboardType]) {
+        HBLogDebug(@"Kayoko: pasteboard source app using Continuity for remote clipboard change "
+                   @"pasteboardType=%@ finalBundleIdentifier=%@",
+                   kKayokoRemoteClipboardPasteboardType, kKayokoContinuityBundleIdentifier);
+        return kKayokoContinuityBundleIdentifier;
+    }
+
+    KayokoKeyboardHostContext *hostContext =
+        [[KayokoKeyboardHostResolver sharedResolver] keyboardHostContextForSourceAttribution];
+    if ([[hostContext bundleIdentifier] length] > 0) {
+        HBLogDebug(@"Kayoko: pasteboard source app using %@ keyboard host bundleIdentifier=%@ scene=%@ "
+                   @"kind=%@ cached=%@ kayokoOwned=%@",
+                   hostContext.isCached ? @"cached external" : @"current", [hostContext bundleIdentifier],
+                   [hostContext identifier], [KayokoKeyboardHostResolver stringForHostKind:[hostContext kind]],
+                   hostContext.isCached ? @"YES" : @"NO", hostContext.isKayokoOwned ? @"YES" : @"NO");
+        return [hostContext bundleIdentifier];
+    }
+
+    SBApplication *frontMostApplication = [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
+    NSString *frontMostBundleIdentifier = [frontMostApplication bundleIdentifier];
+    NSString *fallbackBundleIdentifier =
+        [frontMostBundleIdentifier length] > 0 ? frontMostBundleIdentifier : @"com.apple.springboard";
+    HBLogDebug(@"Kayoko: pasteboard source app falling back to frontmost application "
+               @"hostScene=%@ hostKind=%@ hostCached=%@ hostBundleIdentifier=%@ frontMostBundleIdentifier=%@ "
+               @"finalBundleIdentifier=%@",
+               [hostContext identifier] ?: @"nil", [KayokoKeyboardHostResolver stringForHostKind:[hostContext kind]],
+               hostContext.isCached ? @"YES" : @"NO", [hostContext bundleIdentifier] ?: @"nil",
+               frontMostBundleIdentifier ?: @"nil", fallbackBundleIdentifier);
+    return fallbackBundleIdentifier;
+}
+
+- (NSArray<KayokoPasteboardItem *> *)pasteboardItemsForCurrentChangeWithSourceBundleIdentifier:
+    (NSString *)sourceBundleIdentifier {
     NSUInteger currentChangeCount = [_pasteboard changeCount];
     if (currentChangeCount == _lastChangeCount) {
         return @[];
@@ -381,18 +420,11 @@ NS_ASSUME_NONNULL_END
     NSMutableArray<KayokoPasteboardItem *> *items = [[NSMutableArray alloc] init];
 
     if ([self saveText]) {
-        // Don't pull strings if the pasteboard contains images.
-        // For example: When copying an image from the web we only want the image, without the string.
         if (!(hasStrings && hasImages)) {
             for (NSString *string in [_pasteboard strings]) {
                 @autoreleasepool {
-                    // The core only runs on the SpringBoard process, thus we can't use mainbundle to get the process'
-                    // bundle identifier. However, we can get it by using UIApplication/SpringBoard
-                    // front-most-application.
-                    SBApplication *frontMostApplication =
-                        [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
                     KayokoPasteboardItem *item =
-                        [[KayokoPasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
+                        [[KayokoPasteboardItem alloc] initWithBundleIdentifier:sourceBundleIdentifier
                                                                     andContent:string
                                                                 withImageNamed:nil];
                     [items addObject:item];
@@ -406,7 +438,6 @@ NS_ASSUME_NONNULL_END
             @autoreleasepool {
                 NSString *imageName = [self randomStringWithLength:32];
 
-                // Only save as PNG if the image has an alpha channel to save storage space.
                 if ([self imageHasAlpha:image]) {
                     imageName = [imageName stringByAppendingString:@".png"];
                     NSString *filePath =
@@ -420,11 +451,8 @@ NS_ASSUME_NONNULL_END
                     [UIImageJPEGRepresentation(image, 1) writeToFile:filePath atomically:YES];
                 }
 
-                // See the above loop.
-                SBApplication *frontMostApplication =
-                    [[UIApplication sharedApplication] _accessibilityFrontMostApplication];
                 KayokoPasteboardItem *item =
-                    [[KayokoPasteboardItem alloc] initWithBundleIdentifier:[frontMostApplication bundleIdentifier]
+                    [[KayokoPasteboardItem alloc] initWithBundleIdentifier:sourceBundleIdentifier
                                                                 andContent:imageName
                                                             withImageNamed:imageName];
                 [items addObject:item];
@@ -435,7 +463,7 @@ NS_ASSUME_NONNULL_END
     return items;
 }
 
-- (BOOL)_reallyPullPasteboardChanges {
+- (BOOL)_reallyPullPasteboardChangesWithSourceBundleIdentifier:(NSString *)sourceBundleIdentifier {
     if ([_pendingPasteboardWrite isActive]) {
         HBLogDebug(@"Kayoko: ignored pasteboard pull while local write is pending token=%lu changeCount=%lu",
                    (unsigned long)[_pendingPasteboardWrite token], (unsigned long)[_pasteboard changeCount]);
@@ -443,7 +471,8 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
-    NSArray<KayokoPasteboardItem *> *items = [self pasteboardItemsForCurrentChange];
+    NSArray<KayokoPasteboardItem *> *items =
+        [self pasteboardItemsForCurrentChangeWithSourceBundleIdentifier:sourceBundleIdentifier];
     return [self savePasteboardItemsSynchronously:items toHistoryWithKey:kKayokoHistoryKeyHistory];
 }
 
@@ -664,40 +693,55 @@ NS_ASSUME_NONNULL_END
                                           completion:completion];
 }
 
-#pragma mark - Direct Paste
+#pragma mark - Promotion Policy
 
-- (void)performDirectPasteWithPasteboardItem:(KayokoPasteboardItem *)pasteboardItem
-                                 historyItem:(KayokoPasteboardItem *)historyItem
-                          fromHistoryWithKey:(NSString *)historyKey
-                             shouldAutoPaste:(BOOL)shouldAutoPaste {
-    BOOL performsAutomaticPaste = [self automaticallyPaste] && shouldAutoPaste;
+- (void)setAutomaticPromotionMode:(NSUInteger)automaticPromotionMode {
+    if (automaticPromotionMode != kKayokoAutomaticPromotionModeOff &&
+        automaticPromotionMode != kKayokoAutomaticPromotionModeHistoryOnly &&
+        automaticPromotionMode != kKayokoAutomaticPromotionModeAlways) {
+        automaticPromotionMode = kKayokoPreferenceKeyAutomaticPromotionModeDefaultValue;
+    }
+    _automaticPromotionMode = automaticPromotionMode;
+}
+
+- (BOOL)shouldPromoteSourceHistoryItemFromHistoryKey:(NSString *)historyKey {
+    switch ((KayokoAutomaticPromotionMode)[self automaticPromotionMode]) {
+    case kKayokoAutomaticPromotionModeOff:
+        return NO;
+    case kKayokoAutomaticPromotionModeHistoryOnly:
+        return [historyKey isEqualToString:kKayokoHistoryKeyHistory];
+    case kKayokoAutomaticPromotionModeAlways:
+        return [historyKey isEqualToString:kKayokoHistoryKeyHistory] ||
+               [historyKey isEqualToString:kKayokoHistoryKeyFavorites];
+    }
+    return NO;
+}
+
+#pragma mark - Pasteboard Writes
+
+- (void)writePasteboardItem:(KayokoPasteboardItem *)pasteboardItem
+          sourceHistoryItem:(KayokoPasteboardItem *)sourceHistoryItem
+         fromHistoryWithKey:(NSString *)historyKey
+       allowsAutomaticPaste:(BOOL)allowsAutomaticPaste {
+    BOOL performsAutomaticPaste = [self automaticallyPaste] && allowsAutomaticPaste;
     KayokoAutomaticPasteMode automaticPasteMode =
         performsAutomaticPaste ? [self resolvedAutomaticPasteMode] : kKayokoAutomaticPasteModeClassic;
     if (@available(iOS 16, *)) {
         dispatch_async(_pasteboardQueue, ^{
-          [self _reallyPerformDirectPasteWithPasteboardItem:pasteboardItem
-                                                historyItem:historyItem
-                                         fromHistoryWithKey:historyKey
-                                            shouldAutoPaste:performsAutomaticPaste
-                                         automaticPasteMode:automaticPasteMode];
+          [self _reallyWritePasteboardItem:pasteboardItem
+                         sourceHistoryItem:sourceHistoryItem
+                        fromHistoryWithKey:historyKey
+                           shouldAutoPaste:performsAutomaticPaste
+                        automaticPasteMode:automaticPasteMode];
         });
         return;
     }
 
-    [self _reallyPerformDirectPasteWithPasteboardItem:pasteboardItem
-                                          historyItem:historyItem
-                                   fromHistoryWithKey:historyKey
-                                      shouldAutoPaste:performsAutomaticPaste
-                                   automaticPasteMode:automaticPasteMode];
-}
-
-- (void)updatePasteboardWithItem:(KayokoPasteboardItem *)item
-              fromHistoryWithKey:(NSString *)historyKey
-                 shouldAutoPaste:(BOOL)shouldAutoPaste {
-    [self performDirectPasteWithPasteboardItem:item
-                                   historyItem:item
-                            fromHistoryWithKey:historyKey
-                               shouldAutoPaste:shouldAutoPaste];
+    [self _reallyWritePasteboardItem:pasteboardItem
+                   sourceHistoryItem:sourceHistoryItem
+                  fromHistoryWithKey:historyKey
+                     shouldAutoPaste:performsAutomaticPaste
+                  automaticPasteMode:automaticPasteMode];
 }
 
 - (BOOL)copyPasteboardItemToPasteboard:(KayokoPasteboardItem *)item {
@@ -731,39 +775,43 @@ NS_ASSUME_NONNULL_END
     return didUpdatePasteboard;
 }
 
-- (void)_reallyPerformDirectPasteWithPasteboardItem:(KayokoPasteboardItem *)pasteboardItem
-                                        historyItem:(KayokoPasteboardItem *)historyItem
-                                 fromHistoryWithKey:(NSString *)historyKey
-                                    shouldAutoPaste:(BOOL)shouldAutoPaste
-                                 automaticPasteMode:(KayokoAutomaticPasteMode)automaticPasteMode {
-    if (_isPerformingDirectPaste) {
-        HBLogDebug(@"Kayoko: direct paste ignored because another direct paste is in progress");
+- (void)_reallyWritePasteboardItem:(KayokoPasteboardItem *)pasteboardItem
+                 sourceHistoryItem:(KayokoPasteboardItem *)sourceHistoryItem
+                fromHistoryWithKey:(NSString *)historyKey
+                   shouldAutoPaste:(BOOL)shouldAutoPaste
+                automaticPasteMode:(KayokoAutomaticPasteMode)automaticPasteMode {
+    if (_isWritingPasteboardItem) {
+        HBLogDebug(@"Kayoko: pasteboard item write ignored because another write is in progress");
         return;
     }
 
-    _isPerformingDirectPaste = YES;
+    _isWritingPasteboardItem = YES;
 
     [self cancelPendingPasteboardWrite];
     NSUInteger previousChangeCount = [_pasteboard changeCount];
-    HBLogDebug(@"Kayoko: direct paste write started previousChangeCount=%lu contentLength=%lu hasImage=%@ "
-               @"shouldAutoPaste=%@ automaticallyPaste=%@ automaticPasteMode=%lu historyKey=%@",
+    HBLogDebug(@"Kayoko: pasteboard item write started previousChangeCount=%lu contentLength=%lu hasImage=%@ "
+               @"shouldAutoPaste=%@ automaticallyPaste=%@ automaticPasteMode=%lu automaticPromotionMode=%lu "
+               @"historyKey=%@",
                (unsigned long)previousChangeCount, (unsigned long)[[pasteboardItem content] length],
                ([[pasteboardItem imageName] length] > 0) ? @"YES" : @"NO", shouldAutoPaste ? @"YES" : @"NO",
-               [self automaticallyPaste] ? @"YES" : @"NO", (unsigned long)[self automaticPasteMode], historyKey);
+               [self automaticallyPaste] ? @"YES" : @"NO", (unsigned long)[self automaticPasteMode],
+               (unsigned long)[self automaticPromotionMode], historyKey);
     BOOL didUpdatePasteboard = [self setPasteboardContentFromItem:pasteboardItem];
     if (didUpdatePasteboard) {
-        [self movePasteboardItemToTop:historyItem inHistoryWithKey:historyKey];
+        if ([self shouldPromoteSourceHistoryItemFromHistoryKey:historyKey]) {
+            [self movePasteboardItemToTop:sourceHistoryItem inHistoryWithKey:historyKey];
+        }
 
         NSUInteger token = [self beginPendingPasteboardWriteAfterChangeCount:previousChangeCount
                                                              shouldAutoPaste:shouldAutoPaste
                                                           automaticPasteMode:automaticPasteMode];
         [self resolvePendingPasteboardWriteForToken:token didExpire:NO];
     } else {
-        HBLogDebug(@"Kayoko: direct paste write did not update pasteboard previousChangeCount=%lu",
+        HBLogDebug(@"Kayoko: pasteboard item write did not update pasteboard previousChangeCount=%lu",
                    (unsigned long)previousChangeCount);
     }
 
-    _isPerformingDirectPaste = NO;
+    _isWritingPasteboardItem = NO;
 }
 
 - (NSUInteger)beginPendingPasteboardWriteAfterChangeCount:(NSUInteger)previousChangeCount

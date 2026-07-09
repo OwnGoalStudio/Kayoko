@@ -224,10 +224,10 @@ NS_ASSUME_NONNULL_END
                                                 withImageNamed:@""];
     NSString *historyKey = [self sourceHistoryKey] ?: kKayokoHistoryKeyHistory;
     if (automaticallyPaste) {
-        [[KayokoPasteboardManager sharedInstance] performDirectPasteWithPasteboardItem:selectedItem
-                                                                           historyItem:sourceItem
-                                                                    fromHistoryWithKey:historyKey
-                                                                       shouldAutoPaste:YES];
+        [[KayokoPasteboardManager sharedInstance] writePasteboardItem:selectedItem
+                                                    sourceHistoryItem:sourceItem
+                                                   fromHistoryWithKey:historyKey
+                                                 allowsAutomaticPaste:YES];
     } else {
         KayokoPasteboardManager *pasteboardManager = [KayokoPasteboardManager sharedInstance];
         if ([pasteboardManager copyPasteboardItemToPasteboard:selectedItem]) {

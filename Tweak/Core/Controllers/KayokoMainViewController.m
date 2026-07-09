@@ -7,6 +7,7 @@
 #import "KayokoClearConfirmationView.h"
 #import "KayokoClearConfirmationViewController.h"
 #import "KayokoEmptyStateView.h"
+#import "KayokoExternalHideCoordinator.h"
 #import "KayokoHeaderButtonStyle.h"
 #import "KayokoHistoryController.h"
 #import "KayokoHistoryListView.h"
@@ -27,6 +28,7 @@ static CGFloat const kKayokoTransientEdgeBackCompletionProgress = 0.35;
 static CGFloat const kKayokoTransientEdgeBackCompletionVelocity = 650;
 static NSTimeInterval const kKayokoTransientEdgeBackMinimumAnimationDuration = 0.08;
 static NSTimeInterval const kKayokoTransientEdgeBackMaximumAnimationDuration = 0.22;
+static NSTimeInterval const kKayokoSearchInputExternalHideSuppressionDuration = 0.5;
 
 @interface LSApplicationWorkspace : NSObject
 + (instancetype)defaultWorkspace;
@@ -68,6 +70,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL preparingToShow;
 @property(nonatomic, assign) NSUInteger showRequestIdentifier;
 @property(nonatomic, assign, getter=isDismissingPanel) BOOL dismissingPanel;
+@property(nonatomic, strong) KayokoExternalHideCoordinator *externalHideCoordinator;
 
 #pragma mark - Transient Content
 
@@ -92,6 +95,9 @@ NS_ASSUME_NONNULL_END
     self = [super initWithNibName:nil bundle:nil];
     if (self) {
         _authorizationPassed = YES;
+        _kayokoSupportedInterfaceOrientations = UIInterfaceOrientationMaskAll;
+        _presentationMode = KayokoPanelPresentationModePortraitDrawer;
+        _externalHideCoordinator = [[KayokoExternalHideCoordinator alloc] init];
         _mainView = [[KayokoMainView alloc] initWithFrame:frame];
         [self setView:_mainView];
         _historyListViewController = [[KayokoHistoryListViewController alloc]
@@ -120,9 +126,6 @@ NS_ASSUME_NONNULL_END
         [_historyController setDelegate:self];
 
         __weak typeof(self) weakSelf = self;
-        [_mainView setLayoutHandler:^{
-          [weakSelf handleViewLayout];
-        }];
         [[_mainView favoritesButton] addTarget:self
                                         action:@selector(handleFavoritesButtonPressed)
                               forControlEvents:UIControlEventTouchUpInside];
@@ -212,6 +215,10 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Configuration
 
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+    return [self kayokoSupportedInterfaceOrientations];
+}
+
 - (BOOL)isHidden {
     return [[self mainView] isHidden];
 }
@@ -268,11 +275,42 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+- (void)setPresentationMode:(KayokoPanelPresentationMode)presentationMode {
+    _presentationMode = presentationMode;
+    [[self panelPresentationController] setPresentationMode:presentationMode];
+    [[self searchController] setPresentationMode:presentationMode];
+    [self applyBasePresentationLayout];
+}
+
+- (void)applyBasePresentationLayout {
+    if ([self presentationMode] == KayokoPanelPresentationModeCompactLandscapeFullscreen) {
+        [[self mainView] setContentSafeAreaAdditionalInsets:UIEdgeInsetsZero];
+        [[self mainView] setContentRespectsSafeArea:YES];
+        return;
+    }
+
+    if (![[self searchController] isSearchActive]) {
+        [[self mainView] setGrabberFoldProgress:0];
+        [[self mainView] setContentRespectsSafeArea:NO];
+        [[self mainView] setContentSafeAreaAdditionalInsets:UIEdgeInsetsZero];
+    }
+}
+
 - (BOOL)isAuthorizationRequired {
     return ![self isAuthorizationPassed];
 }
 
 #pragma mark - Layout and Lookup
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    [self handleViewLayout];
+}
+
+- (void)viewSafeAreaInsetsDidChange {
+    [super viewSafeAreaInsetsDidChange];
+    [self handleViewLayout];
+}
 
 - (void)handleViewLayout {
     [[self searchController] layout];
@@ -297,12 +335,61 @@ NS_ASSUME_NONNULL_END
 
 - (KayokoHistoryListViewController *)activeListViewControllerForSearchController:
     (KayokoSearchController *)searchController {
+    (void)searchController;
     return [self activeListViewController];
+}
+
+#pragma mark - External Hide Coordinator
+
+- (BOOL)externalHideRequestShouldWaitForAnimations {
+    return [self preparingToShow] || [[self mainView] isAnimating] || [[self panelPresentationController] isAnimating];
+}
+
+- (void)executePendingExternalHideRequestIfReady {
+    if ([[self externalHideCoordinator] shouldSuppressExternalHide] ||
+        [self externalHideRequestShouldWaitForAnimations]) {
+        return;
+    }
+
+    KayokoExternalHideRequest *request = [[self externalHideCoordinator] takePendingExternalHideRequest];
+    if (!request || [self isHidden]) {
+        return;
+    }
+
+    [self hideWithAnimationStyle:[request animationStyle] completion:[request completion]];
+}
+
+- (void)beginSearchInputExternalHideSuppression {
+    __weak typeof(self) weakSelf = self;
+    [[self externalHideCoordinator]
+        beginSearchInputTransitionSuppressionWithDuration:kKayokoSearchInputExternalHideSuppressionDuration
+                                        expirationHandler:^{
+                                          [weakSelf executePendingExternalHideRequestIfReady];
+                                        }];
+}
+
+- (void)endSearchInputExternalHideSuppression {
+    if (![[self externalHideCoordinator] shouldSuppressExternalHide]) {
+        return;
+    }
+
+    [[self externalHideCoordinator] endSearchInputTransitionSuppression];
+    [self executePendingExternalHideRequestIfReady];
+}
+
+- (void)clearExternalHideCoordinator {
+    [[self externalHideCoordinator] clear];
 }
 
 #pragma mark - KayokoSearchControllerDelegate
 
+- (void)searchControllerWillBeginSearchInputTransition:(KayokoSearchController *)searchController {
+    (void)searchController;
+    [self beginSearchInputExternalHideSuppression];
+}
+
 - (void)searchControllerWillAnimateSearchState:(KayokoSearchController *)searchController {
+    (void)searchController;
     [[self mainView] setAnimating:YES];
     [[self panelPresentationController] finishOutsideDismissOverlayShow];
 }
@@ -310,6 +397,10 @@ NS_ASSUME_NONNULL_END
 - (void)searchControllerDidFinishAnimatingSearchState:(KayokoSearchController *)searchController {
     [[self mainView] setAnimating:NO];
     [[self panelPresentationController] finishOutsideDismissOverlayShow];
+    if (![searchController isSearchActive]) {
+        [self endSearchInputExternalHideSuppression];
+    }
+    [self executePendingExternalHideRequestIfReady];
 }
 
 - (void)searchController:(KayokoSearchController *)searchController
@@ -346,7 +437,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)panelPresentationControllerShouldHandleFullscreenSearchPan:(KayokoPanelPresentationController *)controller {
-    return [[self searchController] isSearchActive];
+    return [self presentationMode] != KayokoPanelPresentationModeCompactLandscapeFullscreen &&
+           [[self searchController] isSearchActive];
 }
 
 - (BOOL)panelPresentationController:(KayokoPanelPresentationController *)controller
@@ -572,7 +664,7 @@ NS_ASSUME_NONNULL_END
     [contentView setAlpha:1];
     [contentView setTransform:CGAffineTransformIdentity];
     if (showsAuthorizationRequired) {
-        [[self searchController] resetBeforeHide];
+        [[self searchController] resetSearchState];
         [self showAuthorizationRequiredHeaderIcon];
         [[[self mainView] clearButton] setHidden:YES];
         [[[self mainView] backButton] setHidden:YES];
@@ -1485,6 +1577,7 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    [self clearExternalHideCoordinator];
     [self setDismissingPanel:NO];
     [self setPreparingToShow:YES];
     [[KayokoTagCatalog sharedCatalog] reloadTags];
@@ -1503,7 +1596,9 @@ NS_ASSUME_NONNULL_END
     if ([self isAuthorizationRequired]) {
         [self setPreparingToShow:NO];
         [self setHistoryContentVisibleForKey:[self effectiveActiveHistoryKey]];
-        [[self panelPresentationController] showPanelWithCompletion:nil];
+        [[self panelPresentationController] showPanelWithCompletion:^{
+          [self executePendingExternalHideRequestIfReady];
+        }];
         return;
     }
 
@@ -1525,7 +1620,9 @@ NS_ASSUME_NONNULL_END
                                                                    hidesSearchBar:YES];
                               [[self mainView]
                                   setClearButtonEnabledForItemCount:[[[self activeListViewController] items] count]];
-                              [[self panelPresentationController] showPanelWithCompletion:nil];
+                              [[self panelPresentationController] showPanelWithCompletion:^{
+                                [self executePendingExternalHideRequestIfReady];
+                              }];
                             }];
 }
 
@@ -1538,18 +1635,16 @@ NS_ASSUME_NONNULL_END
 - (void)hideAfterDirectPaste {
     BOOL shouldRestoreFocusAfterHide = [self isFullscreenSearchActive];
     [self hideWithCompletion:^{
-      if (!shouldRestoreFocusAfterHide || ![self focusRestoreRequestHandler]) {
+      if (!shouldRestoreFocusAfterHide) {
           return;
       }
-      [self focusRestoreRequestHandler]();
+      [[self delegate] mainViewControllerDidRequestFocusRestore:self];
     }];
 }
 
 - (void)hideRestoringFocus {
     [self hideWithCompletion:^{
-      if ([self focusRestoreRequestHandler]) {
-          [self focusRestoreRequestHandler]();
-      }
+      [[self delegate] mainViewControllerDidRequestFocusRestore:self];
     }];
 }
 
@@ -1566,9 +1661,14 @@ NS_ASSUME_NONNULL_END
     if (completion) {
         completion();
     }
+    [[self delegate] mainViewControllerDidHide:self];
 }
 
 - (void)hideWithCompletion:(void (^)(void))completion {
+    [self hideWithAnimationStyle:KayokoPanelHideAnimationStyleDefault completion:completion];
+}
+
+- (void)hideWithAnimationStyle:(KayokoPanelHideAnimationStyle)animationStyle completion:(void (^)(void))completion {
     [self setShowRequestIdentifier:[self showRequestIdentifier] + 1];
     [self setPreparingToShow:NO];
 
@@ -1576,12 +1676,36 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    [self clearExternalHideCoordinator];
     [self setDismissingPanel:YES];
     BOOL wasShowingTransientContent = [self isPreviewActive] || [self isWordSelectionActive];
-    [[self searchController] resetBeforeHide];
-    [[self panelPresentationController] hidePanelWithCompletion:^{
-      [self completeHideAfterShowingTransientContent:wasShowingTransientContent completion:completion];
-    }];
+    [[self searchController] resignSearchFirstResponder];
+    [[self panelPresentationController]
+        hidePanelWithAnimationStyle:animationStyle
+                         completion:^{
+                           [[self searchController] resetSearchState];
+                           [self completeHideAfterShowingTransientContent:wasShowingTransientContent
+                                                               completion:completion];
+                         }];
+}
+
+- (void)hideForExternalRequestWithAnimationStyle:(KayokoPanelHideAnimationStyle)animationStyle
+                                      completion:(nullable void (^)(void))completion {
+    if ([self isHidden]) {
+        return;
+    }
+
+    if ([[self externalHideCoordinator] shouldSuppressExternalHide]) {
+        return;
+    }
+
+    if ([self externalHideRequestShouldWaitForAnimations]) {
+        [[self externalHideCoordinator] recordPendingExternalHideRequestWithAnimationStyle:animationStyle
+                                                                                completion:completion];
+        return;
+    }
+
+    [self hideWithAnimationStyle:animationStyle completion:completion];
 }
 
 - (void)hideImmediately {
@@ -1592,10 +1716,12 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    [self clearExternalHideCoordinator];
     [self setDismissingPanel:YES];
     BOOL wasShowingTransientContent = [self isPreviewActive] || [self isWordSelectionActive];
-    [[self searchController] resetBeforeHide];
+    [[self searchController] resignSearchFirstResponder];
     [[self panelPresentationController] hidePanelImmediatelyWithCompletion:^{
+      [[self searchController] resetSearchState];
       [self completeHideAfterShowingTransientContent:wasShowingTransientContent completion:nil];
     }];
 }

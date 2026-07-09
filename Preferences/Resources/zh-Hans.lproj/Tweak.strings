@@ -8,6 +8,7 @@
 "Clear Favorites Confirmation" = "要清空所有收藏内容吗？此操作不可撤销。";
 "Clear History Confirmation" = "要清空历史记录吗？此操作不可撤销。";
 "Continue" = "继续";
+"Continuity" = "连续互通";
 "Copy" = "拷贝";
 "Dates" = "日期";
 "Favorites" = "收藏夹";
@@ -33,6 +34,7 @@
 "Save to Photos" = "保存到照片";
 "Search" = "搜索";
 "SpringBoard" = "主屏幕";
+"Spotlight" = "聚焦";
 "Tags" = "标签";
 "Text" = "文本";
 "Unable to Load History" = "无法载入历史记录";

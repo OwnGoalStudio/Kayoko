@@ -36,6 +36,7 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
 @property(nonatomic, assign) BOOL saveImages;
 @property(nonatomic, assign) BOOL automaticallyPaste;
 @property(nonatomic, assign) NSUInteger automaticPasteMode;
+@property(nonatomic, assign) NSUInteger automaticPromotionMode;
 @property(nonatomic, assign) BOOL ignoreRemoteReplication;
 
 + (instancetype)sharedInstance;
@@ -53,14 +54,11 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
 - (void)pullPasteboardChanges;
 - (void)pullPasteboardChangesWithCompletion:(nullable void (^)(BOOL didSaveAnyItem))completion;
 - (BOOL)addPasteboardItem:(KayokoPasteboardItem *)item toHistoryWithKey:(NSString *)historyKey;
-- (void)performDirectPasteWithPasteboardItem:(KayokoPasteboardItem *)pasteboardItem
-                                 historyItem:(KayokoPasteboardItem *)historyItem
-                          fromHistoryWithKey:(NSString *)historyKey
-                             shouldAutoPaste:(BOOL)shouldAutoPaste;
+- (void)writePasteboardItem:(KayokoPasteboardItem *)pasteboardItem
+          sourceHistoryItem:(KayokoPasteboardItem *)sourceHistoryItem
+         fromHistoryWithKey:(NSString *)historyKey
+       allowsAutomaticPaste:(BOOL)allowsAutomaticPaste;
 - (BOOL)copyPasteboardItemToPasteboard:(KayokoPasteboardItem *)item;
-- (void)updatePasteboardWithItem:(KayokoPasteboardItem *)item
-              fromHistoryWithKey:(NSString *)historyKey
-                 shouldAutoPaste:(BOOL)shouldAutoPaste;
 - (void)removePasteboardItem:(KayokoPasteboardItem *)item
           fromHistoryWithKey:(NSString *)historyKey
            shouldRemoveImage:(BOOL)shouldRemoveImage;

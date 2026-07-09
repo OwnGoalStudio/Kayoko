@@ -256,13 +256,6 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
 #pragma mark - Authorization Overlay
 
 - (void)beginAuthorizationCheckIfNeededRestartingExistingOverlay:(BOOL)restartExistingOverlay {
-    if (![NSThread isMainThread]) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self beginAuthorizationCheckIfNeededRestartingExistingOverlay:restartExistingOverlay];
-        });
-        return;
-    }
-
     if (_authorizationCheckInProgress) {
         return;
     }
@@ -323,13 +316,6 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
 }
 
 - (void)checkMirroredPurchaseForGeneration:(NSUInteger)generation {
-    if ([NSThread isMainThread]) {
-        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-          [self checkMirroredPurchaseForGeneration:generation];
-        });
-        return;
-    }
-
     [KayokoPurchaseAuthorization checkMirroredPurchaseWithCompletion:^(KayokoPurchaseAuthorizationResult *result) {
       dispatch_async(dispatch_get_main_queue(), ^{
         if (generation != self->_authorizationCheckGeneration) {

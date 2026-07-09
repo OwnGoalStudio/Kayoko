@@ -17,6 +17,7 @@ static CGFloat const kKayokoSearchFullscreenGrabberFoldDistance = 20;
 static CGFloat const kKayokoSearchFullscreenCollapseVelocity = 900;
 static CGFloat const kKayokoSearchFullscreenReboundVelocity = -450;
 static CGFloat const kKayokoSearchFullscreenCollapseProgress = 0.32;
+static NSTimeInterval const kKayokoSearchCompactLandscapeTitleRowAnimationDuration = 0.24;
 
 static CGRect kayokoStatusBarFrameForWindow(UIWindow *window) {
     CGRect statusBarFrame = CGRectZero;
@@ -90,6 +91,7 @@ NS_ASSUME_NONNULL_END
                  panGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer {
     self = [super init];
     if (self) {
+        _presentationMode = KayokoPanelPresentationModePortraitDrawer;
         _containerView = containerView;
         _headerView = headerView;
         _historySearchBar = historySearchBar;
@@ -136,6 +138,7 @@ NS_ASSUME_NONNULL_END
 
 - (void)layoutSearchBarForTableView:(KayokoHistoryListView *)tableView {
     [tableView updateNoSearchResultsPlaceholderLayout];
+    [tableView setSearchBarSnapHeight:kKayokoSearchHeaderHeight];
 
     UISearchBar *searchBar = [self searchBarForTableView:tableView];
     UIView *headerView = [self searchHeaderViewForTableView:tableView];
@@ -217,6 +220,30 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Search Bar Visibility
 
+- (void)setContentOffset:(CGPoint)contentOffset
+            forTableView:(KayokoHistoryListView *)tableView
+                animated:(BOOL)animated {
+    if (!animated) {
+        [tableView setContentOffset:contentOffset animated:NO];
+        return;
+    }
+
+    if ([UIView inheritedAnimationDuration] > 0) {
+        [tableView setContentOffset:contentOffset];
+    } else {
+        [tableView setContentOffset:contentOffset animated:YES];
+    }
+}
+
+- (CGFloat)hiddenSearchHeaderOffsetForTableView:(KayokoHistoryListView *)tableView {
+    UIView *headerView = [self searchHeaderViewForTableView:tableView];
+    if ([tableView tableHeaderView] == headerView) {
+        return CGRectGetHeight([headerView frame]);
+    }
+
+    return [self searchHeaderHeight];
+}
+
 - (void)attachToTableView:(KayokoHistoryListView *)tableView hidesSearchBar:(BOOL)hidesSearchBar {
     [self installSearchBarForTableView:[self historyTableView]];
     [self installSearchBarForTableView:[self favoritesTableView]];
@@ -242,8 +269,8 @@ NS_ASSUME_NONNULL_END
     [self applyBottomInsetToTableView:tableView];
 
     CGPoint contentOffset = [tableView contentOffset];
-    contentOffset.y = [self searchHeaderHeight];
-    [tableView setContentOffset:contentOffset animated:animated];
+    contentOffset.y = [self hiddenSearchHeaderOffsetForTableView:tableView];
+    [self setContentOffset:contentOffset forTableView:tableView animated:animated];
 }
 
 - (void)revealSearchBarInTableView:(KayokoHistoryListView *)tableView animated:(BOOL)animated {
@@ -256,7 +283,7 @@ NS_ASSUME_NONNULL_END
 
     CGPoint contentOffset = [tableView contentOffset];
     contentOffset.y = 0;
-    [tableView setContentOffset:contentOffset animated:animated];
+    [self setContentOffset:contentOffset forTableView:tableView animated:animated];
 }
 
 - (void)maintainSearchBarVisibilityForTableView:(KayokoHistoryListView *)tableView {
@@ -348,8 +375,34 @@ NS_ASSUME_NONNULL_END
     [self setSearchActive:YES];
     [self setNormalFrameBeforeSearch:[[self containerView] frame]];
     [self setHasNormalFrameBeforeSearch:YES];
-    [self setGrabberFoldProgress:1];
+
+    if ([self presentationMode] == KayokoPanelPresentationModeCompactLandscapeFullscreen) {
+        UIView *containerView = [self containerView];
+        [containerView layoutIfNeeded];
+        [activeTableView layoutIfNeeded];
+        if ([containerView isKindOfClass:[KayokoMainView class]]) {
+            [(KayokoMainView *)containerView setSearchTitleRowCollapsed:YES];
+        }
+        [UIView animateWithDuration:kKayokoSearchCompactLandscapeTitleRowAnimationDuration
+            delay:0
+            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction |
+                    UIViewAnimationOptionCurveEaseInOut
+            animations:^{
+              [self revealSearchBarInTableView:activeTableView animated:YES];
+              [containerView layoutIfNeeded];
+              [activeTableView layoutIfNeeded];
+            }
+            completion:^(__unused BOOL finished) {
+              if (completion) {
+                  completion();
+              }
+            }];
+        return;
+    }
+
     [self revealSearchBarInTableView:activeTableView animated:YES];
+
+    [self setGrabberFoldProgress:1];
 
     UIView *superview = [[self containerView] superview];
     if (!superview) {
@@ -420,9 +473,39 @@ NS_ASSUME_NONNULL_END
     [containerView layoutIfNeeded];
     if ([containerView isKindOfClass:[KayokoMainView class]]) {
         KayokoMainView *mainView = (KayokoMainView *)containerView;
-        [mainView setGrabberFoldProgress:0];
-        [mainView setContentRespectsSafeArea:NO];
-        [mainView setContentSafeAreaAdditionalInsets:UIEdgeInsetsZero];
+        BOOL keepsFullscreenSafeArea = [self presentationMode] == KayokoPanelPresentationModeCompactLandscapeFullscreen;
+        if (!keepsFullscreenSafeArea) {
+            [mainView setGrabberFoldProgress:0];
+            [mainView setContentRespectsSafeArea:NO];
+            [mainView setContentSafeAreaAdditionalInsets:UIEdgeInsetsZero];
+        }
+    }
+
+    if ([self presentationMode] == KayokoPanelPresentationModeCompactLandscapeFullscreen) {
+        [containerView layoutIfNeeded];
+        [activeTableView layoutIfNeeded];
+        if ([containerView isKindOfClass:[KayokoMainView class]]) {
+            [(KayokoMainView *)containerView setSearchTitleRowCollapsed:NO];
+        }
+        [self setHasNormalFrameBeforeSearch:NO];
+        [UIView animateWithDuration:kKayokoSearchCompactLandscapeTitleRowAnimationDuration
+            delay:0
+            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction |
+                    UIViewAnimationOptionCurveEaseInOut
+            animations:^{
+              [self hideSearchBarInTableView:activeTableView animated:YES];
+              if (animations) {
+                  animations();
+              }
+              [containerView layoutIfNeeded];
+              [activeTableView layoutIfNeeded];
+            }
+            completion:^(__unused BOOL finished) {
+              if (completion) {
+                  completion();
+              }
+            }];
+        return;
     }
 
     if (restoresFrame && !CGRectEqualToRect([[self containerView] frame], targetFrame)) {
@@ -565,6 +648,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)applyBottomInsetToTableView:(KayokoHistoryListView *)tableView {
+    [tableView setContentInsetAdjustmentBehavior:UIScrollViewContentInsetAdjustmentNever];
     [tableView setKeyboardBottomInset:[self keyboardBottomInset]];
     [tableView updateNoSearchResultsPlaceholderLayout];
 
@@ -573,7 +657,7 @@ NS_ASSUME_NONNULL_END
     CGFloat hiddenSearchBottomInset = [self hiddenSearchBottomInsetForTableView:tableView];
     CGFloat safeAreaBottomInset = [self safeAreaBottomInsetForTableView:tableView];
     CGFloat obscuredBottomInset = MAX(keyboardBottomInset, safeAreaBottomInset);
-    contentInset.bottom = hiddenSearchBottomInset + obscuredBottomInset;
+    contentInset.bottom = MAX(hiddenSearchBottomInset, obscuredBottomInset);
     [tableView setContentInset:contentInset];
 
     [tableView setAutomaticallyAdjustsScrollIndicatorInsets:NO];
@@ -603,13 +687,47 @@ NS_ASSUME_NONNULL_END
     [self applyBottomInsetsToTableViews];
 }
 
-- (void)handleKeyboardWillChangeFrameNotification:(NSNotification *)notification {
+- (void)resetAfterSearchStateClearedWithActiveTableView:(KayokoHistoryListView *)activeTableView {
+    [self setSearchActive:NO];
+    [self resetKeyboardInsets];
+
+    UIView *containerView = [self containerView];
+    CGRect targetFrame = [self hasNormalFrameBeforeSearch] ? [self normalFrameBeforeSearch] : [containerView frame];
+    [self setHasNormalFrameBeforeSearch:NO];
+    [containerView setFrame:targetFrame];
+    [containerView setNeedsLayout];
+
+    if ([containerView isKindOfClass:[KayokoMainView class]]) {
+        KayokoMainView *mainView = (KayokoMainView *)containerView;
+        BOOL keepsFullscreenSafeArea = [self presentationMode] == KayokoPanelPresentationModeCompactLandscapeFullscreen;
+        [mainView setSearchTitleRowCollapsed:NO];
+        [mainView setGrabberFoldProgress:0];
+        [mainView setContentSafeAreaAdditionalInsets:UIEdgeInsetsZero];
+        if (!keepsFullscreenSafeArea) {
+            [mainView setContentRespectsSafeArea:NO];
+        }
+    }
+
+    [containerView layoutIfNeeded];
+    [self hideSearchBarInTableView:activeTableView animated:NO];
+    [activeTableView layoutIfNeeded];
+}
+
+- (BOOL)shouldHandleSearchKeyboardNotification:(NSNotification *)notification {
     if (![self isSearchActive]) {
-        return;
+        return NO;
     }
 
     BOOL isLocal = [notification.userInfo[UIKeyboardIsLocalUserInfoKey] boolValue];
     if (!isLocal) {
+        return NO;
+    }
+
+    return YES;
+}
+
+- (void)handleKeyboardWillChangeFrameNotification:(NSNotification *)notification {
+    if (![self shouldHandleSearchKeyboardNotification:notification]) {
         return;
     }
 

@@ -218,6 +218,30 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+- (void)resetCollectionViewSessionState:(KayokoSearchTokenCollectionView *)collectionView {
+    for (NSIndexPath *indexPath in [collectionView indexPathsForSelectedItems]) {
+        [collectionView deselectItemAtIndexPath:indexPath animated:NO];
+    }
+    [collectionView resetContentOffsetToLeadingEdge];
+}
+
+- (void)resetSearchSessionState {
+    [self setSearchCriteria:[KayokoSearchCriteria emptyCriteria]];
+    [self setLastPreferredHeight:0];
+    [self setNeedsCategoryContentOffsetReset:YES];
+    [self setNeedsTagContentOffsetReset:YES];
+    [self setNeedsAppContentOffsetReset:YES];
+    if (![self isViewLoaded]) {
+        return;
+    }
+
+    [self updateSectionVisibility];
+    [self resetCollectionViewSessionState:[[self categorySectionView] collectionView]];
+    [self resetCollectionViewSessionState:[[self tagSectionView] collectionView]];
+    [self resetCollectionViewSessionState:[[self appSectionView] collectionView]];
+    [[self view] setNeedsLayout];
+}
+
 #pragma mark - Layout
 
 - (void)updateSectionVisibility {

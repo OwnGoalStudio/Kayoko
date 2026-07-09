@@ -10,6 +10,7 @@
 #import <objc/runtime.h>
 
 static NSString *const kKayokoSpotlightSceneIdentifier = @"searchScreen";
+static NSString *const kKayokoSpotlightBundleIdentifier = @"com.apple.Spotlight";
 static NSString *const kKayokoSpringBoardBundleIdentifier = @"com.apple.springboard";
 static NSString *const kKayokoSpringBoardProcessName = @"SpringBoard";
 
@@ -69,6 +70,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, weak, readwrite, nullable) FBScene *scene;
 @property(nonatomic, copy, readwrite) NSString *identifier;
+@property(nonatomic, copy, readwrite, nullable) NSString *bundleIdentifier;
 @property(nonatomic, assign, readwrite) KayokoKeyboardHostKind kind;
 
 #pragma mark - Helper Marker
@@ -85,11 +87,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (instancetype)initWithScene:(nullable FBScene *)scene
                    identifier:(NSString *)identifier
-                         kind:(KayokoKeyboardHostKind)kind
-        helperMarkerAvailable:(BOOL)helperMarkerAvailable
-           helperInjectedFlag:(long long)helperInjectedFlag
-                  kayokoOwned:(BOOL)kayokoOwned
-                       cached:(BOOL)cached NS_DESIGNATED_INITIALIZER;
+             bundleIdentifier:(nullable NSString *)bundleIdentifier
+                         kind:(KayokoKeyboardHostKind)kind NS_DESIGNATED_INITIALIZER;
 
 #pragma mark - State
 
@@ -115,6 +114,7 @@ NS_ASSUME_NONNULL_BEGIN
                                                         kayokoOwned:(BOOL)kayokoOwned
                                                              cached:(BOOL)cached;
 - (nullable FBScene *)keyboardHostSceneWithIdentifier:(NSString *_Nullable *_Nullable)identifier;
+- (nullable NSString *)bundleIdentifierForScene:(FBScene *)scene kind:(KayokoKeyboardHostKind)kind;
 - (nullable UIResponder *)activeKeyboardInputDelegate;
 
 #pragma mark - Ownership
@@ -136,22 +136,16 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Lifecycle
 
-- (instancetype)initWithScene:(FBScene *)scene
+- (instancetype)initWithScene:(nullable FBScene *)scene
                    identifier:(NSString *)identifier
-                         kind:(KayokoKeyboardHostKind)kind
-        helperMarkerAvailable:(BOOL)helperMarkerAvailable
-           helperInjectedFlag:(long long)helperInjectedFlag
-                  kayokoOwned:(BOOL)kayokoOwned
-                       cached:(BOOL)cached {
+             bundleIdentifier:(nullable NSString *)bundleIdentifier
+                         kind:(KayokoKeyboardHostKind)kind {
     self = [super init];
     if (self) {
         _scene = scene;
         _identifier = [identifier copy] ?: @"";
+        _bundleIdentifier = [bundleIdentifier copy];
         _kind = kind;
-        _helperMarkerAvailable = helperMarkerAvailable;
-        _helperInjectedFlag = helperInjectedFlag;
-        _kayokoOwned = kayokoOwned;
-        _cached = cached;
     }
     return self;
 }
@@ -163,13 +157,15 @@ NS_ASSUME_NONNULL_END
 }
 
 - (KayokoKeyboardHostContext *)contextMarkedCached {
-    return [[KayokoKeyboardHostContext alloc] initWithScene:self.scene
-                                                 identifier:self.identifier
-                                                       kind:self.kind
-                                      helperMarkerAvailable:self.helperMarkerAvailable
-                                         helperInjectedFlag:self.helperInjectedFlag
-                                                kayokoOwned:self.kayokoOwned
-                                                     cached:YES];
+    KayokoKeyboardHostContext *context = [[KayokoKeyboardHostContext alloc] initWithScene:self.scene
+                                                                               identifier:self.identifier
+                                                                         bundleIdentifier:self.bundleIdentifier
+                                                                                     kind:self.kind];
+    context.helperMarkerAvailable = self.helperMarkerAvailable;
+    context.helperInjectedFlag = self.helperInjectedFlag;
+    context.kayokoOwned = self.kayokoOwned;
+    context.cached = YES;
+    return context;
 }
 
 @end
@@ -232,6 +228,41 @@ NS_ASSUME_NONNULL_END
                    kayokoOwned ? @"Kayoko-owned" : @"unavailable", currentContext.identifier ?: @"nil");
     }
     return cachedContext;
+}
+
+- (KayokoKeyboardHostContext *)keyboardHostContextForSourceAttribution {
+    BOOL kayokoOwned = [self currentKeyboardInputIsKayokoOwned];
+    KayokoKeyboardHostContext *currentContext = [self keyboardHostContextForCurrentInputKayokoOwned:kayokoOwned];
+    if (currentContext && !currentContext.isKayokoOwned) {
+        return currentContext;
+    }
+
+    KayokoKeyboardHostContext *cachedContext = [self.lastExternalKeyboardHostContext contextMarkedCached];
+    if (kayokoOwned) {
+        if (cachedContext) {
+            HBLogDebug(@"Kayoko: keyboard host resolver using cached external host for source attribution because "
+                       @"current input is Kayoko-owned currentScene=%@ cachedScene=%@ cachedKind=%@ helperFlag=%lld",
+                       currentContext.identifier ?: @"nil", cachedContext.identifier,
+                       [[self class] stringForHostKind:cachedContext.kind], cachedContext.helperInjectedFlag);
+        } else {
+            HBLogDebug(@"Kayoko: keyboard host resolver has Kayoko-owned input but no cached external host for "
+                       @"source attribution currentScene=%@",
+                       currentContext.identifier ?: @"nil");
+        }
+        return cachedContext;
+    }
+
+    if (cachedContext) {
+        HBLogDebug(@"Kayoko: keyboard host resolver ignoring cached external host for source attribution because "
+                   @"current input is unavailable currentScene=%@ cachedScene=%@ cachedKind=%@",
+                   currentContext.identifier ?: @"nil", cachedContext.identifier,
+                   [[self class] stringForHostKind:cachedContext.kind]);
+    } else {
+        HBLogDebug(@"Kayoko: keyboard host resolver has unavailable input and no current keyboard host for "
+                   @"source attribution currentScene=%@",
+                   currentContext.identifier ?: @"nil");
+    }
+    return nil;
 }
 
 - (FBScene *)currentKeyboardHostScene {
@@ -324,13 +355,17 @@ NS_ASSUME_NONNULL_END
         }
     }
 
-    return [[KayokoKeyboardHostContext alloc] initWithScene:hostScene
-                                                 identifier:identifier
-                                                       kind:[self kindForScene:hostScene]
-                                      helperMarkerAvailable:helperMarkerAvailable
-                                         helperInjectedFlag:helperInjectedFlag
-                                                kayokoOwned:kayokoOwned
-                                                     cached:cached];
+    KayokoKeyboardHostKind kind = [self kindForScene:hostScene];
+    KayokoKeyboardHostContext *context =
+        [[KayokoKeyboardHostContext alloc] initWithScene:hostScene
+                                              identifier:identifier
+                                        bundleIdentifier:[self bundleIdentifierForScene:hostScene kind:kind]
+                                                    kind:kind];
+    context.helperMarkerAvailable = helperMarkerAvailable;
+    context.helperInjectedFlag = helperInjectedFlag;
+    context.kayokoOwned = kayokoOwned;
+    context.cached = cached;
+    return context;
 }
 
 - (FBScene *)keyboardHostSceneWithIdentifier:(NSString **)identifier {
@@ -367,6 +402,27 @@ NS_ASSUME_NONNULL_END
         *identifier = hostSceneIdentifier;
     }
     return [sceneManager sceneWithIdentifier:hostSceneIdentifier];
+}
+
+- (nullable NSString *)bundleIdentifierForScene:(FBScene *)scene kind:(KayokoKeyboardHostKind)kind {
+    if (kind == KayokoKeyboardHostKindSpotlight) {
+        return kKayokoSpotlightBundleIdentifier;
+    }
+    if (kind == KayokoKeyboardHostKindSpringBoard) {
+        return kKayokoSpringBoardBundleIdentifier;
+    }
+
+    if (![scene respondsToSelector:@selector(clientProcess)]) {
+        return nil;
+    }
+
+    FBProcess *process = [scene clientProcess];
+    if (![process respondsToSelector:@selector(bundleIdentifier)]) {
+        return nil;
+    }
+
+    NSString *bundleIdentifier = [process bundleIdentifier];
+    return [bundleIdentifier length] > 0 ? bundleIdentifier : nil;
 }
 
 - (UIResponder *)activeKeyboardInputDelegate {

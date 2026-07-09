@@ -22,6 +22,12 @@ typedef NS_ENUM(NSUInteger, KayokoAutomaticPasteMode) {
     kKayokoAutomaticPasteModeAutomatic = 2
 };
 
+typedef NS_ENUM(NSUInteger, KayokoAutomaticPromotionMode) {
+    kKayokoAutomaticPromotionModeOff = 0,
+    kKayokoAutomaticPromotionModeHistoryOnly = 1,
+    kKayokoAutomaticPromotionModeAlways = 2
+};
+
 typedef NS_ENUM(NSUInteger, KayokoGestureRecognizerMode) {
     kKayokoGestureRecognizerModeClassic = 0,
     kKayokoGestureRecognizerModeSystem = 1
@@ -44,6 +50,7 @@ static NSString *const kKayokoPreferenceKeyActivationMethod = @"ActivationMethod
 static NSString *const kKayokoPreferenceKeyGestureRecognizerMode = @"GestureRecognizerMode";
 static NSString *const kKayokoPreferenceKeyAutomaticallyPaste = @"AutomaticallyPaste";
 static NSString *const kKayokoPreferenceKeyAutomaticPasteMode = @"AutomaticPasteMode";
+static NSString *const kKayokoPreferenceKeyAutomaticPromotionMode = @"AutomaticPromotionMode";
 static NSString *const kKayokoPreferenceKeyInitialViewMode = @"InitialViewMode";
 static NSString *const kKayokoPreferenceKeyDismissOnOutsideTouch = @"DismissOnOutsideTouch";
 static NSString *const kKayokoPreferenceKeyDisablePasteTips = @"DisablePasteTips";
@@ -65,6 +72,8 @@ static KayokoGestureRecognizerMode const kKayokoPreferenceKeyGestureRecognizerMo
 static BOOL const kKayokoPreferenceKeyAutomaticallyPasteDefaultValue = YES;
 static KayokoAutomaticPasteMode const kKayokoPreferenceKeyAutomaticPasteModeDefaultValue =
     kKayokoAutomaticPasteModeClassic;
+static KayokoAutomaticPromotionMode const kKayokoPreferenceKeyAutomaticPromotionModeDefaultValue =
+    kKayokoAutomaticPromotionModeHistoryOnly;
 static KayokoInitialViewMode const kKayokoPreferenceKeyInitialViewModeDefaultValue =
     kKayokoInitialViewModePreviousSelection;
 static BOOL const kKayokoPreferenceKeyDismissOnOutsideTouchDefaultValue = YES;

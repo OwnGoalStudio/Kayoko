@@ -16,6 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, weak, readonly, nullable) FBScene *scene;
 @property(nonatomic, copy, readonly) NSString *identifier;
+@property(nonatomic, copy, readonly, nullable) NSString *bundleIdentifier;
 @property(nonatomic, assign, readonly) KayokoKeyboardHostKind kind;
 @property(nonatomic, assign, readonly) BOOL helperMarkerAvailable;
 @property(nonatomic, assign, readonly) long long helperInjectedFlag;
@@ -35,6 +36,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (nullable KayokoKeyboardHostContext *)currentKeyboardHostContext;
 - (nullable KayokoKeyboardHostContext *)effectiveExternalKeyboardHostContext;
+- (nullable KayokoKeyboardHostContext *)keyboardHostContextForSourceAttribution;
 - (nullable FBScene *)currentKeyboardHostScene;
 - (nullable UIApplicationSceneSettings *)settingsForScene:(FBScene *)scene;
 - (BOOL)sceneIsCurrentKeyboardHostScene:(FBScene *)scene;

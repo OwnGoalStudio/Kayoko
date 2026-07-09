@@ -5,12 +5,23 @@
 
 #import <UIKit/UIKit.h>
 
+#import "KayokoPanelPresentationMode.h"
 #import "KayokoPreferenceKeys.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class KayokoMainViewController;
+
+@protocol KayokoMainViewControllerDelegate <NSObject>
+
+- (void)mainViewControllerDidRequestFocusRestore:(KayokoMainViewController *)viewController;
+- (void)mainViewControllerDidHide:(KayokoMainViewController *)viewController;
+
+@end
+
 @interface KayokoMainViewController : UIViewController
 
+@property(nonatomic, weak, nullable) id<KayokoMainViewControllerDelegate> delegate;
 @property(nonatomic, assign) BOOL automaticallyPaste;
 @property(nonatomic, assign) BOOL dismissOnOutsideTouch;
 @property(nonatomic, assign) BOOL swipeToSelectWords;
@@ -18,7 +29,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) NSUInteger previewLineCount;
 @property(nonatomic, assign) BOOL shouldPlayFeedback;
 @property(nonatomic, assign, getter=isAuthorizationPassed) BOOL authorizationPassed;
-@property(nonatomic, copy, nullable) void (^focusRestoreRequestHandler)(void);
+@property(nonatomic, assign) KayokoPanelPresentationMode presentationMode;
+@property(nonatomic, assign) UIInterfaceOrientationMask kayokoSupportedInterfaceOrientations;
 
 - (instancetype)initWithFrame:(CGRect)frame;
 
@@ -35,6 +47,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)hide;
 - (void)hideRestoringFocus;
 - (void)hideWithCompletion:(nullable void (^)(void))completion;
+- (void)hideWithAnimationStyle:(KayokoPanelHideAnimationStyle)animationStyle
+                    completion:(nullable void (^)(void))completion;
+- (void)hideForExternalRequestWithAnimationStyle:(KayokoPanelHideAnimationStyle)animationStyle
+                                      completion:(nullable void (^)(void))completion;
 - (void)hideImmediately;
 - (void)reload;
 
