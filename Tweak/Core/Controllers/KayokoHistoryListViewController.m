@@ -182,7 +182,11 @@ NS_ASSUME_NONNULL_END
 
 - (BOOL)shouldRestoreContentOffsetAfterTopRowRemovalAtIndexPath:(NSIndexPath *)indexPath
                                                      fromOffset:(CGPoint)contentOffset {
-    return [indexPath row] == 0 && ![self hasActiveSearch] &&
+    if ([indexPath row] != 0) {
+        return NO;
+    }
+
+    return [[self tableView] isSearchHeaderExposedAtContentOffset:contentOffset] ||
            [[self tableView] isContentOffsetAtHiddenSearchHeaderBoundary:contentOffset];
 }
 
@@ -472,13 +476,6 @@ NS_ASSUME_NONNULL_END
         }];
 }
 
-#pragma mark - Swipe State
-
-- (BOOL)shouldMaintainSearchBarVisibilityAfterSwipe {
-    return ![self hasActiveSearch] &&
-           [[self tableView] isContentOffsetAtHiddenSearchHeaderBoundary:[[self tableView] contentOffset]];
-}
-
 #pragma mark - UITableViewDataSource
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
@@ -503,7 +500,7 @@ NS_ASSUME_NONNULL_END
     if ([imageName length] > 0) {
         __weak KayokoTableViewCell *weakCell = cell;
         [[self cellContentProvider] loadThumbnailForItem:item
-                                              targetSize:CGSizeMake(70, 40)
+                                              targetSize:[KayokoTableViewCell contentImageThumbnailSize]
                                               completion:^(UIImage *_Nullable image) {
                                                 [weakCell setContentImage:image forImageName:imageName];
                                               }];
@@ -578,7 +575,6 @@ NS_ASSUME_NONNULL_END
                             title:@""
                           handler:^(__unused UIContextualAction *action, __unused __kindof UIView *sourceView,
                                     void (^completionHandler)(BOOL)) {
-                            BOOL maintainsSearchBarVisibility = [self shouldMaintainSearchBarVisibilityAfterSwipe];
                             [[self actionHandler]
                                 deleteItem:item
                                 historyKey:[self historyKey]
@@ -590,9 +586,7 @@ NS_ASSUME_NONNULL_END
                                   [self removeItemAtIndexPath:indexPath
                                                    completion:^(BOOL removed) {
                                                      if (removed) {
-                                                         [[self delegate] historyListViewController:self
-                                                             didChangeContentStateMaintainingSearchBarVisibility:
-                                                                 maintainsSearchBarVisibility];
+                                                         [[self delegate] historyListViewControllerDidChangeContentState:self];
                                                      }
                                                      completionHandler(removed);
                                                    }];
@@ -618,7 +612,6 @@ NS_ASSUME_NONNULL_END
                             title:@""
                           handler:^(__unused UIContextualAction *action, __unused __kindof UIView *sourceView,
                                     void (^completionHandler)(BOOL)) {
-                            BOOL maintainsSearchBarVisibility = [self shouldMaintainSearchBarVisibilityAfterSwipe];
                             [[self actionHandler]
                                              moveItem:item
                                      sourceHistoryKey:sourceHistoryKey
@@ -636,9 +629,8 @@ NS_ASSUME_NONNULL_END
                                                  removeItemAtIndexPath:indexPath
                                                             completion:^(BOOL removed) {
                                                               if (removed) {
-                                                                  [[self delegate] historyListViewController:self
-                                                                      didChangeContentStateMaintainingSearchBarVisibility:
-                                                                          maintainsSearchBarVisibility];
+                                                                  [[self delegate]
+                                                                      historyListViewControllerDidChangeContentState:self];
                                                               }
                                                               completionHandler(removed);
                                                             }];

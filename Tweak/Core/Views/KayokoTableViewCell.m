@@ -10,6 +10,10 @@
 #import "KayokoTagColorFormatter.h"
 
 static CGFloat const kKayokoTableViewCellTagDotSize = 7;
+static CGFloat const kKayokoTableViewCellContentImageWidth = 70;
+static CGFloat const kKayokoTableViewCellContentImageSingleLineHeight = 40;
+static CGFloat const kKayokoTableViewCellContentImageAdditionalLineHeight = 15;
+static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
 
 @interface KayokoTableViewCell ()
 @property(nonatomic, copy, nullable) NSString *representedImageName;
@@ -17,13 +21,27 @@ static CGFloat const kKayokoTableViewCellTagDotSize = 7;
 
 @implementation KayokoTableViewCell
 
++ (CGSize)contentImageViewSizeForPreviewLineCount:(NSUInteger)previewLineCount {
+    NSUInteger lineCount = MIN(MAX(previewLineCount, 1), kKayokoTableViewCellMaximumPreviewLineCount);
+    CGFloat height = kKayokoTableViewCellContentImageSingleLineHeight +
+                     (lineCount - 1) * kKayokoTableViewCellContentImageAdditionalLineHeight;
+    return CGSizeMake(kKayokoTableViewCellContentImageWidth, height);
+}
+
++ (CGSize)contentImageThumbnailSize {
+    CGSize maximumViewSize = [self contentImageViewSizeForPreviewLineCount:kKayokoTableViewCellMaximumPreviewLineCount];
+    CGFloat sideLength = MAX(maximumViewSize.width, maximumViewSize.height);
+    return CGSizeMake(sideLength, sideLength);
+}
+
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
                       content:(KayokoTableViewCellContent *)content
               reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
 
     if (self) {
-        NSUInteger lineCount = MIN(MAX([content previewLineCount], 1), 3);
+        NSUInteger lineCount = MIN(MAX([content previewLineCount], 1), kKayokoTableViewCellMaximumPreviewLineCount);
+        CGSize contentImageViewSize = [[self class] contentImageViewSizeForPreviewLineCount:lineCount];
         [self setBackgroundColor:[UIColor clearColor]];
         UIView *selectedBackgroundView = [[UIView alloc] init];
         UIColor *selectedBackgroundColor =
@@ -70,8 +88,8 @@ static CGFloat const kKayokoTableViewCellTagDotSize = 7;
 
             [[self contentImageView] setTranslatesAutoresizingMaskIntoConstraints:NO];
             [NSLayoutConstraint activateConstraints:@[
-                [[[self contentImageView] widthAnchor] constraintEqualToConstant:70],
-                [[[self contentImageView] heightAnchor] constraintEqualToConstant:40],
+                [[[self contentImageView] widthAnchor] constraintEqualToConstant:contentImageViewSize.width],
+                [[[self contentImageView] heightAnchor] constraintEqualToConstant:contentImageViewSize.height],
                 [[[self contentImageView] centerYAnchor] constraintEqualToAnchor:[self centerYAnchor]],
                 [[[self contentImageView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor] constant:-24]
             ]];

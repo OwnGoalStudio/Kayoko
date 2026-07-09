@@ -189,7 +189,7 @@ NS_ASSUME_NONNULL_END
 
 - (void)prepareHiddenHeaderInsetsForRemovingRowAtIndexPath:(NSIndexPath *)indexPath {
     CGFloat hiddenHeaderOffsetY = [self hiddenHeaderOffsetY];
-    if (hiddenHeaderOffsetY <= 0) {
+    if (hiddenHeaderOffsetY <= 0 || [self isSearchHeaderExposedAtContentOffset:[self contentOffset]]) {
         return;
     }
 

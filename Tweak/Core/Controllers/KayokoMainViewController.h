@@ -46,6 +46,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)show;
 - (void)hide;
 - (void)hideRestoringFocus;
+- (void)hideWithStandardDismissAnimation;
 - (void)hideWithCompletion:(nullable void (^)(void))completion;
 - (void)hideWithAnimationStyle:(KayokoPanelHideAnimationStyle)animationStyle
                     completion:(nullable void (^)(void))completion;

@@ -9,6 +9,7 @@
 #import "KayokoHistoryItemActionHandler.h"
 #import "KayokoPasteboardItem.h"
 #import "KayokoPasteboardManager.h"
+#import "KayokoHeaderView.h"
 #import "KayokoTag.h"
 #import "KayokoTagCatalog.h"
 #import "KayokoWordSelectionView.h"
@@ -26,9 +27,6 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma mark - Views
 
 @property(nonatomic, strong, readwrite) KayokoWordSelectionView *wordSelectionView;
-@property(nonatomic, weak) UIButton *favoritesButton;
-@property(nonatomic, weak) UIButton *backButton;
-@property(nonatomic, weak) UIButton *clearButton;
 
 #pragma mark - State
 
@@ -36,15 +34,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, nullable, readwrite) NSString *sourceHistoryKey;
 @property(nonatomic, strong, nullable, readwrite) KayokoPasteboardItem *sourceItem;
 @property(nonatomic, strong) KayokoHistoryItemActionHandler *actionHandler;
-
-#pragma mark - Header
-
-- (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey;
-- (void)resetHeaderState;
-- (void)updateStyleForHeaderButton:(UIButton *)button
-                     withImageName:(NSString *)imageName
-                      andImageSize:(NSUInteger)imageSize
-                      andTintColor:(UIColor *)color;
 
 #pragma mark - Tags
 
@@ -58,17 +47,12 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Lifecycle
 
-- (instancetype)initWithName:(NSString *)name
-             favoritesButton:(UIButton *)favoritesButton
-                  backButton:(UIButton *)backButton
-                 clearButton:(UIButton *)clearButton {
+- (instancetype)initWithName:(NSString *)name {
     self = [super initWithNibName:nil bundle:nil];
     if (self) {
         _name = [name copy];
-        _favoritesButton = favoritesButton;
-        _backButton = backButton;
-        _clearButton = clearButton;
         _wordSelectionView = [[KayokoWordSelectionView alloc] init];
+        [[_wordSelectionView headerView] setTitleText:name];
         [_wordSelectionView setHidden:YES];
         _actionHandler = [[KayokoHistoryItemActionHandler alloc] init];
         [self setView:_wordSelectionView];
@@ -106,19 +90,6 @@ NS_ASSUME_NONNULL_END
     [[self wordSelectionView] scrollToTopAnimated:animated];
 }
 
-#pragma mark - Header
-
-- (void)updateStyleForHeaderButton:(UIButton *)button
-                     withImageName:(NSString *)imageName
-                      andImageSize:(NSUInteger)imageSize
-                      andTintColor:(UIColor *)color {
-    UIImageSymbolConfiguration *configuration =
-        [UIImageSymbolConfiguration configurationWithPointSize:imageSize weight:UIImageSymbolWeightMedium];
-    UIImage *image = [UIImage systemImageNamed:imageName] ?: [UIImage systemImageNamed:@"doc.on.doc"];
-    [button setImage:[image imageWithConfiguration:configuration] forState:UIControlStateNormal];
-    [button setTintColor:color];
-}
-
 #pragma mark - Presentation
 
 - (void)showWordSelectionWithItem:(KayokoPasteboardItem *)item
@@ -132,24 +103,26 @@ NS_ASSUME_NONNULL_END
     [[self wordSelectionView] setHidden:NO];
     [self configureTagBarForSourceItem:item];
 
-    [self updateStyleForHeaderButton:[self favoritesButton]
-                       withImageName:@"arrowshape.turn.up.backward"
-                        andImageSize:kKayokoFavoritesButtonImageSize
-                        andTintColor:[UIColor labelColor]];
-    [self updateStyleForHeaderButton:[self backButton]
-                       withImageName:(automaticallyPaste ? @"doc.on.clipboard" : @"doc.on.doc.fill")andImageSize
-                                    :kKayokoBackButtonImageSize
-                        andTintColor:[UIColor labelColor]];
-    [[self favoritesButton]
+    KayokoHeaderView *headerView = [[self wordSelectionView] headerView];
+    [headerView setHidden:NO];
+    [headerView setTitleText:[self name]];
+    [headerView updateStyleForButton:[headerView leadingButton]
+                        withImageName:@"arrowshape.turn.up.backward"
+                             imageSize:kKayokoFavoritesButtonImageSize
+                             tintColor:[UIColor labelColor]];
+    [headerView updateStyleForButton:[headerView trailingButton]
+                        withImageName:(automaticallyPaste ? @"doc.on.clipboard" : @"doc.on.doc.fill")
+                             imageSize:kKayokoBackButtonImageSize
+                             tintColor:[UIColor labelColor]];
+    [[headerView leadingButton]
         setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Back"
                                                                                             value:nil
                                                                                             table:@"Tweak"]];
-    [[self backButton] setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle]
-                                                 localizedStringForKey:(automaticallyPaste ? @"Paste" : @"Copy")
-                                                                 value:nil
-                                                                 table:@"Tweak"]];
-    [[self clearButton] setHidden:YES];
-    [[self backButton] setHidden:NO];
+    [[headerView trailingButton]
+        setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle]
+                                  localizedStringForKey:(automaticallyPaste ? @"Paste" : @"Copy")
+                                                  value:nil
+                                                  table:@"Tweak"]];
     [self updateActionButtonState];
 }
 
@@ -201,10 +174,6 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Dismissal
 
-- (void)prepareToHideWordSelection {
-    [self resetHeaderState];
-}
-
 - (void)hideWordSelection {
     [self resetWordSelectionState];
 }
@@ -239,42 +208,22 @@ NS_ASSUME_NONNULL_END
     [[self delegate] wordSelectionViewController:self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
 }
 
-#pragma mark - Header Helpers
-
-- (void)resetHeaderState {
-    [[self clearButton] setHidden:NO];
-    [[self backButton] setHidden:YES];
-    [[self backButton] setEnabled:YES];
-    [[self backButton] setAlpha:1.0];
-    [self restoreHeaderButtonsForSourceHistoryKey:[self sourceHistoryKey]];
-    [[self favoritesButton]
-        setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
-                                                                                            value:nil
-                                                                                            table:@"Tweak"]];
-}
+#pragma mark - State
 
 - (void)resetWordSelectionState {
     [[self wordSelectionView] setHidden:YES];
     [[self wordSelectionView] reset];
-    [self resetHeaderState];
     [self setSourceItem:nil];
     [self setSourceHistoryKey:nil];
 }
 
-- (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey {
-    BOOL showingFavorites = [historyKey isEqualToString:kKayokoHistoryKeyFavorites];
-    NSString *imageName = showingFavorites ? @"heart.fill" : @"heart";
-    UIColor *tintColor = showingFavorites ? [UIColor systemPinkColor] : [UIColor labelColor];
-    [self updateStyleForHeaderButton:[self favoritesButton]
-                       withImageName:imageName
-                        andImageSize:kKayokoFavoritesButtonImageSize
-                        andTintColor:tintColor];
-}
+#pragma mark - Header
 
 - (void)updateActionButtonState {
     BOOL enabled = [self hasSelectedText];
-    [[self backButton] setEnabled:enabled];
-    [[self backButton] setAlpha:enabled ? 1.0 : 0.35];
+    UIButton *actionButton = [[[self wordSelectionView] headerView] trailingButton];
+    [actionButton setEnabled:enabled];
+    [actionButton setAlpha:enabled ? 1.0 : 0.35];
 }
 
 @end

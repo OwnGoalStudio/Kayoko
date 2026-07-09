@@ -55,7 +55,7 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Lifecycle
 
 - (instancetype)initWithContainerView:(UIView *)containerView
-                           headerView:(UIView *)headerView
+                           headerView:(KayokoHeaderView *)headerView
             historyListViewController:(KayokoHistoryListViewController *)historyListViewController
           favoritesListViewController:(KayokoHistoryListViewController *)favoritesListViewController
                  panGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer {
@@ -841,10 +841,10 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
-                           beganInHeaderView:(BOOL)beganInHeaderView {
+                                  headerView:(nullable KayokoHeaderView *)headerView {
     [[self presentationController] handleFullscreenPanGestureRecognizer:recognizer
                                                         activeTableView:[self activeTableView]
-                                                      beganInHeaderView:beganInHeaderView];
+                                                             headerView:headerView];
 }
 
 - (void)resetSearchState {
@@ -881,10 +881,6 @@ NS_ASSUME_NONNULL_END
     [self updateTokenListForListViewController:listViewController];
     [self updateSearchTokenHeaderHeights];
     [self setIsResettingSearch:wasResettingSearch];
-}
-
-- (void)maintainSearchBarVisibilityForListViewController:(KayokoHistoryListViewController *)listViewController {
-    [[self presentationController] maintainSearchBarVisibilityForTableView:[listViewController tableView]];
 }
 
 #pragma mark - KayokoSearchPresentationControllerDelegate

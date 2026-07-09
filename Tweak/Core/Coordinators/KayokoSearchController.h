@@ -8,6 +8,7 @@
 #import "KayokoPanelPresentationMode.h"
 
 @class KayokoSearchController;
+@class KayokoHeaderView;
 @class KayokoHistoryListViewController;
 @class KayokoHistoryListView;
 
@@ -34,7 +35,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign, readonly) CGFloat keyboardBottomInset;
 
 - (instancetype)initWithContainerView:(UIView *)containerView
-                           headerView:(UIView *)headerView
+                           headerView:(KayokoHeaderView *)headerView
             historyListViewController:(KayokoHistoryListViewController *)historyListViewController
           favoritesListViewController:(KayokoHistoryListViewController *)favoritesListViewController
                  panGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer;
@@ -46,14 +47,13 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)refreshAfterTransientContentForListViewController:(KayokoHistoryListViewController *)listViewController
                                    restoresFirstResponder:(BOOL)restoresFirstResponder
                                       targetContentOffset:(CGPoint)targetContentOffset;
-- (void)maintainSearchBarVisibilityForListViewController:(KayokoHistoryListViewController *)listViewController;
 - (void)cancelSearchWithCompletion:(nullable void (^)(void))completion;
 - (void)cancelSearchWithAnimations:(nullable void (^)(void))animations completion:(nullable void (^)(void))completion;
 - (BOOL)isActiveSearchFirstResponder;
 - (void)resignSearchFirstResponder;
 - (void)handleApplicationMetadataChanged;
 - (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
-                           beganInHeaderView:(BOOL)beganInHeaderView;
+                                  headerView:(nullable KayokoHeaderView *)headerView;
 - (void)resetSearchState;
 
 @end

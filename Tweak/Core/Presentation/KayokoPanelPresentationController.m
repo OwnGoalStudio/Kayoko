@@ -5,6 +5,7 @@
 
 #import "KayokoPanelPresentationController.h"
 
+#import "KayokoHeaderView.h"
 #import "KayokoMainView.h"
 
 static CGFloat const kKayokoPanelPanScrollViewTopTolerance = 0.5;
@@ -21,8 +22,8 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma mark - Gestures
 
 @property(nonatomic, strong) UIPanGestureRecognizer *panGestureRecognizer;
-@property(nonatomic, strong) UITapGestureRecognizer *grabberTapGestureRecognizer;
 @property(nonatomic, weak, nullable) UIView *panGestureTouchView;
+@property(nonatomic, strong) NSHashTable<KayokoHeaderView *> *headerViews;
 @property(nonatomic, strong)
     NSHashTable<UIGestureRecognizer *> *scrollViewPanGestureRecognizersRequiringPanelPanFailure;
 
@@ -52,14 +53,24 @@ NS_ASSUME_NONNULL_END
                                                                         action:@selector(handlePanGestureRecognizer:)];
         [_panGestureRecognizer setDelegate:self];
         [panelView addGestureRecognizer:_panGestureRecognizer];
+        _headerViews = [NSHashTable weakObjectsHashTable];
         _scrollViewPanGestureRecognizersRequiringPanelPanFailure = [NSHashTable weakObjectsHashTable];
-        _grabberTapGestureRecognizer =
-            [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleGrabberTapGestureRecognizer:)];
-        [_grabberTapGestureRecognizer setCancelsTouchesInView:NO];
-        [_grabberTapGestureRecognizer setDelegate:self];
-        [[panelView headerView] addGestureRecognizer:_grabberTapGestureRecognizer];
+        [self registerHeaderView:[panelView headerView]];
     }
     return self;
+}
+
+- (void)registerHeaderView:(KayokoHeaderView *)headerView {
+    if (!headerView || [[self headerViews] containsObject:headerView]) {
+        return;
+    }
+
+    [[self headerViews] addObject:headerView];
+    UITapGestureRecognizer *recognizer =
+        [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleGrabberTapGestureRecognizer:)];
+    [recognizer setCancelsTouchesInView:NO];
+    [recognizer setDelegate:self];
+    [headerView addGestureRecognizer:recognizer];
 }
 
 #pragma mark - State
@@ -111,14 +122,6 @@ NS_ASSUME_NONNULL_END
     CGFloat targetTranslationY = MAX([[self panelView] bounds].size.height / 3, 120);
     [self setPendingDismissTranslationY:targetTranslationY];
     [self setPendingDismissVelocityY:0];
-}
-
-- (CGFloat)defaultDismissTranslationForCurrentPresentationMode {
-    if ([self presentationMode] != KayokoPanelPresentationModeCompactLandscapeFullscreen) {
-        return 0;
-    }
-
-    return MAX([[self panelView] bounds].size.height / 3, 120);
 }
 
 #pragma mark - Outside Dismiss Overlay
@@ -232,13 +235,22 @@ NS_ASSUME_NONNULL_END
     return NO;
 }
 
+- (nullable KayokoHeaderView *)headerViewContainingView:(UIView *)view {
+    for (KayokoHeaderView *headerView in [self headerViews]) {
+        if ([self view:view isDescendantOfView:headerView]) {
+            return headerView;
+        }
+    }
+    return nil;
+}
+
 - (BOOL)isScrollViewAtTopBoundary:(UIScrollView *)scrollView {
     CGFloat topBoundary = -[scrollView adjustedContentInset].top;
     return [scrollView contentOffset].y <= topBoundary + kKayokoPanelPanScrollViewTopTolerance;
 }
 
-- (BOOL)currentPanGestureBeganInHeaderView {
-    return [self view:[self panGestureTouchView] isDescendantOfView:[[self panelView] headerView]];
+- (nullable KayokoHeaderView *)currentPanGestureHeaderView {
+    return [self headerViewContainingView:[self panGestureTouchView]];
 }
 
 - (BOOL)shouldBeginPanelPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer {
@@ -252,7 +264,7 @@ NS_ASSUME_NONNULL_END
     }
 
     UIView *touchView = [self viewForPanelPanGestureRecognizer:recognizer];
-    if ([self view:touchView isDescendantOfView:[[self panelView] headerView]]) {
+    if ([self headerViewContainingView:touchView]) {
         return YES;
     }
 
@@ -270,7 +282,7 @@ NS_ASSUME_NONNULL_END
     if ([[self delegate] panelPresentationControllerShouldHandleFullscreenSearchPan:self]) {
         [[self delegate] panelPresentationController:self
             handleFullscreenSearchPanGestureRecognizer:recognizer
-                                     beganInHeaderView:[self currentPanGestureBeganInHeaderView]];
+                                            headerView:[self currentPanGestureHeaderView]];
         if ([recognizer state] == UIGestureRecognizerStateEnded ||
             [recognizer state] == UIGestureRecognizerStateCancelled ||
             [recognizer state] == UIGestureRecognizerStateFailed) {
@@ -319,7 +331,7 @@ NS_ASSUME_NONNULL_END
         CGPoint velocity = CGPointZero;
         if ([recognizer state] == UIGestureRecognizerStateEnded) {
             velocity = [recognizer velocityInView:[self panelView]];
-            shouldUseFastDismissAnimation = [self currentPanGestureBeganInHeaderView] &&
+            shouldUseFastDismissAnimation = [self currentPanGestureHeaderView] != nil &&
                                             ![self panGestureDidReachZeroAlpha] && translation.y > 0 &&
                                             velocity.y >= kFastDismissVelocity;
             shouldDismiss = shouldDismiss || shouldUseFastDismissAnimation;
@@ -351,9 +363,9 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - UIGestureRecognizerDelegate
 
-- (CGRect)grabberTapTargetFrame {
-    UIView *grabberView = (UIView *)[[self panelView] grabber];
-    CGRect grabberFrame = [grabberView frame];
+- (CGRect)grabberTapTargetFrameInHeaderView:(KayokoHeaderView *)headerView {
+    UIView *grabberView = (UIView *)[headerView grabber];
+    CGRect grabberFrame = [grabberView convertRect:[grabberView bounds] toView:headerView];
     return CGRectInset(grabberFrame, -44, -16);
 }
 
@@ -367,12 +379,15 @@ NS_ASSUME_NONNULL_END
         return YES;
     }
 
-    if (gestureRecognizer != [self grabberTapGestureRecognizer]) {
+    UIView *gestureView = [gestureRecognizer view];
+    if (![gestureView isKindOfClass:[KayokoHeaderView class]] ||
+        ![[self headerViews] containsObject:(KayokoHeaderView *)gestureView]) {
         return YES;
     }
 
-    CGPoint location = [touch locationInView:[[self panelView] headerView]];
-    return CGRectContainsPoint([self grabberTapTargetFrame], location);
+    KayokoHeaderView *headerView = (KayokoHeaderView *)gestureView;
+    CGPoint location = [touch locationInView:headerView];
+    return CGRectContainsPoint([self grabberTapTargetFrameInHeaderView:headerView], location);
 }
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
@@ -439,8 +454,9 @@ NS_ASSUME_NONNULL_END
     [self setPendingDismissTranslationY:0];
     [self setPendingDismissVelocityY:0];
 
-    if (animationStyle == KayokoPanelHideAnimationStyleDefault && dismissTranslationY <= 0) {
-        dismissTranslationY = [self defaultDismissTranslationForCurrentPresentationMode];
+    if (animationStyle == KayokoPanelHideAnimationStyleFade) {
+        dismissTranslationY = 0;
+        dismissVelocityY = 0;
     }
 
     [self setAnimating:YES];

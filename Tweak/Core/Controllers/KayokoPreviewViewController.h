@@ -17,13 +17,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, nullable, readonly) KayokoPasteboardItem *previewItem;
 @property(nonatomic, copy, nullable) void (^tagAssignmentHandler)(KayokoPasteboardItem *item, NSString *historyKey);
 
-- (instancetype)initWithFavoritesButton:(UIButton *)favoritesButton
-                             backButton:(UIButton *)backButton
-                            clearButton:(UIButton *)clearButton;
-
 - (void)showPreviewWithItem:(KayokoPasteboardItem *)item sourceHistoryKey:(NSString *)sourceHistoryKey;
 - (void)handleActionButtonWithCompletion:(nullable void (^)(BOOL success))completion;
-- (void)prepareToHidePreview;
 - (void)hidePreview;
 - (void)resetPreviewState;
 - (void)scrollToTopAnimated:(BOOL)animated;

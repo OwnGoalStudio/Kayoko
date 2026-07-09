@@ -33,10 +33,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, nullable) void (^selectionChangedHandler)(void);
 @property(nonatomic, copy, nullable) void (^tagAssignmentHandler)(KayokoPasteboardItem *item, NSString *historyKey);
 
-- (instancetype)initWithName:(NSString *)name
-             favoritesButton:(UIButton *)favoritesButton
-                  backButton:(UIButton *)backButton
-                 clearButton:(UIButton *)clearButton NS_DESIGNATED_INITIALIZER;
+- (instancetype)initWithName:(NSString *)name NS_DESIGNATED_INITIALIZER;
 - (instancetype)initWithNibName:(nullable NSString *)nibNameOrNil
                          bundle:(nullable NSBundle *)nibBundleOrNil NS_UNAVAILABLE;
 - (instancetype)initWithCoder:(NSCoder *)coder NS_UNAVAILABLE;
@@ -46,7 +43,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)showWordSelectionWithItem:(KayokoPasteboardItem *)item
                  sourceHistoryKey:(NSString *)sourceHistoryKey
                automaticallyPaste:(BOOL)automaticallyPaste;
-- (void)prepareToHideWordSelection;
 - (void)hideWordSelection;
 - (void)handleActionButtonWithAutomaticallyPaste:(BOOL)automaticallyPaste;
 - (void)resetWordSelectionState;

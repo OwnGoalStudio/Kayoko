@@ -117,7 +117,7 @@ static void kayokoHandleExternalKeyboardShortcut(id self, SEL _cmd, UIKeyCommand
     (void)command;
     KayokoCoreRuntime *runtime = [KayokoCoreRuntime sharedRuntime];
     if ([runtime panelVisible]) {
-        [runtime hide];
+        [runtime hideWithStandardDismissAnimation];
         return;
     }
 

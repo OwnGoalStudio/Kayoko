@@ -18,8 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)historyListViewControllerDidRequestHideAfterDirectPaste:(KayokoHistoryListViewController *)controller;
 - (void)historyListViewController:(KayokoHistoryListViewController *)controller
          didRequestPreviewForItem:(KayokoPasteboardItem *)item;
-- (void)historyListViewController:(KayokoHistoryListViewController *)controller
-    didChangeContentStateMaintainingSearchBarVisibility:(BOOL)maintainsSearchBarVisibility;
+- (void)historyListViewControllerDidChangeContentState:(KayokoHistoryListViewController *)controller;
 - (void)historyListViewController:(KayokoHistoryListViewController *)controller
             didMoveItemDictionary:(NSDictionary<NSString *, id> *)dictionary
                fromHistoryWithKey:(NSString *)sourceHistoryKey

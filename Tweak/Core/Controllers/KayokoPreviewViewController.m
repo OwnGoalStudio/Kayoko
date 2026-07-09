@@ -10,6 +10,7 @@
 #import "KayokoPasteboardItem.h"
 #import "KayokoPasteboardManager.h"
 #import "KayokoPreviewView.h"
+#import "KayokoHeaderView.h"
 #import "KayokoTag.h"
 #import "KayokoTagCatalog.h"
 
@@ -23,9 +24,6 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma mark - Views
 
 @property(nonatomic, strong, readwrite) KayokoPreviewView *previewView;
-@property(nonatomic, weak) UIButton *favoritesButton;
-@property(nonatomic, weak) UIButton *backButton;
-@property(nonatomic, weak) UIButton *clearButton;
 
 #pragma mark - State
 
@@ -33,9 +31,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, nullable, readwrite) KayokoPasteboardItem *previewItem;
 @property(nonatomic, strong) KayokoHistoryItemActionHandler *actionHandler;
 
-#pragma mark - Header
-
-- (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey;
 - (NSString *)actionImageNameForItem:(KayokoPasteboardItem *)item;
 - (NSString *)actionAccessibilityLabelKeyForItem:(KayokoPasteboardItem *)item;
 
@@ -51,35 +46,17 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Lifecycle
 
-- (instancetype)initWithFavoritesButton:(UIButton *)favoritesButton
-                             backButton:(UIButton *)backButton
-                            clearButton:(UIButton *)clearButton {
+- (instancetype)init {
     self = [super init];
     if (self) {
         _previewView = [[KayokoPreviewView alloc]
             initWithName:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Preview"
                                                                                        value:nil
                                                                                        table:@"Tweak"]];
-        _favoritesButton = favoritesButton;
-        _backButton = backButton;
-        _clearButton = clearButton;
         _actionHandler = [[KayokoHistoryItemActionHandler alloc] init];
         [self setView:_previewView];
     }
     return self;
-}
-
-#pragma mark - Header
-
-- (void)updateStyleForHeaderButton:(UIButton *)button
-                     withImageName:(NSString *)imageName
-                      andImageSize:(NSUInteger)imageSize
-                      andTintColor:(UIColor *)color {
-    UIImageSymbolConfiguration *configuration =
-        [UIImageSymbolConfiguration configurationWithPointSize:imageSize weight:UIImageSymbolWeightMedium];
-    UIImage *image = [UIImage systemImageNamed:imageName] ?: [UIImage systemImageNamed:@"doc.on.doc"];
-    [button setImage:[image imageWithConfiguration:configuration] forState:UIControlStateNormal];
-    [button setTintColor:color];
 }
 
 #pragma mark - Presentation
@@ -100,26 +77,28 @@ NS_ASSUME_NONNULL_END
     }
     [self configureTagBarForPreviewItem:item];
 
-    [self updateStyleForHeaderButton:[self favoritesButton]
-                       withImageName:@"arrowshape.turn.up.backward"
-                        andImageSize:kKayokoFavoritesButtonImageSize
-                        andTintColor:[UIColor labelColor]];
-    [self updateStyleForHeaderButton:[self backButton]
-                       withImageName:[self actionImageNameForItem:item]
-                        andImageSize:kKayokoBackButtonImageSize
-                        andTintColor:[UIColor labelColor]];
-    [[self favoritesButton]
+    KayokoHeaderView *headerView = [[self previewView] headerView];
+    [headerView setHidden:NO];
+    [headerView setTitleText:[[self previewView] name]];
+    [headerView updateStyleForButton:[headerView leadingButton]
+                        withImageName:@"arrowshape.turn.up.backward"
+                             imageSize:kKayokoFavoritesButtonImageSize
+                             tintColor:[UIColor labelColor]];
+    [headerView updateStyleForButton:[headerView trailingButton]
+                        withImageName:[self actionImageNameForItem:item]
+                             imageSize:kKayokoBackButtonImageSize
+                             tintColor:[UIColor labelColor]];
+    [[headerView leadingButton]
         setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Back"
                                                                                             value:nil
                                                                                             table:@"Tweak"]];
-    [[self backButton] setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle]
-                                                 localizedStringForKey:[self actionAccessibilityLabelKeyForItem:item]
-                                                                 value:nil
-                                                                 table:@"Tweak"]];
-    [[self clearButton] setHidden:YES];
-    [[self backButton] setHidden:NO];
-    [[self backButton] setEnabled:YES];
-    [[self backButton] setAlpha:1.0];
+    NSString *actionAccessibilityLabelKey = [self actionAccessibilityLabelKeyForItem:item];
+    [[headerView trailingButton] setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle]
+                                                           localizedStringForKey:actionAccessibilityLabelKey
+                                                                           value:nil
+                                                                           table:@"Tweak"]];
+    [[headerView trailingButton] setEnabled:YES];
+    [[headerView trailingButton] setAlpha:1.0];
 }
 
 #pragma mark - Tags
@@ -220,20 +199,7 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Dismissal
 
-- (void)prepareToHidePreview {
-    [[self clearButton] setHidden:NO];
-    [[self backButton] setHidden:YES];
-    [[self backButton] setEnabled:YES];
-    [[self backButton] setAlpha:1.0];
-    [self restoreHeaderButtonsForSourceHistoryKey:[self sourceHistoryKey]];
-    [[self favoritesButton]
-        setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
-                                                                                            value:nil
-                                                                                            table:@"Tweak"]];
-}
-
 - (void)hidePreview {
-    [self prepareToHidePreview];
     [self setPreviewItem:nil];
 
     [[self previewView] reset];
@@ -243,33 +209,12 @@ NS_ASSUME_NONNULL_END
 - (void)resetPreviewState {
     [[self previewView] reset];
     [[self previewView] setHidden:YES];
-    [[self clearButton] setHidden:NO];
-    [[self backButton] setHidden:YES];
-    [[self backButton] setEnabled:YES];
-    [[self backButton] setAlpha:1.0];
-    [self restoreHeaderButtonsForSourceHistoryKey:[self sourceHistoryKey]];
-    [[self favoritesButton]
-        setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Favorites"
-                                                                                            value:nil
-                                                                                            table:@"Tweak"]];
     [self setPreviewItem:nil];
     [self setSourceHistoryKey:nil];
 }
 
 - (void)scrollToTopAnimated:(BOOL)animated {
     [[self previewView] scrollToTopAnimated:animated];
-}
-
-#pragma mark - Header Helpers
-
-- (void)restoreHeaderButtonsForSourceHistoryKey:(nullable NSString *)historyKey {
-    BOOL showingFavorites = [historyKey isEqualToString:kKayokoHistoryKeyFavorites];
-    NSString *imageName = showingFavorites ? @"heart.fill" : @"heart";
-    UIColor *tintColor = showingFavorites ? [UIColor systemPinkColor] : [UIColor labelColor];
-    [self updateStyleForHeaderButton:[self favoritesButton]
-                       withImageName:imageName
-                        andImageSize:kKayokoFavoritesButtonImageSize
-                        andTintColor:tintColor];
 }
 
 @end

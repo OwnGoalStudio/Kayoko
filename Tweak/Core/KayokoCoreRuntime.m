@@ -1046,6 +1046,12 @@ NS_ASSUME_NONNULL_END
     [self hideWithAnimationStyle:KayokoPanelHideAnimationStyleDefault];
 }
 
+- (void)hideWithStandardDismissAnimation {
+    if (self.mainViewController && ![self.mainViewController isHidden]) {
+        [self.mainViewController hideWithStandardDismissAnimation];
+    }
+}
+
 - (void)hideForRotation {
     [self hideWithAnimationStyle:KayokoPanelHideAnimationStyleFade];
 }

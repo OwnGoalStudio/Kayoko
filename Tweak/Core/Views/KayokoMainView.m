@@ -7,14 +7,9 @@
 
 #import "KayokoMainView.h"
 
-#import "KayokoGrabberView.h"
+#import "KayokoHeaderView.h"
 #import "KayokoHeaderButtonStyle.h"
 #import "KayokoPasteboardManager.h"
-
-static CGFloat const kKayokoTitleTapControlHeight = 44;
-static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
-static CGFloat const kKayokoHeaderHeight = 60;
-static CGFloat const kKayokoContentTopSpacing = 8;
 
 @interface KayokoMainView ()
 
@@ -72,7 +67,10 @@ static CGFloat const kKayokoContentTopSpacing = 8;
             [[[self blurEffectView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
 
-        [self setHeaderView:[[UIView alloc] init]];
+        NSString *historyTitle = [[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"History"
+                                                                                                 value:nil
+                                                                                                 table:@"Tweak"];
+        [self setHeaderView:[[KayokoHeaderView alloc] initWithTitle:historyTitle]];
         [self addSubview:[self headerView]];
 
         [[self headerView] setTranslatesAutoresizingMaskIntoConstraints:NO];
@@ -89,97 +87,25 @@ static CGFloat const kKayokoContentTopSpacing = 8;
         [self setHeaderSafeAreaTrailingConstraint:[[[self headerView] trailingAnchor]
                                                       constraintEqualToAnchor:[[self safeAreaLayoutGuide]
                                                                                   trailingAnchor]]];
-        [[self headerView] setClipsToBounds:YES];
-        [self
-            setHeaderHeightConstraint:[[[self headerView] heightAnchor] constraintEqualToConstant:kKayokoHeaderHeight]];
+        [self setHeaderHeightConstraint:[[[self headerView] heightAnchor]
+                                            constraintEqualToConstant:[KayokoHeaderView preferredHeight]]];
         [NSLayoutConstraint activateConstraints:@[
             [self headerHeightConstraint], [self headerTopConstraint], [self headerLeadingConstraint],
             [self headerTrailingConstraint]
         ]];
 
-        [self setGrabber:[[KayokoGrabberView alloc] init]];
-        [[self headerView] addSubview:[self grabber]];
-
-        [[self grabber] setTranslatesAutoresizingMaskIntoConstraints:NO];
-        [NSLayoutConstraint activateConstraints:@[
-            [[[self grabber] topAnchor] constraintEqualToAnchor:[[self headerView] topAnchor] constant:12],
-            [[[self grabber] centerXAnchor] constraintEqualToAnchor:[[self headerView] centerXAnchor]]
-        ]];
-
-        [self setFavoritesButton:[[UIButton alloc] init]];
-        [self updateStyleForHeaderButton:[self favoritesButton]
-                           withImageName:@"heart"
-                            andImageSize:kKayokoFavoritesButtonImageSize
-                            andTintColor:[UIColor labelColor]];
-        [[self headerView] addSubview:[self favoritesButton]];
-
-        [[self favoritesButton] setTranslatesAutoresizingMaskIntoConstraints:NO];
-        [NSLayoutConstraint activateConstraints:@[
-            [[[self favoritesButton] bottomAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor]
-                                                                  constant:-2],
-            [[[self favoritesButton] centerXAnchor] constraintEqualToAnchor:[[self headerView] leadingAnchor]
-                                                                   constant:kKayokoLeadingHeaderButtonCenterXInset]
-        ]];
-
-        [self setTitleLabel:[[UILabel alloc] init]];
-        [[self titleLabel] setText:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"History"
-                                                                                                 value:nil
-                                                                                                 table:@"Tweak"]];
-        [[self titleLabel] setFont:[UIFont systemFontOfSize:26 weight:UIFontWeightSemibold]];
-        [[self titleLabel] setTextColor:[UIColor labelColor]];
-        [[self headerView] addSubview:[self titleLabel]];
-
-        [[self titleLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
-        [NSLayoutConstraint activateConstraints:@[
-            [[[self titleLabel] centerYAnchor] constraintEqualToAnchor:[[self favoritesButton] centerYAnchor]],
-            [[[self titleLabel] leadingAnchor] constraintEqualToAnchor:[[self headerView] leadingAnchor]
-                                                              constant:kKayokoTitleLabelLeadingInset]
-        ]];
-
-        [self setClearButton:[[UIButton alloc] init]];
-        [self updateStyleForHeaderButton:[self clearButton]
-                           withImageName:@"trash"
-                            andImageSize:kKayokoClearButtonImageSize
-                            andTintColor:[UIColor labelColor]];
-        [[self headerView] addSubview:[self clearButton]];
-
-        [[self clearButton] setTranslatesAutoresizingMaskIntoConstraints:NO];
-        [NSLayoutConstraint activateConstraints:@[
-            [[[self clearButton] centerYAnchor] constraintEqualToAnchor:[[self favoritesButton] centerYAnchor]],
-            [[[self clearButton] centerXAnchor] constraintEqualToAnchor:[[self headerView] trailingAnchor]
-                                                               constant:-kKayokoTrailingHeaderButtonCenterXInset]
-        ]];
-
-        [self setBackButton:[[UIButton alloc] init]];
-        [self updateStyleForHeaderButton:[self backButton]
-                           withImageName:@"arrowshape.turn.up.backward"
-                            andImageSize:kKayokoBackButtonImageSize
-                            andTintColor:[UIColor labelColor]];
-        [[self headerView] addSubview:[self backButton]];
-        [[self backButton] setHidden:YES];
-
-        [[self backButton] setTranslatesAutoresizingMaskIntoConstraints:NO];
-        [NSLayoutConstraint activateConstraints:@[
-            [[[self backButton] centerYAnchor] constraintEqualToAnchor:[[self favoritesButton] centerYAnchor]],
-            [[[self backButton] centerXAnchor] constraintEqualToAnchor:[[self headerView] trailingAnchor]
-                                                              constant:-kKayokoTrailingHeaderButtonCenterXInset]
-        ]];
-
-        [self setTitleTapControl:[[UIControl alloc] init]];
-        [[self titleTapControl] setBackgroundColor:[UIColor clearColor]];
-        [[self titleTapControl]
-            setAccessibilityTraits:[[self titleTapControl] accessibilityTraits] | UIAccessibilityTraitButton];
-        [[self titleTapControl] setAccessibilityLabel:[[self titleLabel] text]];
-        [[self headerView] addSubview:[self titleTapControl]];
-
-        [[self titleTapControl] setTranslatesAutoresizingMaskIntoConstraints:NO];
-        [NSLayoutConstraint activateConstraints:@[
-            [[[self titleTapControl] leadingAnchor] constraintEqualToAnchor:[[self titleLabel] leadingAnchor]],
-            [[[self titleTapControl] trailingAnchor] constraintEqualToAnchor:[[self clearButton] leadingAnchor]
-                                                                    constant:-kKayokoTitleTapControlTrailingSpacing],
-            [[[self titleTapControl] centerYAnchor] constraintEqualToAnchor:[[self titleLabel] centerYAnchor]],
-            [[[self titleTapControl] heightAnchor] constraintEqualToConstant:kKayokoTitleTapControlHeight]
-        ]];
+        [[self headerView] updateStyleForButton:[[self headerView] leadingButton]
+                                  withImageName:@"heart"
+                                       imageSize:kKayokoFavoritesButtonImageSize
+                                      tintColor:[UIColor labelColor]];
+        [[self headerView] updateStyleForButton:[[self headerView] trailingButton]
+                                  withImageName:@"trash"
+                                       imageSize:kKayokoClearButtonImageSize
+                                      tintColor:[UIColor labelColor]];
+        [[self headerView] updateStyleForButton:[[self headerView] alternateTrailingButton]
+                                  withImageName:@"arrowshape.turn.up.backward"
+                                       imageSize:kKayokoBackButtonImageSize
+                                      tintColor:[UIColor labelColor]];
 
         [self setContentContainerView:[[UIView alloc] init]];
         [[self contentContainerView] setClipsToBounds:YES];
@@ -206,7 +132,7 @@ static CGFloat const kKayokoContentTopSpacing = 8;
         [[self contentSafeAreaBottomConstraints] addObject:safeAreaBottomConstraint];
         [self setContentTopConstraint:[[[self contentContainerView] topAnchor]
                                           constraintEqualToAnchor:[[self headerView] bottomAnchor]
-                                                         constant:kKayokoContentTopSpacing]];
+                                                         constant:kKayokoHeaderContentSpacing]];
         [NSLayoutConstraint activateConstraints:@[
             [self contentTopConstraint], [self contentRespectsSafeArea] ? safeAreaLeadingConstraint : leadingConstraint,
             [self contentRespectsSafeArea] ? safeAreaTrailingConstraint : trailingConstraint, bottomConstraint
@@ -218,18 +144,14 @@ static CGFloat const kKayokoContentTopSpacing = 8;
 
 #pragma mark - Layout
 
-- (void)setGrabberFoldProgress:(CGFloat)progress {
-    [[self grabber] setFoldProgress:progress];
-}
-
 - (void)setSearchTitleRowCollapsed:(BOOL)searchTitleRowCollapsed {
     if (_searchTitleRowCollapsed == searchTitleRowCollapsed) {
         return;
     }
 
     _searchTitleRowCollapsed = searchTitleRowCollapsed;
-    [[self headerHeightConstraint] setConstant:searchTitleRowCollapsed ? 0 : kKayokoHeaderHeight];
-    [[self contentTopConstraint] setConstant:searchTitleRowCollapsed ? 0 : kKayokoContentTopSpacing];
+    [[self headerHeightConstraint] setConstant:searchTitleRowCollapsed ? 0 : [KayokoHeaderView preferredHeight]];
+    [[self contentTopConstraint] setConstant:searchTitleRowCollapsed ? 0 : kKayokoHeaderContentSpacing];
     [[self headerView] setUserInteractionEnabled:!searchTitleRowCollapsed];
     [self setNeedsLayout];
 }
@@ -250,6 +172,21 @@ static CGFloat const kKayokoContentTopSpacing = 8;
     [contentView setHidden:hidden];
     [[self contentContainerView] addSubview:contentView];
     [self constrainContentView:contentView];
+}
+
+- (void)installFullContentView:(UIView *)contentView headerView:(KayokoHeaderView *)headerView hidden:(BOOL)hidden {
+    [contentView setHidden:hidden];
+    [self addSubview:contentView];
+    [contentView setTranslatesAutoresizingMaskIntoConstraints:NO];
+    [NSLayoutConstraint activateConstraints:@[
+        [[contentView topAnchor] constraintEqualToAnchor:[self topAnchor]],
+        [[contentView leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
+        [[contentView trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
+        [[contentView bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]],
+        [[headerView topAnchor] constraintEqualToAnchor:[[self headerView] topAnchor]],
+        [[headerView leadingAnchor] constraintEqualToAnchor:[[self headerView] leadingAnchor]],
+        [[headerView trailingAnchor] constraintEqualToAnchor:[[self headerView] trailingAnchor]]
+    ]];
 }
 
 #pragma mark - Content Safe Area
@@ -404,30 +341,14 @@ static CGFloat const kKayokoContentTopSpacing = 8;
     [self setNeedsLayout];
 }
 
-#pragma mark - Header
-
-- (void)updateStyleForHeaderButton:(UIButton *)button
-                     withImageName:(NSString *)imageName
-                      andImageSize:(NSUInteger)imageSize
-                      andTintColor:(UIColor *)color {
-    UIImageSymbolConfiguration *configuration =
-        [UIImageSymbolConfiguration configurationWithPointSize:imageSize weight:UIImageSymbolWeightMedium];
-    UIImage *image = [UIImage systemImageNamed:imageName] ?: [UIImage systemImageNamed:@"doc.on.doc"];
-    [button setImage:[image imageWithConfiguration:configuration] forState:UIControlStateNormal];
-    [button setTintColor:color];
-}
-
 - (void)setTitleText:(NSString *)title {
-    if ([title length] > 0) {
-        [[self titleLabel] setText:title];
-        [[self titleTapControl] setAccessibilityLabel:title];
-    }
+    [[self headerView] setTitleText:title];
 }
 
 - (void)setClearButtonEnabledForItemCount:(NSUInteger)itemCount {
     BOOL enabled = itemCount > 0;
-    [[self clearButton] setEnabled:enabled];
-    [[self clearButton] setAlpha:enabled ? 1.0 : 0.35];
+    [[[self headerView] trailingButton] setEnabled:enabled];
+    [[[self headerView] trailingButton] setAlpha:enabled ? 1.0 : 0.35];
 }
 
 #pragma mark - Content Transitions
@@ -448,7 +369,7 @@ static CGFloat const kKayokoContentTopSpacing = 8;
           hideContentView:viewToHide
                     title:title
                 direction:direction
-              willAnimate:nil
+      alongsideAnimations:nil
                completion:completion];
 }
 
@@ -456,12 +377,64 @@ static CGFloat const kKayokoContentTopSpacing = 8;
         hideContentView:(UIView *)viewToHide
                   title:(NSString *)title
               direction:(KayokoContentTransitionDirection)direction
-            willAnimate:(void (^)(void))willAnimate
+    alongsideAnimations:(void (^)(void))alongsideAnimations
              completion:(void (^)(void))completion {
-    [self prepareContentTransitionToView:viewToShow hideContentView:viewToHide title:title direction:direction];
-    if (willAnimate) {
-        willAnimate();
+    [self showContentView:viewToShow
+          hideContentView:viewToHide
+                    title:title
+             updatesTitle:YES
+                direction:direction
+      alongsideAnimations:alongsideAnimations
+               completion:completion];
+}
+
+- (void)showContentView:(UIView *)viewToShow
+        hideContentView:(UIView *)viewToHide
+                  title:(NSString *)title
+           updatesTitle:(BOOL)updatesTitle
+              direction:(KayokoContentTransitionDirection)direction
+    alongsideAnimations:(void (^)(void))alongsideAnimations
+             completion:(void (^)(void))completion {
+    if (updatesTitle) {
+        [UIView transitionWithView:[[self headerView] titleLabel]
+                          duration:0.1
+                           options:UIViewAnimationOptionTransitionCrossDissolve
+                        animations:^{
+                          [self setTitleText:title];
+                        }
+                        completion:nil];
     }
+
+    [self showContentView:viewToShow
+        transitioningView:viewToShow
+          hideContentView:viewToHide
+        transitioningView:viewToHide
+                direction:direction
+      alongsideAnimations:alongsideAnimations
+               completion:completion];
+}
+
+- (void)showContentView:(UIView *)viewToShow
+      transitioningView:(UIView *)viewToShowTransition
+        hideContentView:(UIView *)viewToHide
+      transitioningView:(UIView *)viewToHideTransition
+              direction:(KayokoContentTransitionDirection)direction
+    alongsideAnimations:(void (^)(void))alongsideAnimations
+             completion:(void (^)(void))completion {
+    CGAffineTransform viewToShowTransform = CGAffineTransformIdentity;
+    CGAffineTransform viewToHideTransform = CGAffineTransformIdentity;
+    [self preparedTransformsForDirection:direction
+                     viewToShowTransform:&viewToShowTransform
+                     viewToHideTransform:&viewToHideTransform];
+
+    [viewToShowTransition setTransform:viewToShowTransform];
+    [viewToShowTransition setAlpha:0];
+    if (viewToShow != viewToShowTransition) {
+        [viewToShow setTransform:CGAffineTransformIdentity];
+        [viewToShow setAlpha:1];
+    }
+    [viewToShow setHidden:NO];
+    [self setAnimating:YES];
 
     [UIView animateWithDuration:0.3
         delay:0
@@ -469,7 +442,13 @@ static CGFloat const kKayokoContentTopSpacing = 8;
         initialSpringVelocity:0
         options:UIViewAnimationOptionCurveEaseOut
         animations:^{
-          [self applyPreparedContentTransitionToView:viewToShow hideContentView:viewToHide direction:direction];
+          if (alongsideAnimations) {
+              alongsideAnimations();
+          }
+          [viewToShowTransition setTransform:CGAffineTransformIdentity];
+          [viewToShowTransition setAlpha:1];
+          [viewToHideTransition setTransform:viewToHideTransform];
+          [viewToHideTransition setAlpha:0];
         }
         completion:^(__unused BOOL finished) {
           [self completePreparedContentTransitionHidingView:viewToHide completion:completion];
@@ -507,13 +486,27 @@ static CGFloat const kKayokoContentTopSpacing = 8;
                        hideContentView:(UIView *)viewToHide
                                  title:(NSString *)title
                              direction:(KayokoContentTransitionDirection)direction {
-    [UIView transitionWithView:[self titleLabel]
-                      duration:0.1
-                       options:UIViewAnimationOptionTransitionCrossDissolve
-                    animations:^{
-                      [self setTitleText:title];
-                    }
-                    completion:nil];
+    [self prepareContentTransitionToView:viewToShow
+                         hideContentView:viewToHide
+                                   title:title
+                            updatesTitle:YES
+                               direction:direction];
+}
+
+- (void)prepareContentTransitionToView:(UIView *)viewToShow
+                       hideContentView:(UIView *)viewToHide
+                                 title:(NSString *)title
+                          updatesTitle:(BOOL)updatesTitle
+                             direction:(KayokoContentTransitionDirection)direction {
+    if (updatesTitle) {
+        [UIView transitionWithView:[[self headerView] titleLabel]
+                          duration:0.1
+                           options:UIViewAnimationOptionTransitionCrossDissolve
+                        animations:^{
+                          [self setTitleText:title];
+                        }
+                        completion:nil];
+    }
 
     CGAffineTransform viewToShowTransform = CGAffineTransformIdentity;
     CGAffineTransform viewToHideTransform = CGAffineTransformIdentity;
@@ -559,53 +552,70 @@ static CGFloat const kKayokoContentTopSpacing = 8;
 #pragma mark - Interactive Back Transition
 
 - (void)applyInteractiveBackwardContentTransitionToView:(UIView *)viewToShow
+                                    alongsideViewToShow:(UIView *)viewToShowAlongside
                                         hideContentView:(UIView *)viewToHide
                                                progress:(CGFloat)progress {
     CGFloat clampedProgress = [self clampedInteractiveContentTransitionProgress:progress];
     CGFloat width = CGRectGetWidth([[self contentContainerView] bounds]);
+    CGAffineTransform viewToShowTransform = CGAffineTransformMakeTranslation(width * (clampedProgress - 1), 0);
 
-    [viewToShow setTransform:CGAffineTransformMakeTranslation(width * (clampedProgress - 1), 0)];
+    [viewToShow setTransform:viewToShowTransform];
     [viewToShow setAlpha:1];
+    [viewToShowAlongside setTransform:viewToShowTransform];
+    [viewToShowAlongside setAlpha:1];
 
     [viewToHide setTransform:CGAffineTransformMakeTranslation(width * clampedProgress, 0)];
     [viewToHide setAlpha:1];
 }
 
-- (void)beginInteractiveBackwardContentTransitionToView:(UIView *)viewToShow hideContentView:(UIView *)viewToHide {
+- (void)beginInteractiveBackwardContentTransitionToView:(UIView *)viewToShow
+                                    alongsideViewToShow:(UIView *)viewToShowAlongside
+                                        hideContentView:(UIView *)viewToHide {
     [viewToShow setHidden:NO];
+    [viewToShowAlongside setHidden:NO];
     [self setAnimating:YES];
-    [self applyInteractiveBackwardContentTransitionToView:viewToShow hideContentView:viewToHide progress:0];
+    [self applyInteractiveBackwardContentTransitionToView:viewToShow
+                                      alongsideViewToShow:viewToShowAlongside
+                                          hideContentView:viewToHide
+                                                 progress:0];
 }
 
 - (void)updateInteractiveBackwardContentTransitionToView:(UIView *)viewToShow
+                                     alongsideViewToShow:(UIView *)viewToShowAlongside
                                          hideContentView:(UIView *)viewToHide
                                                 progress:(CGFloat)progress {
-    [self applyInteractiveBackwardContentTransitionToView:viewToShow hideContentView:viewToHide progress:progress];
+    [self applyInteractiveBackwardContentTransitionToView:viewToShow
+                                      alongsideViewToShow:viewToShowAlongside
+                                          hideContentView:viewToHide
+                                                 progress:progress];
 }
 
 - (void)finishInteractiveBackwardContentTransitionToView:(UIView *)viewToShow
+                                     alongsideViewToShow:(UIView *)viewToShowAlongside
                                          hideContentView:(UIView *)viewToHide
-                                                   title:(NSString *)title
                                                 duration:(NSTimeInterval)duration
+                                     alongsideAnimations:(void (^)(void))alongsideAnimations
                                               completion:(void (^)(void))completion {
-    [UIView transitionWithView:[self titleLabel]
-                      duration:MIN(duration, 0.12)
-                       options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionBeginFromCurrentState
-                    animations:^{
-                      [self setTitleText:title];
-                    }
-                    completion:nil];
-
     [UIView animateWithDuration:duration
         delay:0
         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
         animations:^{
-          [self applyInteractiveBackwardContentTransitionToView:viewToShow hideContentView:viewToHide progress:1];
+          if (alongsideAnimations) {
+              alongsideAnimations();
+          }
+          [self applyInteractiveBackwardContentTransitionToView:viewToShow
+                                            alongsideViewToShow:viewToShowAlongside
+                                                hideContentView:viewToHide
+                                                       progress:1];
         }
         completion:^(__unused BOOL finished) {
           [viewToShow setTransform:CGAffineTransformIdentity];
           [viewToShow setAlpha:1];
+          [viewToShowAlongside setTransform:CGAffineTransformIdentity];
+          [viewToShowAlongside setAlpha:1];
           [viewToHide setHidden:YES];
+          [viewToHide setTransform:CGAffineTransformIdentity];
+          [viewToHide setAlpha:1];
           [self setAnimating:NO];
           if (completion) {
               completion();
@@ -614,6 +624,7 @@ static CGFloat const kKayokoContentTopSpacing = 8;
 }
 
 - (void)cancelInteractiveBackwardContentTransitionToView:(UIView *)viewToShow
+                                     alongsideViewToShow:(UIView *)viewToShowAlongside
                                          hideContentView:(UIView *)viewToHide
                                                 duration:(NSTimeInterval)duration
                                               completion:(void (^)(void))completion {
@@ -621,12 +632,18 @@ static CGFloat const kKayokoContentTopSpacing = 8;
         delay:0
         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
         animations:^{
-          [self applyInteractiveBackwardContentTransitionToView:viewToShow hideContentView:viewToHide progress:0];
+          [self applyInteractiveBackwardContentTransitionToView:viewToShow
+                                            alongsideViewToShow:viewToShowAlongside
+                                                hideContentView:viewToHide
+                                                       progress:0];
         }
         completion:^(__unused BOOL finished) {
           [viewToShow setHidden:YES];
           [viewToShow setTransform:CGAffineTransformIdentity];
           [viewToShow setAlpha:1];
+          [viewToShowAlongside setHidden:YES];
+          [viewToShowAlongside setTransform:CGAffineTransformIdentity];
+          [viewToShowAlongside setAlpha:1];
           [viewToHide setTransform:CGAffineTransformIdentity];
           [viewToHide setAlpha:1];
           [self setAnimating:NO];

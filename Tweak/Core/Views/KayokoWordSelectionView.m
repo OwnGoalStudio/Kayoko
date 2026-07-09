@@ -5,6 +5,7 @@
 
 #import "KayokoWordSelectionView.h"
 #import "KayokoEdgeFadingScrollView.h"
+#import "KayokoHeaderView.h"
 #import "KayokoMainView.h"
 #import "KayokoTagChipBarView.h"
 #import "KayokoWordSelectionTokenizer.h"
@@ -28,6 +29,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) KayokoEdgeFadingScrollView *scrollView;
 @property(nonatomic, strong) UIView *contentView;
 @property(nonatomic, strong) KayokoTagChipBarView *tagChipBarView;
+@property(nonatomic, strong, readwrite) KayokoHeaderView *headerView;
+@property(nonatomic, strong, readwrite) UIView *transitionContentView;
 
 #pragma mark - Tokens
 
@@ -59,12 +62,31 @@ NS_ASSUME_NONNULL_END
     self = [super initWithFrame:frame];
 
     if (self) {
+        [self setClipsToBounds:YES];
         [self setTokens:[[NSMutableArray alloc] init]];
         [self setTokenButtons:[[NSMutableArray alloc] init]];
         [self setSelectedTokenIndexes:[[NSMutableIndexSet alloc] init]];
         [self setSelectionGestureOriginalIndexes:[[NSMutableIndexSet alloc] init]];
         [self setSelectedText:@""];
         [self setSelectionAnchorIndex:NSNotFound];
+
+        [self setHeaderView:[[KayokoHeaderView alloc] initWithTitle:@""]];
+        [self addSubview:[self headerView]];
+
+        [[self headerView] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [NSLayoutConstraint activateConstraints:@[
+            [[[self headerView] heightAnchor] constraintEqualToConstant:[KayokoHeaderView preferredHeight]]
+        ]];
+
+        [self setTransitionContentView:[[UIView alloc] init]];
+        [self insertSubview:[self transitionContentView] belowSubview:[self headerView]];
+        [[self transitionContentView] setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [NSLayoutConstraint activateConstraints:@[
+            [[[self transitionContentView] topAnchor] constraintEqualToAnchor:[self topAnchor]],
+            [[[self transitionContentView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
+            [[[self transitionContentView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
+            [[[self transitionContentView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
+        ]];
 
         [self setScrollView:[[KayokoEdgeFadingScrollView alloc] init]];
         [[self scrollView] setEdgeFadeAxis:KayokoEdgeFadeAxisVertical];
@@ -74,13 +96,14 @@ NS_ASSUME_NONNULL_END
         [[self scrollView] setAutomaticallyAdjustsScrollIndicatorInsets:NO];
         [[self scrollView] setBackgroundColor:[UIColor clearColor]];
         [[self scrollView] setDelegate:self];
-        [self addSubview:[self scrollView]];
+        [[self transitionContentView] addSubview:[self scrollView]];
 
         [[self scrollView] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
-            [[[self scrollView] topAnchor] constraintEqualToAnchor:[self topAnchor]],
-            [[[self scrollView] leadingAnchor] constraintEqualToAnchor:[self leadingAnchor]],
-            [[[self scrollView] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor]],
+            [[[self scrollView] topAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor]
+                                                            constant:kKayokoHeaderContentSpacing],
+            [[[self scrollView] leadingAnchor] constraintEqualToAnchor:[[self safeAreaLayoutGuide] leadingAnchor]],
+            [[[self scrollView] trailingAnchor] constraintEqualToAnchor:[[self safeAreaLayoutGuide] trailingAnchor]],
             [[[self scrollView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
 
@@ -99,7 +122,7 @@ NS_ASSUME_NONNULL_END
         [[self contentView] addGestureRecognizer:selectionGesture];
 
         [self setTagChipBarView:[[KayokoTagChipBarView alloc] initWithFrame:CGRectZero]];
-        [self addSubview:[self tagChipBarView]];
+        [[self transitionContentView] addSubview:[self tagChipBarView]];
     }
 
     return self;
@@ -162,6 +185,18 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Tag Bar
 
+- (void)setKeyboardBottomInset:(CGFloat)keyboardBottomInset {
+    keyboardBottomInset = MAX(keyboardBottomInset, 0);
+    if (_keyboardBottomInset == keyboardBottomInset) {
+        return;
+    }
+
+    _keyboardBottomInset = keyboardBottomInset;
+    [self layoutTagChipBarView];
+    [self updateScrollInsets];
+    [self setNeedsLayout];
+}
+
 - (void)requireSelectionGestureRecognizerToFailGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer {
     if (gestureRecognizer) {
         [[self selectionGestureRecognizer] requireGestureRecognizerToFail:gestureRecognizer];
@@ -190,6 +225,9 @@ NS_ASSUME_NONNULL_END
 
 - (CGFloat)scrollBottomInset {
     CGFloat tagBarHeight = [self visibleTagBarHeight];
+    if ([self keyboardBottomInset] > 0) {
+        return [self keyboardBottomInset] + tagBarHeight;
+    }
     return tagBarHeight > 0 ? tagBarHeight : [self safeAreaBottomInsetForScrollContent];
 }
 
@@ -200,13 +238,20 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    CGFloat width = CGRectGetWidth([self bounds]);
-    CGFloat y = MAX(CGRectGetHeight([self bounds]) - tagBarHeight, 0);
-    [UIView performWithoutAnimation:^{
+    UIEdgeInsets safeAreaInsets = [self safeAreaInsets];
+    CGFloat x = safeAreaInsets.left;
+    CGFloat width = MAX(CGRectGetWidth([self bounds]) - safeAreaInsets.left - safeAreaInsets.right, 0);
+    CGFloat y = MAX(CGRectGetHeight([self bounds]) - [self keyboardBottomInset] - tagBarHeight, 0);
+    void (^layoutUpdates)(void) = ^{
       [[self tagChipBarView] setBottomMaterialExtension:0];
-      [[self tagChipBarView] setFrame:CGRectMake(0, y, width, tagBarHeight)];
+      [[self tagChipBarView] setFrame:CGRectMake(x, y, width, tagBarHeight)];
       [[self tagChipBarView] layoutIfNeeded];
-    }];
+    };
+    if ([UIView inheritedAnimationDuration] > 0) {
+        layoutUpdates();
+    } else {
+        [UIView performWithoutAnimation:layoutUpdates];
+    }
 }
 
 - (void)updateTagBarFloatingProgressAnimated:(BOOL)animated {
@@ -228,7 +273,7 @@ NS_ASSUME_NONNULL_END
 
     UIEdgeInsets indicatorInsets = UIEdgeInsetsMake(0, 0, bottomInset, 0);
     [[self scrollView] setVerticalScrollIndicatorInsets:indicatorInsets];
-    [[self scrollView] setEdgeFadeInsets:UIEdgeInsetsMake(0, 0, tagBarHeight, 0)];
+    [[self scrollView] setEdgeFadeInsets:UIEdgeInsetsMake(0, 0, [self keyboardBottomInset] + tagBarHeight, 0)];
 }
 
 - (void)configureTagBarWithTags:(NSArray<KayokoTag *> *)tags
@@ -252,7 +297,9 @@ NS_ASSUME_NONNULL_END
 
     [self layoutTagChipBarView];
 
-    CGFloat availableWidth = CGRectGetWidth([self bounds]) - kKayokoWordSelectionHorizontalInset * 2;
+    CGFloat scrollWidth = CGRectGetWidth([[self scrollView] bounds]);
+    CGFloat scrollHeight = CGRectGetHeight([[self scrollView] bounds]);
+    CGFloat availableWidth = MAX(scrollWidth - kKayokoWordSelectionHorizontalInset * 2, 1);
     CGFloat x = kKayokoWordSelectionHorizontalInset;
     CGFloat y = kKayokoWordSelectionTopInset;
 
@@ -279,12 +326,12 @@ NS_ASSUME_NONNULL_END
     CGFloat contentHeight = [[self tokenButtons] count] > 0
                                 ? y + kKayokoWordSelectionTokenHeight + kKayokoWordSelectionLineSpacing
                                 : kKayokoWordSelectionTopInset;
-    [[self contentView] setFrame:CGRectMake(0, 0, CGRectGetWidth([self bounds]), contentHeight)];
-    [[self scrollView] setContentSize:CGSizeMake(CGRectGetWidth([self bounds]), contentHeight)];
+    [[self contentView] setFrame:CGRectMake(0, 0, scrollWidth, contentHeight)];
+    [[self scrollView] setContentSize:CGSizeMake(scrollWidth, contentHeight)];
 
-    BOOL scrollable = contentHeight > CGRectGetHeight([self bounds]) + 0.5;
+    BOOL scrollable = contentHeight > scrollHeight + 0.5;
     [self updateScrollInsets];
-    scrollable = contentHeight + [[self scrollView] contentInset].bottom > CGRectGetHeight([self bounds]) + 0.5;
+    scrollable = contentHeight + [[self scrollView] contentInset].bottom > scrollHeight + 0.5;
     [[self scrollView] setBounces:scrollable];
     [[self scrollView] setAlwaysBounceVertical:scrollable];
     [self updateTagBarFloatingProgressAnimated:NO];
