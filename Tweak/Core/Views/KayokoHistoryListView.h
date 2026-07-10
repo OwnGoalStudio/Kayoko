@@ -25,6 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (CGFloat)minimumBottomInsetForMaintainingHiddenHeaderWithAdditionalContentHeightReduction:(CGFloat)heightReduction;
 - (void)prepareHiddenHeaderInsetsForRemovingRowAtIndexPath:(NSIndexPath *)indexPath;
 - (void)beginTransientContentOffsetPreservationAtContentOffset:(CGPoint)contentOffset;
+- (void)restoreHiddenSearchHeaderOffsetWithoutAnimation;
 - (void)scrollToTopAnimated:(BOOL)animated;
 
 @end

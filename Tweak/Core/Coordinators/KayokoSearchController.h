@@ -55,6 +55,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)handleFullscreenPanGestureRecognizer:(UIPanGestureRecognizer *)recognizer
                                   headerView:(nullable KayokoHeaderView *)headerView;
 - (void)resetSearchState;
+- (CGRect)resetSearchStatePreservingContainerFrame;
 
 @end
 

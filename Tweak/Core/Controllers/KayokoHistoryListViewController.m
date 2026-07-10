@@ -34,6 +34,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) KayokoTableDataStore *dataStore;
 @property(nonatomic, strong) KayokoTableViewCellContentProvider *cellContentProvider;
 @property(nonatomic, strong) KayokoHistoryItemActionHandler *actionHandler;
+@property(nonatomic, copy, nullable) NSString *presentationHiddenItemContent;
 
 - (KayokoTableViewCell *)newCellForItem:(KayokoPasteboardItem *)item addsPreviewGesture:(BOOL)addsPreviewGesture;
 @end
@@ -535,6 +536,30 @@ NS_ASSUME_NONNULL_END
     return [self newCellForItem:item addsPreviewGesture:NO];
 }
 
+- (void)setCellPresentationHidden:(BOOL)hidden forItem:(KayokoPasteboardItem *)item {
+    NSString *content = [item content];
+    if ([content length] == 0) {
+        return;
+    }
+
+    if (hidden) {
+        [self setPresentationHiddenItemContent:content];
+    } else if ([[self presentationHiddenItemContent] isEqualToString:content]) {
+        [self setPresentationHiddenItemContent:nil];
+    } else {
+        return;
+    }
+
+    KayokoHistoryListView *tableView = [self tableView];
+    NSString *hiddenContent = [self presentationHiddenItemContent];
+    for (NSIndexPath *indexPath in [tableView indexPathsForVisibleRows]) {
+        NSDictionary<NSString *, id> *dictionary = [self itemDictionaryAtIndexPath:indexPath];
+        BOOL hidesCell = [hiddenContent length] > 0 &&
+                         [dictionary[kKayokoItemKeyContent] isEqualToString:hiddenContent];
+        [[tableView cellForRowAtIndexPath:indexPath] setHidden:hidesCell];
+    }
+}
+
 - (nullable KayokoTableViewCell *)scrollItemToVisible:(KayokoPasteboardItem *)item {
     if (!item) {
         return nil;
@@ -549,6 +574,11 @@ NS_ASSUME_NONNULL_END
     NSIndexPath *indexPath = [NSIndexPath indexPathForRow:displayedIndex inSection:0];
     KayokoHistoryListView *tableView = [self tableView];
     [tableView layoutIfNeeded];
+    KayokoTableViewCell *visibleCell = (KayokoTableViewCell *)[tableView cellForRowAtIndexPath:indexPath];
+    if (visibleCell) {
+        return visibleCell;
+    }
+
     [tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionMiddle animated:NO];
     [tableView layoutIfNeeded];
     return (KayokoTableViewCell *)[tableView cellForRowAtIndexPath:indexPath];
@@ -594,10 +624,31 @@ NS_ASSUME_NONNULL_END
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSDictionary<NSString *, id> *dictionary = [self itemDictionaryAtIndexPath:indexPath];
     KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:dictionary];
-    return [self newCellForItem:item addsPreviewGesture:YES];
+    KayokoTableViewCell *cell = [self newCellForItem:item addsPreviewGesture:YES];
+    [cell setHidden:[[self presentationHiddenItemContent] isEqualToString:[item content]]];
+    return cell;
 }
 
 #pragma mark - UITableViewDelegate
+
+- (void)tableView:(UITableView *)tableView
+    willDisplayCell:(UITableViewCell *)cell
+  forRowAtIndexPath:(NSIndexPath *)indexPath {
+    (void)tableView;
+    NSDictionary<NSString *, id> *dictionary = [self itemDictionaryAtIndexPath:indexPath];
+    NSString *hiddenContent = [self presentationHiddenItemContent];
+    BOOL hidesCell = [hiddenContent length] > 0 &&
+                     [dictionary[kKayokoItemKeyContent] isEqualToString:hiddenContent];
+    [cell setHidden:hidesCell];
+}
+
+- (void)tableView:(UITableView *)tableView
+    didEndDisplayingCell:(UITableViewCell *)cell
+       forRowAtIndexPath:(NSIndexPath *)indexPath {
+    (void)tableView;
+    (void)indexPath;
+    [cell setHidden:NO];
+}
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [[tableView cellForRowAtIndexPath:indexPath] setSelected:NO animated:YES];

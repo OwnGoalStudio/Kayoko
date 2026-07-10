@@ -38,8 +38,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) NSMutableArray<KayokoWordTokenView *> *tokenButtons;
 @property(nonatomic, strong) NSMutableIndexSet *selectedTokenIndexes;
 @property(nonatomic, strong) NSMutableIndexSet *selectionGestureOriginalIndexes;
+@property(nonatomic, strong) NSMutableDictionary<NSNumber *, NSNumber *> *selectedTokenOrderValues;
 @property(nonatomic, copy, nullable) NSString *originalText;
-@property(nonatomic, copy, readwrite) NSString *selectedText;
 
 #pragma mark - Gestures
 
@@ -50,6 +50,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign, readwrite) BOOL hasCustomSelection;
 @property(nonatomic, assign) NSUInteger selectionAnchorIndex;
 @property(nonatomic, assign) BOOL selectionGestureSelectsTokens;
+@property(nonatomic, assign) NSUInteger nextSelectionOrderValue;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -67,7 +68,7 @@ NS_ASSUME_NONNULL_END
         [self setTokenButtons:[[NSMutableArray alloc] init]];
         [self setSelectedTokenIndexes:[[NSMutableIndexSet alloc] init]];
         [self setSelectionGestureOriginalIndexes:[[NSMutableIndexSet alloc] init]];
-        [self setSelectedText:@""];
+        [self setSelectedTokenOrderValues:[[NSMutableDictionary alloc] init]];
         [self setSelectionAnchorIndex:NSNotFound];
 
         [self setHeaderView:[[KayokoHeaderView alloc] initWithTitle:@""]];
@@ -153,8 +154,10 @@ NS_ASSUME_NONNULL_END
         [[self tokenButtons] addObject:button];
     }
 
-    [self updateSelectedText];
     [self updateButtonStyles];
+    if ([self selectionChangedHandler]) {
+        [self selectionChangedHandler]();
+    }
     [self setNeedsLayout];
 }
 
@@ -167,10 +170,11 @@ NS_ASSUME_NONNULL_END
     [[self tokens] removeAllObjects];
     [[self selectedTokenIndexes] removeAllIndexes];
     [[self selectionGestureOriginalIndexes] removeAllIndexes];
+    [[self selectedTokenOrderValues] removeAllObjects];
     [self setOriginalText:nil];
-    [self setSelectedText:@""];
     [self setHasCustomSelection:NO];
     [self setSelectionAnchorIndex:NSNotFound];
+    [self setNextSelectionOrderValue:0];
     [[self scrollView] setContentOffset:CGPointZero];
     [[self scrollView] setContentSize:CGSizeZero];
     [[self tagChipBarView] configureWithTags:@[] selectedTagUUID:nil];
@@ -443,14 +447,18 @@ NS_ASSUME_NONNULL_END
 - (void)toggleTokenAtIndex:(NSUInteger)index {
     [self setHasCustomSelection:YES];
 
+    NSMutableIndexSet *updatedIndexes = [[self selectedTokenIndexes] mutableCopy];
     if ([[self selectedTokenIndexes] containsIndex:index]) {
-        [[self selectedTokenIndexes] removeIndex:index];
+        [updatedIndexes removeIndex:index];
     } else {
-        [[self selectedTokenIndexes] addIndex:index];
+        [updatedIndexes addIndex:index];
     }
 
-    [self updateSelectedText];
+    [self applySelectedTokenIndexes:updatedIndexes];
     [self updateButtonStyles];
+    if ([self selectionChangedHandler]) {
+        [self selectionChangedHandler]();
+    }
 }
 
 - (void)applySelectionGestureThroughIndex:(NSUInteger)index {
@@ -458,21 +466,49 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
-    [[self selectedTokenIndexes] removeAllIndexes];
-    [[self selectedTokenIndexes] addIndexes:[self selectionGestureOriginalIndexes]];
+    NSMutableIndexSet *updatedIndexes = [[self selectionGestureOriginalIndexes] mutableCopy];
 
     NSUInteger lowerBound = MIN([self selectionAnchorIndex], index);
     NSUInteger upperBound = MAX([self selectionAnchorIndex], index);
     NSRange range = NSMakeRange(lowerBound, upperBound - lowerBound + 1);
 
     if ([self selectionGestureSelectsTokens]) {
-        [[self selectedTokenIndexes] addIndexesInRange:range];
+        [updatedIndexes addIndexesInRange:range];
     } else {
-        [[self selectedTokenIndexes] removeIndexesInRange:range];
+        [updatedIndexes removeIndexesInRange:range];
     }
 
-    [self updateSelectedText];
+    if (![self applySelectedTokenIndexes:updatedIndexes]) {
+        return;
+    }
+
     [self updateButtonStyles];
+    if ([self selectionChangedHandler]) {
+        [self selectionChangedHandler]();
+    }
+}
+
+- (BOOL)applySelectedTokenIndexes:(NSIndexSet *)updatedIndexes {
+    if ([[self selectedTokenIndexes] isEqualToIndexSet:updatedIndexes]) {
+        return NO;
+    }
+
+    NSMutableIndexSet *removedIndexes = [[self selectedTokenIndexes] mutableCopy];
+    [removedIndexes removeIndexes:updatedIndexes];
+    [removedIndexes enumerateIndexesUsingBlock:^(NSUInteger index, BOOL *stop) {
+      [[self selectedTokenOrderValues] removeObjectForKey:@(index)];
+    }];
+
+    NSMutableIndexSet *addedIndexes = [updatedIndexes mutableCopy];
+    [addedIndexes removeIndexes:[self selectedTokenIndexes]];
+    [addedIndexes enumerateIndexesUsingBlock:^(NSUInteger index, BOOL *stop) {
+      [self selectedTokenOrderValues][@(index)] = @([self nextSelectionOrderValue]);
+      [self setNextSelectionOrderValue:[self nextSelectionOrderValue] + 1];
+    }];
+
+    [[self selectedTokenIndexes] removeAllIndexes];
+    [[self selectedTokenIndexes] addIndexes:updatedIndexes];
+    return YES;
 }
 
 #pragma mark - Styling
@@ -522,34 +558,118 @@ NS_ASSUME_NONNULL_END
     }];
 }
 
-- (void)updateSelectedText {
+- (BOOL)hasSelectedText {
+    return [[self selectedTokenIndexes] count] > 0;
+}
+
+- (NSString *)selectedText {
     NSMutableString *selectedText = [[NSMutableString alloc] init];
+    if (![self usesSelectionOrderForSelectedText]) {
+        __block NSUInteger previousTokenIndex = NSNotFound;
+        __block NSRange previousRange = NSMakeRange(NSNotFound, 0);
+
+        [[self selectedTokenIndexes] enumerateIndexesUsingBlock:^(NSUInteger index, BOOL *stop) {
+          NSDictionary<NSString *, id> *token = [self tokens][index];
+          NSRange range = [token[@"range"] rangeValue];
+          if ([selectedText length] > 0) {
+              if (previousTokenIndex != NSNotFound && index == previousTokenIndex + 1 &&
+                  NSMaxRange(previousRange) <= range.location) {
+                  NSRange separatorRange =
+                      NSMakeRange(NSMaxRange(previousRange), range.location - NSMaxRange(previousRange));
+                  [selectedText appendString:[[self originalText] substringWithRange:separatorRange]];
+              } else {
+                  [selectedText appendString:@" "];
+              }
+          }
+
+          [selectedText appendString:token[@"text"]];
+          previousTokenIndex = index;
+          previousRange = range;
+        }];
+
+        return [selectedText copy];
+    }
+
+    NSMutableArray<NSDictionary<NSString *, NSNumber *> *> *groups = [[self selectedTokenGroups] mutableCopy];
+    [groups sortUsingComparator:^NSComparisonResult(NSDictionary<NSString *, NSNumber *> *left,
+                                                    NSDictionary<NSString *, NSNumber *> *right) {
+      NSUInteger leftOrder = [left[@"selectionOrder"] unsignedIntegerValue];
+      NSUInteger rightOrder = [right[@"selectionOrder"] unsignedIntegerValue];
+      if (leftOrder != NSUIntegerMax && rightOrder != NSUIntegerMax && leftOrder != rightOrder) {
+          return leftOrder < rightOrder ? NSOrderedAscending : NSOrderedDescending;
+      }
+
+      NSUInteger leftIndex = [left[@"startIndex"] unsignedIntegerValue];
+      NSUInteger rightIndex = [right[@"startIndex"] unsignedIntegerValue];
+      if (leftIndex == rightIndex) {
+          return NSOrderedSame;
+      }
+      return leftIndex < rightIndex ? NSOrderedAscending : NSOrderedDescending;
+    }];
+
+    for (NSDictionary<NSString *, NSNumber *> *group in groups) {
+        if ([selectedText length] > 0) {
+            [selectedText appendString:@" "];
+        }
+        [self appendSelectedTokenGroup:group toString:selectedText];
+    }
+
+    return [selectedText copy];
+}
+
+- (NSArray<NSDictionary<NSString *, NSNumber *> *> *)selectedTokenGroups {
+    NSMutableArray<NSDictionary<NSString *, NSNumber *> *> *groups = [[NSMutableArray alloc] init];
+    __block NSMutableDictionary<NSString *, NSNumber *> *currentGroup = nil;
     __block NSUInteger previousTokenIndex = NSNotFound;
     __block NSRange previousRange = NSMakeRange(NSNotFound, 0);
 
     [[self selectedTokenIndexes] enumerateIndexesUsingBlock:^(NSUInteger index, BOOL *stop) {
       NSDictionary<NSString *, id> *token = [self tokens][index];
       NSRange range = [token[@"range"] rangeValue];
+      BOOL continuesPreviousGroup = currentGroup && previousTokenIndex != NSNotFound &&
+                                    index == previousTokenIndex + 1 && NSMaxRange(previousRange) <= range.location;
+      NSNumber *storedSelectionOrder = [self selectedTokenOrderValues][@(index)];
+      NSUInteger selectionOrder = storedSelectionOrder ? [storedSelectionOrder unsignedIntegerValue] : NSUIntegerMax;
 
-      if ([selectedText length] > 0) {
-          if (previousTokenIndex != NSNotFound && index == previousTokenIndex + 1 &&
-              NSMaxRange(previousRange) <= range.location) {
-              NSRange separatorRange =
-                  NSMakeRange(NSMaxRange(previousRange), range.location - NSMaxRange(previousRange));
-              [selectedText appendString:[[self originalText] substringWithRange:separatorRange]];
-          } else {
-              [selectedText appendString:@" "];
+      if (!continuesPreviousGroup) {
+          currentGroup = [@{
+              @"startIndex" : @(index),
+              @"endIndex" : @(index),
+              @"selectionOrder" : @(selectionOrder),
+          } mutableCopy];
+          [groups addObject:currentGroup];
+      } else {
+          currentGroup[@"endIndex"] = @(index);
+          if (selectionOrder < [currentGroup[@"selectionOrder"] unsignedIntegerValue]) {
+              currentGroup[@"selectionOrder"] = @(selectionOrder);
           }
       }
 
-      [selectedText appendString:token[@"text"]];
       previousTokenIndex = index;
       previousRange = range;
     }];
 
-    [self setSelectedText:selectedText];
-    if ([self selectionChangedHandler]) {
-        [self selectionChangedHandler]();
+    return groups;
+}
+
+- (void)appendSelectedTokenGroup:(NSDictionary<NSString *, NSNumber *> *)group toString:(NSMutableString *)text {
+    NSUInteger startIndex = [group[@"startIndex"] unsignedIntegerValue];
+    NSUInteger endIndex = [group[@"endIndex"] unsignedIntegerValue];
+    NSUInteger previousTokenIndex = NSNotFound;
+    NSRange previousRange = NSMakeRange(NSNotFound, 0);
+
+    for (NSUInteger index = startIndex; index <= endIndex && index < [[self tokens] count]; index++) {
+        NSDictionary<NSString *, id> *token = [self tokens][index];
+        NSRange range = [token[@"range"] rangeValue];
+        if (previousTokenIndex != NSNotFound && index == previousTokenIndex + 1 &&
+            NSMaxRange(previousRange) <= range.location) {
+            NSRange separatorRange = NSMakeRange(NSMaxRange(previousRange), range.location - NSMaxRange(previousRange));
+            [text appendString:[[self originalText] substringWithRange:separatorRange]];
+        }
+
+        [text appendString:token[@"text"]];
+        previousTokenIndex = index;
+        previousRange = range;
     }
 }
 

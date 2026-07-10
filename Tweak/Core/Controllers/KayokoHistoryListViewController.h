@@ -74,6 +74,7 @@ NS_ASSUME_NONNULL_BEGIN
             forItem:(KayokoPasteboardItem *)item
          completion:(nullable void (^)(void))completion;
 - (KayokoTableViewCell *)presentationCellForItem:(KayokoPasteboardItem *)item;
+- (void)setCellPresentationHidden:(BOOL)hidden forItem:(KayokoPasteboardItem *)item;
 - (nullable KayokoTableViewCell *)visibleCellForItem:(KayokoPasteboardItem *)item;
 - (nullable KayokoTableViewCell *)scrollItemToVisible:(KayokoPasteboardItem *)item;
 - (void)scrollToTopAnimated:(BOOL)animated;

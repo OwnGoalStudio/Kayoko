@@ -34,6 +34,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, nullable, readwrite) NSString *sourceHistoryKey;
 @property(nonatomic, strong, nullable, readwrite) KayokoPasteboardItem *sourceItem;
 @property(nonatomic, strong) KayokoHistoryItemActionHandler *actionHandler;
+@property(nonatomic, assign) BOOL usesSelectionOrderForSelectedText;
 
 #pragma mark - Tags
 
@@ -54,6 +55,9 @@ NS_ASSUME_NONNULL_END
         _wordSelectionView = [[KayokoWordSelectionView alloc] init];
         [[_wordSelectionView headerView] setTitleText:name];
         [_wordSelectionView setHidden:YES];
+        [[[_wordSelectionView headerView] alternateTrailingButton] addTarget:self
+                                                                      action:@selector(handleSelectionOrderButtonPressed)
+                                                            forControlEvents:UIControlEventTouchUpInside];
         _actionHandler = [[KayokoHistoryItemActionHandler alloc] init];
         [self setView:_wordSelectionView];
 
@@ -79,7 +83,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)hasSelectedText {
-    return [[self selectedText] length] > 0;
+    return [[self wordSelectionView] hasSelectedText];
 }
 
 - (BOOL)canShowText:(NSString *)text {
@@ -99,6 +103,7 @@ NS_ASSUME_NONNULL_END
     [self setSourceHistoryKey:sourceHistoryKey];
 
     NSString *text = kayokoWordSelectionTextByTrimmingBoundaryNewlines([item content]);
+    [[self wordSelectionView] setUsesSelectionOrderForSelectedText:[self usesSelectionOrderForSelectedText]];
     [[self wordSelectionView] setText:text];
     [[self wordSelectionView] setHidden:NO];
     [self configureTagBarForSourceItem:item];
@@ -114,6 +119,9 @@ NS_ASSUME_NONNULL_END
                         withImageName:(automaticallyPaste ? @"doc.on.clipboard" : @"doc.on.doc.fill")
                              imageSize:kKayokoBackButtonImageSize
                              tintColor:[UIColor labelColor]];
+    [[headerView alternateTrailingButton] setHidden:NO];
+    [[headerView alternateTrailingButton] setEnabled:YES];
+    [[headerView alternateTrailingButton] setAlpha:1.0];
     [[headerView leadingButton]
         setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Back"
                                                                                             value:nil
@@ -123,6 +131,11 @@ NS_ASSUME_NONNULL_END
                                   localizedStringForKey:(automaticallyPaste ? @"Paste" : @"Copy")
                                                   value:nil
                                                   table:@"Tweak"]];
+    [[headerView alternateTrailingButton]
+        setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Selection Order"
+                                                                                            value:nil
+                                                                                            table:@"Tweak"]];
+    [self updateSelectionOrderButtonState];
     [self updateActionButtonState];
 }
 
@@ -208,7 +221,21 @@ NS_ASSUME_NONNULL_END
     [[self delegate] wordSelectionViewController:self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleMedium];
 }
 
+- (void)handleSelectionOrderButtonPressed {
+    [self setUsesSelectionOrderForSelectedText:![self usesSelectionOrderForSelectedText]];
+}
+
 #pragma mark - State
+
+- (void)setUsesSelectionOrderForSelectedText:(BOOL)usesSelectionOrderForSelectedText {
+    if (_usesSelectionOrderForSelectedText == usesSelectionOrderForSelectedText) {
+        return;
+    }
+
+    _usesSelectionOrderForSelectedText = usesSelectionOrderForSelectedText;
+    [[self wordSelectionView] setUsesSelectionOrderForSelectedText:usesSelectionOrderForSelectedText];
+    [self updateSelectionOrderButtonState];
+}
 
 - (void)resetWordSelectionState {
     [[self wordSelectionView] setHidden:YES];
@@ -224,6 +251,23 @@ NS_ASSUME_NONNULL_END
     UIButton *actionButton = [[[self wordSelectionView] headerView] trailingButton];
     [actionButton setEnabled:enabled];
     [actionButton setAlpha:enabled ? 1.0 : 0.35];
+}
+
+- (void)updateSelectionOrderButtonState {
+    UIButton *selectionOrderButton = [[[self wordSelectionView] headerView] alternateTrailingButton];
+    BOOL enabled = [self usesSelectionOrderForSelectedText];
+    [[[self wordSelectionView] headerView] updateStyleForButton:selectionOrderButton
+                                                  withImageName:(enabled ? @"123.rectangle.fill" : @"123.rectangle")
+                                                       imageSize:kKayokoBackButtonImageSize
+                                                      tintColor:[UIColor labelColor]];
+    [selectionOrderButton setSelected:enabled];
+    UIAccessibilityTraits traits = [selectionOrderButton accessibilityTraits] | UIAccessibilityTraitButton;
+    if (enabled) {
+        traits |= UIAccessibilityTraitSelected;
+    } else {
+        traits &= ~UIAccessibilityTraitSelected;
+    }
+    [selectionOrderButton setAccessibilityTraits:traits];
 }
 
 @end

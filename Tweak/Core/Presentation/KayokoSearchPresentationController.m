@@ -701,13 +701,20 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)resetAfterSearchStateClearedWithActiveTableView:(KayokoHistoryListView *)activeTableView {
+    [self resetAfterSearchStateClearedWithActiveTableView:activeTableView restoresContainerFrame:YES];
+}
+
+- (CGRect)resetAfterSearchStateClearedWithActiveTableView:(KayokoHistoryListView *)activeTableView
+                                   restoresContainerFrame:(BOOL)restoresContainerFrame {
     [self setSearchActive:NO];
     [self resetKeyboardInsets];
 
     UIView *containerView = [self containerView];
     CGRect targetFrame = [self hasNormalFrameBeforeSearch] ? [self normalFrameBeforeSearch] : [containerView frame];
     [self setHasNormalFrameBeforeSearch:NO];
-    [containerView setFrame:targetFrame];
+    if (restoresContainerFrame) {
+        [containerView setFrame:targetFrame];
+    }
     [containerView setNeedsLayout];
 
     if ([containerView isKindOfClass:[KayokoMainView class]]) {
@@ -724,6 +731,7 @@ NS_ASSUME_NONNULL_END
     [containerView layoutIfNeeded];
     [self hideSearchBarInTableView:activeTableView animated:NO];
     [activeTableView layoutIfNeeded];
+    return targetFrame;
 }
 
 - (BOOL)shouldHandleSearchKeyboardNotification:(NSNotification *)notification {

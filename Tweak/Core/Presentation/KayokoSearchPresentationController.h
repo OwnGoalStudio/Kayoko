@@ -64,6 +64,8 @@ NS_ASSUME_NONNULL_BEGIN
                                   headerView:(nullable KayokoHeaderView *)headerView;
 - (void)resetKeyboardInsets;
 - (void)resetAfterSearchStateClearedWithActiveTableView:(nullable KayokoHistoryListView *)activeTableView;
+- (CGRect)resetAfterSearchStateClearedWithActiveTableView:(nullable KayokoHistoryListView *)activeTableView
+                                   restoresContainerFrame:(BOOL)restoresContainerFrame;
 
 @end
 

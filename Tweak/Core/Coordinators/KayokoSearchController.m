@@ -847,12 +847,12 @@ NS_ASSUME_NONNULL_END
                                                              headerView:headerView];
 }
 
-- (void)resetSearchState {
+- (CGRect)resetSearchStateRestoringContainerFrame:(BOOL)restoresContainerFrame {
     BOOL hasSearch =
         [[self historyListViewController] hasActiveSearch] || [[self favoritesListViewController] hasActiveSearch];
     if (![self isSearchActive] && !hasSearch) {
         [self resetSearchSessionState];
-        return;
+        return CGRectZero;
     }
 
     [self setIsResettingSearch:YES];
@@ -863,9 +863,20 @@ NS_ASSUME_NONNULL_END
     [self clearSearchForListViewController:[self historyListViewController]];
     [self clearSearchForListViewController:[self favoritesListViewController]];
     [self applySearchToActiveTableView];
-    [[self presentationController] resetAfterSearchStateClearedWithActiveTableView:[self activeTableView]];
+    CGRect normalFrame = [[self presentationController]
+        resetAfterSearchStateClearedWithActiveTableView:[self activeTableView]
+                              restoresContainerFrame:restoresContainerFrame];
     [self resetSearchSessionState];
     [self setIsResettingSearch:NO];
+    return normalFrame;
+}
+
+- (void)resetSearchState {
+    [self resetSearchStateRestoringContainerFrame:YES];
+}
+
+- (CGRect)resetSearchStatePreservingContainerFrame {
+    return [self resetSearchStateRestoringContainerFrame:NO];
 }
 
 #pragma mark - Clearing

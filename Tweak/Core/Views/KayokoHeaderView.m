@@ -11,6 +11,7 @@
 static CGFloat const kKayokoHeaderHeight = 60;
 static CGFloat const kKayokoTitleTapControlHeight = 44;
 static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
+static CGFloat const kKayokoTrailingHeaderButtonCenterSpacing = 44;
 
 @interface KayokoHeaderView ()
 
@@ -76,10 +77,10 @@ static CGFloat const kKayokoTitleTapControlTrailingSpacing = 8;
             [[_trailingButton centerXAnchor] constraintEqualToAnchor:[self trailingAnchor]
                                                             constant:-kKayokoTrailingHeaderButtonCenterXInset],
             [[_alternateTrailingButton centerYAnchor] constraintEqualToAnchor:[_leadingButton centerYAnchor]],
-            [[_alternateTrailingButton centerXAnchor] constraintEqualToAnchor:[self trailingAnchor]
-                                                                     constant:-kKayokoTrailingHeaderButtonCenterXInset],
+            [[_alternateTrailingButton centerXAnchor] constraintEqualToAnchor:[_trailingButton centerXAnchor]
+                                                                     constant:-kKayokoTrailingHeaderButtonCenterSpacing],
             [[_titleTapControl leadingAnchor] constraintEqualToAnchor:[_titleLabel leadingAnchor]],
-            [[_titleTapControl trailingAnchor] constraintEqualToAnchor:[_trailingButton leadingAnchor]
+            [[_titleTapControl trailingAnchor] constraintEqualToAnchor:[_alternateTrailingButton leadingAnchor]
                                                               constant:-kKayokoTitleTapControlTrailingSpacing],
             [[_titleTapControl centerYAnchor] constraintEqualToAnchor:[_titleLabel centerYAnchor]],
             [[_titleTapControl heightAnchor] constraintEqualToConstant:kKayokoTitleTapControlHeight]
