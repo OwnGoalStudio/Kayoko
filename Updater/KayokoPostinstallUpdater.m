@@ -4,6 +4,8 @@
 //
 
 #import "KayokoPostinstallUpdater.h"
+#import "KayokoCopyLogImporter.h"
+#import "KayokoCopyVaultImporter.h"
 #import "KayokoHistoryMigrator.h"
 #import "KayokoHistoryStore.h"
 #import "KayokoNotificationKeys.h"
@@ -14,6 +16,8 @@
 #import <unistd.h>
 
 static NSString *const kKayokoCurrentDataDirectory = @"/var/mobile/Library/com.82flex.kayoko";
+static NSString *const kKayokoCopyVaultDataDirectory = @"/var/mobile/Documents/CopyVault";
+static NSString *const kKayokoCopyLogDataDirectory = @"/var/mobile/Library/CopyLog";
 static NSString *const kKayokoPreferencesBundlePath = @"/Library/PreferenceBundles/KayokoPreferences.bundle";
 static NSString *const kKayokoThumbnailCacheDirectoryPath = @"/var/mobile/Library/Caches/com.82flex.kayoko/thumbnails";
 static NSUInteger const kKayokoMobileUserID = 501;
@@ -96,6 +100,72 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
     }
 
     return YES;
+}
+
+#pragma mark - CopyVault Import
+
+- (BOOL)importCopyVaultWithError:(NSError **)error {
+    return [self importCopyVaultWithSkippedItemCount:nil error:error];
+}
+
+- (BOOL)importCopyVaultWithSkippedItemCount:(NSUInteger *)skippedItemCount error:(NSError **)error {
+    [self notifyCoreToPrepareForMaintenance];
+
+    KayokoHistoryStore *store = [self historyStore];
+    if (![store verifyExclusiveAccessWithError:error]) {
+        return NO;
+    }
+    if (![store prepareStoreWithError:error]) {
+        [store closeDatabase];
+        return NO;
+    }
+    if (![store upgradeSearchIndexWithError:error]) {
+        [store closeDatabase];
+        return NO;
+    }
+
+    KayokoTagStore *tagStore = [[KayokoTagStore alloc] initWithTagsPath:[KayokoTagStore defaultTagsPath]
+                                                     localizationBundle:[self preferencesLocalizationBundle]];
+    KayokoCopyVaultImporter *importer =
+        [[KayokoCopyVaultImporter alloc] initWithSourceDirectoryPath:kKayokoCopyVaultDataDirectory
+                                                        historyStore:store
+                                                            tagStore:tagStore];
+    BOOL imported = [importer runWithSkippedItemCount:skippedItemCount error:error];
+    [store closeDatabase];
+    if (!imported) {
+        return NO;
+    }
+
+    return [self repairCurrentDataDirectoryOwnershipWithError:error];
+}
+
+#pragma mark - CopyLog Import
+
+- (BOOL)importCopyLogWithSkippedItemCount:(NSUInteger *)skippedItemCount error:(NSError **)error {
+    [self notifyCoreToPrepareForMaintenance];
+
+    KayokoHistoryStore *store = [self historyStore];
+    if (![store verifyExclusiveAccessWithError:error]) {
+        return NO;
+    }
+    if (![store prepareStoreWithError:error]) {
+        [store closeDatabase];
+        return NO;
+    }
+    if (![store upgradeSearchIndexWithError:error]) {
+        [store closeDatabase];
+        return NO;
+    }
+
+    NSString *sourceDirectoryPath = jbroot(kKayokoCopyLogDataDirectory);
+    KayokoCopyLogImporter *importer =
+        [[KayokoCopyLogImporter alloc] initWithSourceDirectoryPath:sourceDirectoryPath historyStore:store];
+    BOOL imported = [importer runWithSkippedItemCount:skippedItemCount error:error];
+    [store closeDatabase];
+    if (!imported) {
+        return NO;
+    }
+    return [self repairCurrentDataDirectoryOwnershipWithError:error];
 }
 
 #pragma mark - Thumbnail Cache

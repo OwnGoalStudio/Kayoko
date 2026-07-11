@@ -18,6 +18,7 @@ typedef NS_ENUM(NSInteger, KayokoHistoryStoreLockingMode) {
 
 @property(nonatomic, copy, readonly) NSString *databasePath;
 @property(nonatomic, copy, readonly) NSString *imagesPath;
+@property(nonatomic, copy, readonly) NSString *richTextPath;
 @property(nonatomic, assign, readonly) KayokoHistoryStoreLockingMode lockingMode;
 @property(nonatomic, assign, readonly) NSInteger busyTimeoutMilliseconds;
 
@@ -79,6 +80,9 @@ typedef NS_ENUM(NSInteger, KayokoHistoryStoreLockingMode) {
 - (BOOL)importItemDictionaries:(NSArray<NSDictionary<NSString *, id> *> *)items
                   toHistoryKey:(NSString *)historyKey
                          error:(NSError *_Nullable *_Nullable)error;
+- (BOOL)importItemDictionariesByHistoryKey:
+            (NSDictionary<NSString *, NSArray<NSDictionary<NSString *, id> *> *> *)itemsByHistoryKey
+                                     error:(NSError *_Nullable *_Nullable)error;
 
 @end
 

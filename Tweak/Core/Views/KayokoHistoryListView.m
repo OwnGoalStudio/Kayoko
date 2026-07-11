@@ -379,9 +379,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateRowHeightForCurrentDisplayOptions {
-    CGFloat detailHeight = [self itemDetailsMode] == kKayokoItemDetailsModeAll
-                               ? kKayokoHistoryListViewDetailLineHeight
-                               : 0;
+    CGFloat detailHeight =
+        [self itemDetailsMode] == kKayokoItemDetailsModeAll ? kKayokoHistoryListViewDetailLineHeight : 0;
     [self setRowHeight:kKayokoHistoryListViewBaseRowHeight +
                        ([self previewLineCount] - 1) * kKayokoHistoryListViewAdditionalPreviewLineHeight +
                        detailHeight];

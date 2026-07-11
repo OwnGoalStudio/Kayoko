@@ -48,6 +48,7 @@ static NSString *const kKayokoPasteboardManagerHistoryChangeTypeClear = @"clear"
 + (NSString *)historyPath;
 + (NSString *)historyDatabasePath;
 + (NSString *)historyImagesPath;
++ (NSString *)historyRichTextPath;
 + (NSBundle *)localizationBundle;
 + (NSUInteger)normalizedMaximumHistoryAmountForValue:(NSUInteger)value;
 

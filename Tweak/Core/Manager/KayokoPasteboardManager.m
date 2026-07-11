@@ -13,6 +13,7 @@
 #import "KayokoNotificationKeys.h"
 #import "KayokoPasteboardItem.h"
 #import "KayokoPreferenceKeys.h"
+#import "KayokoRichTextRepresentation.h"
 #import "KayokoSearchCriteria.h"
 #import "KayokoThumbnailCache.h"
 
@@ -23,7 +24,6 @@
 
 static NSTimeInterval const kKayokoPasteboardWriteConfirmationTimeout = 0.25;
 static NSTimeInterval const kKayokoSimulatedAutomaticPasteDelay = 0.2;
-static NSString *const kKayokoContinuityBundleIdentifier = @"com.apple.continuity";
 static NSString *const kKayokoRemoteClipboardPasteboardType = @"com.apple.is-remote-clipboard";
 static NSString *const kKayokoPasteboardManagerErrorDomain = @"com.82flex.kayoko.pasteboard-manager";
 
@@ -173,6 +173,16 @@ NS_ASSUME_NONNULL_END
     return kayokoHistoryImagesPath;
 }
 
++ (NSString *)historyRichTextPath {
+    static NSString *kayokoHistoryRichTextPath = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+      kayokoHistoryRichTextPath = [[[self historyDatabasePath] stringByDeletingLastPathComponent]
+          stringByAppendingPathComponent:@"rich-text"];
+    });
+    return kayokoHistoryRichTextPath;
+}
+
 + (NSBundle *)localizationBundle {
     static NSBundle *kayokoLocalizationBundle = nil;
     static dispatch_once_t onceToken;
@@ -320,6 +330,107 @@ NS_ASSUME_NONNULL_END
     return orientation >= 5 && orientation <= 8 ? CGSizeMake(height, width) : CGSizeMake(width, height);
 }
 
+#pragma mark - Pasteboard Representation Helpers
+
+- (UIImage *)imageFromPasteboardItemDictionary:(NSDictionary<NSString *, id> *)dictionary {
+    for (id value in [dictionary allValues]) {
+        if ([value isKindOfClass:[UIImage class]]) {
+            return value;
+        }
+    }
+
+    NSArray<NSString *> *imageTypeIdentifiers = @[
+        @"public.png",
+        @"public.jpeg",
+        @"public.jpeg-2000",
+        @"public.tiff",
+        @"public.image",
+        @"com.apple.uikit.image",
+    ];
+    for (NSString *typeIdentifier in imageTypeIdentifiers) {
+        id value = dictionary[typeIdentifier];
+        if (![value isKindOfClass:[NSData class]]) {
+            continue;
+        }
+        UIImage *image = [UIImage imageWithData:value];
+        if (image) {
+            return image;
+        }
+    }
+
+    for (NSString *typeIdentifier in dictionary) {
+        if ([imageTypeIdentifiers containsObject:typeIdentifier]) {
+            continue;
+        }
+        id value = dictionary[typeIdentifier];
+        if (![value isKindOfClass:[NSData class]]) {
+            continue;
+        }
+        UIImage *image = [UIImage imageWithData:value];
+        if (image) {
+            return image;
+        }
+    }
+    return nil;
+}
+
+- (NSString *)plainTextFromPasteboardItemDictionary:(NSDictionary<NSString *, id> *)dictionary {
+    NSArray<NSString *> *textTypeIdentifiers = @[
+        @"public.utf8-plain-text",
+        @"public.plain-text",
+        @"public.text",
+        @"public.url",
+        @"public.file-url",
+    ];
+    for (NSString *typeIdentifier in textTypeIdentifiers) {
+        id value = dictionary[typeIdentifier];
+        NSString *text = nil;
+        if ([value isKindOfClass:[NSString class]]) {
+            text = value;
+        } else if ([value isKindOfClass:[NSURL class]]) {
+            text = [value absoluteString];
+        } else if ([value isKindOfClass:[NSAttributedString class]]) {
+            text = [value string];
+        } else if ([value isKindOfClass:[NSData class]]) {
+            text = [[NSString alloc] initWithData:value encoding:NSUTF8StringEncoding];
+        }
+        if ([text length] > 0) {
+            return text;
+        }
+    }
+    return nil;
+}
+
+- (BOOL)storeRichTextRepresentation:(KayokoRichTextRepresentation *)representation {
+    NSString *directoryPath = [KayokoPasteboardManager historyRichTextPath];
+    NSError *directoryError = nil;
+    if (![_fileManager createDirectoryAtPath:directoryPath
+                 withIntermediateDirectories:YES
+                                  attributes:nil
+                                       error:&directoryError] &&
+        ![_fileManager fileExistsAtPath:directoryPath]) {
+        HBLogDebug(@"Kayoko: Failed to create rich text directory: %@", directoryError);
+        return NO;
+    }
+
+    NSString *filePath = [directoryPath stringByAppendingPathComponent:[representation stableFileName]];
+    if ([_fileManager fileExistsAtPath:filePath]) {
+        NSData *existingData = [_fileManager contentsAtPath:filePath];
+        if ([existingData isEqualToData:[representation data]]) {
+            return YES;
+        }
+        HBLogDebug(@"Kayoko: Rich text file conflicts with existing content: %@", filePath);
+        return NO;
+    }
+
+    NSError *writeError = nil;
+    if (![[representation data] writeToFile:filePath options:NSDataWritingAtomic error:&writeError]) {
+        HBLogDebug(@"Kayoko: Failed to save rich text representation: %@", writeError);
+        return NO;
+    }
+    return YES;
+}
+
 #pragma mark - Pasteboard Observation
 
 - (void)pullPasteboardChanges {
@@ -435,34 +546,21 @@ NS_ASSUME_NONNULL_END
         return @[];
     }
 
-    BOOL hasStrings = [_pasteboard hasStrings];
-    BOOL hasImages = [_pasteboard hasImages];
-    if (!hasStrings && !hasImages) {
-        return @[];
-    }
-
     NSMutableArray<KayokoPasteboardItem *> *items = [[NSMutableArray alloc] init];
-
-    if ([self saveText]) {
-        if (!(hasStrings && hasImages)) {
-            for (NSString *string in [_pasteboard strings]) {
-                @autoreleasepool {
-                    KayokoPasteboardItem *item =
-                        [[KayokoPasteboardItem alloc] initWithBundleIdentifier:sourceBundleIdentifier
-                                                                    andContent:string
-                                                                withImageNamed:nil];
-                    [items addObject:item];
-                }
+    for (id pasteboardValue in [_pasteboard items]) {
+        @autoreleasepool {
+            if (![pasteboardValue isKindOfClass:[NSDictionary class]]) {
+                continue;
             }
-        }
-    }
+            NSDictionary<NSString *, id> *pasteboardItem = pasteboardValue;
+            UIImage *image = [self imageFromPasteboardItemDictionary:pasteboardItem];
+            if (image) {
+                if (![self saveImages]) {
+                    continue;
+                }
 
-    if ([self saveImages]) {
-        for (UIImage *image in [_pasteboard images]) {
-            @autoreleasepool {
                 NSString *imageName = [self randomStringWithLength:32];
                 NSData *imageData = nil;
-
                 if ([self imageHasAlpha:image]) {
                     imageName = [imageName stringByAppendingString:@".png"];
                     imageData = UIImagePNGRepresentation([self imageByApplyingOrientation:image]);
@@ -470,9 +568,17 @@ NS_ASSUME_NONNULL_END
                     imageName = [imageName stringByAppendingString:@".jpg"];
                     imageData = UIImageJPEGRepresentation(image, 1);
                 }
+                if ([imageData length] == 0) {
+                    continue;
+                }
+
                 NSString *filePath =
-                    [NSString stringWithFormat:@"%@/%@", [KayokoPasteboardManager historyImagesPath], imageName];
-                [imageData writeToFile:filePath atomically:YES];
+                    [[KayokoPasteboardManager historyImagesPath] stringByAppendingPathComponent:imageName];
+                NSError *writeError = nil;
+                if (![imageData writeToFile:filePath options:NSDataWritingAtomic error:&writeError]) {
+                    HBLogDebug(@"Kayoko: Failed to save captured pasteboard image: %@", writeError);
+                    continue;
+                }
 
                 KayokoPasteboardItem *item =
                     [[KayokoPasteboardItem alloc] initWithBundleIdentifier:sourceBundleIdentifier
@@ -481,8 +587,41 @@ NS_ASSUME_NONNULL_END
                 CGSize pixelSize = [self pixelSizeForEncodedImageData:imageData];
                 [item setImagePixelWidth:(NSUInteger)llround(pixelSize.width)];
                 [item setImagePixelHeight:(NSUInteger)llround(pixelSize.height)];
+                [item setImageByteCount:(unsigned long long)[imageData length]];
                 [items addObject:item];
+                continue;
             }
+
+            if (![self saveText]) {
+                continue;
+            }
+
+            NSString *plainText = [self plainTextFromPasteboardItemDictionary:pasteboardItem];
+            KayokoRichTextRepresentation *richTextRepresentation =
+                [KayokoRichTextRepresentation preferredRepresentationFromDictionary:pasteboardItem];
+            if ([plainText length] == 0) {
+                plainText = [richTextRepresentation plainText];
+            }
+            if ([plainText length] == 0) {
+                continue;
+            }
+
+            KayokoPasteboardItem *item =
+                [[KayokoPasteboardItem alloc] initWithBundleIdentifier:sourceBundleIdentifier
+                                                            andContent:plainText
+                                                        withImageNamed:nil];
+            if (richTextRepresentation) {
+                NSError *prepareError = nil;
+                if (![_historyRepository ensureStorePreparedWithError:&prepareError]) {
+                    HBLogDebug(@"Kayoko: Failed to prepare history store before saving rich text: %@", prepareError);
+                    continue;
+                }
+                if ([self storeRichTextRepresentation:richTextRepresentation]) {
+                    [item setRichTextUTI:[richTextRepresentation typeIdentifier]];
+                    [item setRichTextName:[richTextRepresentation stableFileName]];
+                }
+            }
+            [items addObject:item];
         }
     }
 
@@ -1002,6 +1141,33 @@ NS_ASSUME_NONNULL_END
 
     if ([[item content] length] == 0) {
         return NO;
+    }
+
+    NSString *richTextUTI = [item richTextUTI];
+    NSString *richTextName = [item richTextName];
+    if ([richTextUTI length] > 0 && [richTextName length] > 0 &&
+        [[richTextName lastPathComponent] isEqualToString:richTextName]) {
+        NSString *filePath =
+            [[KayokoPasteboardManager historyRichTextPath] stringByAppendingPathComponent:richTextName];
+        NSData *richTextData = [_fileManager contentsAtPath:filePath];
+        KayokoRichTextRepresentation *representation = [KayokoRichTextRepresentation
+            preferredRepresentationFromDictionary:@{richTextUTI : richTextData ?: [NSData data]}];
+        if ([[representation typeIdentifier] isEqualToString:richTextUTI] &&
+            [[representation stableFileName] isEqualToString:richTextName]) {
+            id richTextValue = [representation data];
+            if ([richTextUTI isEqualToString:@"public.html"]) {
+                richTextValue = [[NSString alloc] initWithData:[representation data] encoding:NSUTF8StringEncoding];
+            }
+            if (richTextValue) {
+                [_pasteboard setItems:@[
+                    @{
+                        @"public.utf8-plain-text" : [item content],
+                        richTextUTI : richTextValue,
+                    }
+                ]];
+                return YES;
+            }
+        }
     }
 
     [_pasteboard setString:[item content]];

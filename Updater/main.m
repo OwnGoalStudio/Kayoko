@@ -19,6 +19,14 @@ static BOOL syncCredentialWithSource(NSString **source, NSError **error) {
     return [KayokoPurchaseAuthorization mirrorHavocCredentialToAppleAccessGroupWithSource:source error:error];
 }
 
+static NSString *externalImportErrorDescription(NSError *error, NSString *fallback) {
+    if ([[error domain] isEqualToString:@"com.82flex.kayoko.history-store"] &&
+        [[error localizedFailureReason] length] > 0) {
+        return [error localizedFailureReason];
+    }
+    return [error localizedDescription] ?: fallback;
+}
+
 static void syncCredentialBestEffort(void) {
     NSError *syncError = nil;
     NSString *source = nil;
@@ -78,6 +86,36 @@ static int runResetThumbnailCache(void) {
     }
 }
 
+static int runCopyVaultImport(void) {
+    @autoreleasepool {
+        KayokoPostinstallUpdater *updater = [[KayokoPostinstallUpdater alloc] init];
+        NSError *error = nil;
+        NSUInteger skippedItemCount = 0;
+        if (![updater importCopyVaultWithSkippedItemCount:&skippedItemCount error:&error]) {
+            NSString *description = externalImportErrorDescription(error, @"Unable to import CopyVault data.");
+            fprintf(stderr, "%s\n", [description UTF8String]);
+            return 1;
+        }
+        fprintf(stdout, "{\"skipped\":%llu}\n", (unsigned long long)skippedItemCount);
+        return 0;
+    }
+}
+
+static int runCopyLogImport(void) {
+    @autoreleasepool {
+        KayokoPostinstallUpdater *updater = [[KayokoPostinstallUpdater alloc] init];
+        NSError *error = nil;
+        NSUInteger skippedItemCount = 0;
+        if (![updater importCopyLogWithSkippedItemCount:&skippedItemCount error:&error]) {
+            NSString *description = externalImportErrorDescription(error, @"Unable to import CopyLog data.");
+            fprintf(stderr, "%s\n", [description UTF8String]);
+            return 1;
+        }
+        fprintf(stdout, "{\"skipped\":%llu}\n", (unsigned long long)skippedItemCount);
+        return 0;
+    }
+}
+
 static int runSyncCredential(void) {
     @autoreleasepool {
         NSError *error = nil;
@@ -97,7 +135,8 @@ static int runSyncCredential(void) {
 int main(int argc, char *argv[]) {
     @autoreleasepool {
         if (argc < 2) {
-            fprintf(stderr, "usage: kayoko_updater postinst|reset-thumbnail-cache|sync-credential\n");
+            fprintf(stderr,
+                    "usage: kayoko_updater postinst|import-copylog|import-copyvault|reset-thumbnail-cache|sync-credential\n");
             return 64;
         }
 
@@ -107,6 +146,12 @@ int main(int argc, char *argv[]) {
         }
         if ([command isEqualToString:@"sync-credential"]) {
             return runSyncCredential();
+        }
+        if ([command isEqualToString:@"import-copyvault"]) {
+            return runCopyVaultImport();
+        }
+        if ([command isEqualToString:@"import-copylog"]) {
+            return runCopyLogImport();
         }
         if ([command isEqualToString:@"reset-thumbnail-cache"]) {
             return runResetThumbnailCache();

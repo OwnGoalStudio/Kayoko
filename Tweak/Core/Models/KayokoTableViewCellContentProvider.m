@@ -16,6 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface KayokoTableViewCellContentProvider ()
 @property(nonatomic, strong) KayokoApplicationMetadataProvider *metadataProvider;
 @property(nonatomic, strong) NSRelativeDateTimeFormatter *relativeDateTimeFormatter;
+@property(nonatomic, strong) NSByteCountFormatter *byteCountFormatter;
 @property(nonatomic, strong) NSCache<NSString *, NSNumber *> *characterCountCache;
 @end
 
@@ -30,11 +31,13 @@ NS_ASSUME_NONNULL_END
         _relativeDateTimeFormatter = [[NSRelativeDateTimeFormatter alloc] init];
         [_relativeDateTimeFormatter setDateTimeStyle:NSRelativeDateTimeFormatterStyleNumeric];
         [_relativeDateTimeFormatter setUnitsStyle:NSRelativeDateTimeFormatterUnitsStyleFull];
-        NSString *localizationIdentifier = [[[KayokoPasteboardManager localizationBundle] preferredLocalizations]
-            firstObject];
+        NSString *localizationIdentifier =
+            [[[KayokoPasteboardManager localizationBundle] preferredLocalizations] firstObject];
         if ([localizationIdentifier length] > 0) {
             [_relativeDateTimeFormatter setLocale:[[NSLocale alloc] initWithLocaleIdentifier:localizationIdentifier]];
         }
+        _byteCountFormatter = [[NSByteCountFormatter alloc] init];
+        [_byteCountFormatter setCountStyle:NSByteCountFormatterCountStyleFile];
         _characterCountCache = [[NSCache alloc] init];
         [_characterCountCache setCountLimit:256];
     }
@@ -46,8 +49,8 @@ NS_ASSUME_NONNULL_END
     NSTimeInterval age = [now timeIntervalSinceDate:date];
     if (age < 60.0) {
         return [[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Just Now"
-                                                                              value:nil
-                                                                              table:@"Tweak"];
+                                                                             value:nil
+                                                                             table:@"Tweak"];
     }
     return [[self relativeDateTimeFormatter] localizedStringForDate:date relativeToDate:now];
 }
@@ -115,10 +118,8 @@ NS_ASSUME_NONNULL_END
     KayokoTableViewCellContent *content = [[KayokoTableViewCellContent alloc] init];
     NSString *bundleIdentifier = [item bundleIdentifier];
     BOOL isImage = [[item imageName] length] > 0;
-    NSString *contentText = isImage
-                                ? @""
-                                : [([item content] ?: @"")
-                                      stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+    NSString *contentText =
+        isImage ? @"" : [([item content] ?: @"") stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
     NSString *sourceDisplayName = [[self metadataProvider] displayNameForBundleIdentifier:bundleIdentifier];
     NSString *displayName = [[item note] length] > 0 ? [item note] : sourceDisplayName;
     [content setIcon:[[self metadataProvider] iconForBundleIdentifier:bundleIdentifier]];
@@ -130,25 +131,30 @@ NS_ASSUME_NONNULL_END
     [content setTagHexColor:[tag hexColor]];
     [content setContentText:contentText];
     [content setAttributedContentText:[self attributedTextForText:contentText searchText:searchText]];
-    BOOL showsDetail = isImage ? itemDetailsMode != kKayokoItemDetailsModeOff
-                               : itemDetailsMode == kKayokoItemDetailsModeAll;
+    BOOL showsDetail =
+        isImage ? itemDetailsMode != kKayokoItemDetailsModeOff : itemDetailsMode == kKayokoItemDetailsModeAll;
     [content setShowsDetail:showsDetail];
     if (showsDetail) {
-        NSMutableArray<NSString *> *detailComponents = [[NSMutableArray alloc] initWithCapacity:2];
+        NSMutableArray<NSString *> *detailComponents = [[NSMutableArray alloc] initWithCapacity:3];
         if ([item capturedAt]) {
             [detailComponents addObject:[self relativeTimeTextForDate:[item capturedAt]]];
         }
         if (isImage) {
             if ([item imagePixelWidth] > 0 && [item imagePixelHeight] > 0) {
-                [detailComponents addObject:[NSString stringWithFormat:@"%lu×%lu", (unsigned long)[item imagePixelWidth],
-                                                                       (unsigned long)[item imagePixelHeight]]];
+                [detailComponents
+                    addObject:[NSString stringWithFormat:@"%lu×%lu", (unsigned long)[item imagePixelWidth],
+                                                         (unsigned long)[item imagePixelHeight]]];
+            }
+            if ([item imageByteCount] > 0) {
+                [detailComponents
+                    addObject:[self.byteCountFormatter stringFromByteCount:(long long)[item imageByteCount]]];
             }
         } else {
             NSUInteger characterCount = [self visibleCharacterCountForText:[item content] ?: @""];
             NSString *formatKey = characterCount == 1 ? @"%lu character" : @"%lu characters";
             NSString *format = [[KayokoPasteboardManager localizationBundle] localizedStringForKey:formatKey
-                                                                                              value:nil
-                                                                                              table:@"Tweak"];
+                                                                                             value:nil
+                                                                                             table:@"Tweak"];
             [detailComponents addObject:[NSString stringWithFormat:format, (unsigned long)characterCount]];
         }
         NSMutableAttributedString *attributedDetailText = [[NSMutableAttributedString alloc] init];

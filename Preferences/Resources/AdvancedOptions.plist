@@ -171,6 +171,22 @@
 			<key>action</key>
 			<string>resetThumbnailCachePrompt</string>
 		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Import from CopyLog</string>
+			<key>action</key>
+			<string>importCopyLogPrompt</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Import from CopyVault</string>
+			<key>action</key>
+			<string>importCopyVaultPrompt</string>
+		</dict>
 
 	</array>
 	<key>title</key>

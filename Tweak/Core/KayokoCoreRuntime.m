@@ -662,8 +662,7 @@ NS_ASSUME_NONNULL_END
     self.playHapticFeedback = [[self.preferences objectForKey:kKayokoPreferenceKeyPlayHapticFeedback] boolValue];
     self.previewLineCount = [[self.preferences objectForKey:kKayokoPreferenceKeyPreviewLineCount] unsignedIntegerValue];
     self.itemDetailsMode = [[self.preferences objectForKey:kKayokoPreferenceKeyItemDetailsMode] unsignedIntegerValue];
-    if (self.itemDetailsMode != kKayokoItemDetailsModeOff &&
-        self.itemDetailsMode != kKayokoItemDetailsModeImagesOnly &&
+    if (self.itemDetailsMode != kKayokoItemDetailsModeOff && self.itemDetailsMode != kKayokoItemDetailsModeImagesOnly &&
         self.itemDetailsMode != kKayokoItemDetailsModeAll) {
         self.itemDetailsMode = kKayokoPreferenceKeyItemDetailsModeDefaultValue;
     }

@@ -9,6 +9,8 @@
 
 #import <math.h>
 
+NSString *const kKayokoContinuityBundleIdentifier = @"com.apple.continuity";
+
 @implementation KayokoPasteboardItem
 
 - (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier
@@ -20,6 +22,7 @@
         [self setBundleIdentifier:bundleIdentifier];
         [self setContent:content];
         [self setImageName:imageName];
+        [self setRichTextName:@""];
         [self setCapturedAt:[NSDate date]];
         [self setHasLink:[content hasPrefix:@"http://"] || [content hasPrefix:@"https://"]];
     }
@@ -63,6 +66,17 @@
             [item setImagePixelHeight:(NSUInteger)height];
         }
     }
+    id richTextUTI = dictionary[kKayokoItemKeyRichTextUTI];
+    id richTextName = dictionary[kKayokoItemKeyRichTextName];
+    if ([richTextUTI isKindOfClass:[NSString class]] && [richTextUTI length] > 0 &&
+        [richTextName isKindOfClass:[NSString class]] && [richTextName length] > 0) {
+        [item setRichTextUTI:richTextUTI];
+        [item setRichTextName:richTextName];
+    }
+    id imageByteCount = dictionary[kKayokoItemKeyImageByteCount];
+    if ([imageByteCount isKindOfClass:[NSNumber class]] && [imageByteCount longLongValue] > 0) {
+        [item setImageByteCount:[imageByteCount unsignedLongLongValue]];
+    }
     return item;
 }
 
@@ -78,13 +92,18 @@
         kKayokoItemKeyHasLink : @([self hasLink]),
         kKayokoItemKeyCapturedAt : @(capturedAtTimestamp),
         kKayokoItemKeyImagePixelWidth : @([self imagePixelWidth]),
-        kKayokoItemKeyImagePixelHeight : @([self imagePixelHeight])
+        kKayokoItemKeyImagePixelHeight : @([self imagePixelHeight]),
+        kKayokoItemKeyImageByteCount : @([self imageByteCount])
     } mutableCopy];
     if ([[self tagUUID] length] > 0) {
         dictionary[kKayokoItemKeyTagUUID] = [self tagUUID];
     }
     if ([[self note] length] > 0) {
         dictionary[kKayokoItemKeyNote] = [self note];
+    }
+    if ([[self richTextUTI] length] > 0 && [[self richTextName] length] > 0) {
+        dictionary[kKayokoItemKeyRichTextUTI] = [self richTextUTI];
+        dictionary[kKayokoItemKeyRichTextName] = [self richTextName];
     }
     return dictionary;
 }

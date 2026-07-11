@@ -126,14 +126,15 @@ NS_ASSUME_NONNULL_END
 
 - (void)refreshVisibleItemDetails {
     for (NSIndexPath *indexPath in [[self tableView] indexPathsForVisibleRows]) {
-        KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:[self itemDictionaryAtIndexPath:indexPath]];
+        KayokoPasteboardItem *item =
+            [KayokoPasteboardItem itemFromDictionary:[self itemDictionaryAtIndexPath:indexPath]];
         if (!item) {
             continue;
         }
         KayokoTableViewCellContent *content = [[self cellContentProvider] cellContentForItem:item
-                                                                             previewLineCount:[self previewLineCount]
-                                                                              itemDetailsMode:[self itemDetailsMode]
-                                                                                    searchText:[self searchText]];
+                                                                            previewLineCount:[self previewLineCount]
+                                                                             itemDetailsMode:[self itemDetailsMode]
+                                                                                  searchText:[self searchText]];
         KayokoTableViewCell *cell = (KayokoTableViewCell *)[[self tableView] cellForRowAtIndexPath:indexPath];
         [cell applyDetailContent:content];
     }

@@ -6,11 +6,11 @@
 //
 
 #import "KayokoRootListController.h"
-#import "KayokoAuthorizationOverlayView.h"
 #import "KayokoNotificationKeys.h"
 #import "KayokoPreferenceKeys.h"
 #import "KayokoPurchaseAuthorization.h"
 #import "KayokoRespringControllerSupport.h"
+#import "KayokoStatusOverlayView.h"
 
 #import <Preferences/PSSpecifier.h>
 #import <UIKit/UIKit.h>
@@ -39,6 +39,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoRootListController () <UISearchResultsUpdating>
+- (void)presentExternalImportRestartReminderIfNeeded;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -52,9 +53,12 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
     ActivationMethod _lastActivationMethod;
     BOOL _hasActivationMethodSnapshot;
     UISearchController *_testInputSearchController;
-    KayokoAuthorizationOverlayView *_authorizationOverlayView;
+    KayokoStatusOverlayView *_authorizationOverlayView;
     BOOL _authorizationCheckInProgress;
     NSUInteger _authorizationCheckGeneration;
+    BOOL _externalImportRestartReminderPending;
+    BOOL _externalImportRestartReminderSucceeded;
+    NSString *_externalImportRestartReminderSource;
 }
 
 #pragma mark - Lifecycle
@@ -77,6 +81,10 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(applicationWillEnterForeground:)
                                                  name:UIApplicationWillEnterForegroundNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(externalImportRequiresRestart:)
+                                                 name:kKayokoNotificationKeyExternalImportRequiresRestart
                                                object:nil];
 }
 
@@ -180,6 +188,56 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     [[self navigationController] setToolbarHidden:YES animated:animated];
+    [self presentExternalImportRestartReminderIfNeeded];
+}
+
+- (void)externalImportRequiresRestart:(NSNotification *)notification {
+    _externalImportRestartReminderPending = YES;
+    _externalImportRestartReminderSucceeded =
+        [notification.userInfo[kKayokoNotificationUserInfoKeyExternalImportSucceeded] boolValue];
+    NSString *source = notification.userInfo[kKayokoNotificationUserInfoKeyExternalImportSource];
+    _externalImportRestartReminderSource = [source isKindOfClass:[NSString class]] ? [source copy] : nil;
+}
+
+- (void)presentExternalImportRestartReminderIfNeeded {
+    if (!_externalImportRestartReminderPending || self.presentedViewController) {
+        return;
+    }
+    _externalImportRestartReminderPending = NO;
+
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    NSString *message = nil;
+    if (_externalImportRestartReminderSucceeded && [_externalImportRestartReminderSource length] > 0) {
+        NSString *format = [bundle localizedStringForKey:@"%@ data was imported successfully. Restart SpringBoard "
+                                                          "now to finish the import and continue using Kayoko."
+                                                   value:nil
+                                                   table:@"Root"];
+        message = [NSString stringWithFormat:format, _externalImportRestartReminderSource];
+    } else if (_externalImportRestartReminderSucceeded) {
+        message = [bundle localizedStringForKey:@"The data was imported successfully. Restart SpringBoard now to "
+                                                 "finish the import and continue using Kayoko."
+                                          value:nil
+                                          table:@"Root"];
+    } else {
+        message = [bundle localizedStringForKey:@"Kayoko entered maintenance mode before the import failed. Restart "
+                                                 "SpringBoard now to continue using Kayoko."
+                                          value:nil
+                                          table:@"Root"];
+    }
+    UIAlertController *alert = [UIAlertController
+        alertControllerWithTitle:[bundle localizedStringForKey:@"Restart Required" value:nil table:@"Root"]
+                         message:message
+                  preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *restartAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Respring Now"
+                                                                                          value:nil
+                                                                                          table:@"Root"]
+                                                            style:UIAlertActionStyleDestructive
+                                                          handler:^(UIAlertAction *action) {
+                                                            (void)action;
+                                                            [self respring];
+                                                          }];
+    [alert addAction:restartAction];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (ActivationMethod)currentActivationMethod {
@@ -282,23 +340,25 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
 }
 
 - (void)showAuthorizationOverlayChecking {
-    KayokoAuthorizationOverlayView *overlayView = [self authorizationOverlayView];
+    KayokoStatusOverlayView *overlayView = [self authorizationOverlayView];
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
-    [overlayView setCheckingTitle:[bundle localizedStringForKey:@"Check Product Authorization" value:nil table:@"Root"]
-                         subtitle:nil];
+    [overlayView setLoadingTitle:[bundle localizedStringForKey:@"Check Product Authorization" value:nil table:@"Root"]
+                        subtitle:nil];
+    [overlayView animateAppearance];
 }
 
-- (KayokoAuthorizationOverlayView *)authorizationOverlayView {
+- (KayokoStatusOverlayView *)authorizationOverlayView {
     if (!_authorizationOverlayView) {
-        _authorizationOverlayView = [[KayokoAuthorizationOverlayView alloc] initWithFrame:CGRectZero];
+        _authorizationOverlayView = [[KayokoStatusOverlayView alloc] initWithFrame:CGRectZero];
         _authorizationOverlayView.translatesAutoresizingMaskIntoConstraints = NO;
         __weak typeof(self) weakSelf = self;
-        _authorizationOverlayView.retryHandler = ^{
+        _authorizationOverlayView.tapHandler = ^{
           [weakSelf retryAuthorizationCheck];
         };
     }
 
     if (!_authorizationOverlayView.superview) {
+        _authorizationOverlayView.alpha = 0.0;
         [self.view addSubview:_authorizationOverlayView];
         [NSLayoutConstraint activateConstraints:@[
             [_authorizationOverlayView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
@@ -307,7 +367,6 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
             [_authorizationOverlayView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
         ]];
     }
-    _authorizationOverlayView.alpha = 1.0;
     return _authorizationOverlayView;
 }
 
@@ -347,7 +406,7 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
         [[self authorizationOverlayView]
             setFailureTitle:[bundle localizedStringForKey:@"Read Account Failed" value:nil table:@"Root"]
                    subtitle:[bundle localizedStringForKey:subtitleKey value:nil table:@"Root"]
-               retryEnabled:NO];
+              actionEnabled:NO];
         break;
     }
     case KayokoPurchaseAuthorizationStateNetworkFailed: {
@@ -359,7 +418,7 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
                                                                                  value:nil
                                                                                  table:@"Root"]
                                                 subtitle:subtitle
-                                            retryEnabled:YES];
+                                           actionEnabled:YES];
         break;
     }
     case KayokoPurchaseAuthorizationStateInvalidResponse: {
@@ -373,7 +432,7 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
                                                                                  value:nil
                                                                                  table:@"Root"]
                                                 subtitle:[NSString stringWithFormat:format, statusMessage]
-                                            retryEnabled:YES];
+                                           actionEnabled:YES];
         break;
     }
     case KayokoPurchaseAuthorizationStateNotPurchased: {
@@ -385,7 +444,7 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
         [[self authorizationOverlayView]
             setFailureTitle:[bundle localizedStringForKey:@"Authorization Not Found" value:nil table:@"Root"]
                    subtitle:[bundle localizedStringForKey:subtitleKey value:nil table:@"Root"]
-               retryEnabled:NO];
+              actionEnabled:NO];
         break;
     }
     }
@@ -431,13 +490,12 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
 }
 
 - (void)dismissAuthorizationOverlayAnimated:(BOOL)animated {
-    KayokoAuthorizationOverlayView *overlayView = _authorizationOverlayView;
+    KayokoStatusOverlayView *overlayView = _authorizationOverlayView;
     if (!overlayView) {
         return;
     }
 
-    void (^completion)(BOOL) = ^(BOOL finished) {
-      (void)finished;
+    void (^completion)(void) = ^{
       [overlayView removeFromSuperview];
       if (self->_authorizationOverlayView == overlayView) {
           self->_authorizationOverlayView = nil;
@@ -445,13 +503,9 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
     };
 
     if (animated) {
-        [UIView animateWithDuration:0.25
-                         animations:^{
-                           overlayView.alpha = 0.0;
-                         }
-                         completion:completion];
+        [overlayView animateDisappearanceWithCompletion:completion];
     } else {
-        completion(YES);
+        completion();
     }
 }
 

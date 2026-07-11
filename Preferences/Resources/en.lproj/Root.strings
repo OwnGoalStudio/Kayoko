@@ -17,6 +17,7 @@
 "Choose how much text each clipboard item shows in the list. More lines make items easier to identify, but show fewer items at once." = "Choose how much text each clipboard item shows in the list. More lines make items easier to identify, but show fewer items at once.";
 "Choose when a tapped item moves to the top. “History Only” keeps Favorites in your chosen order while still surfacing recently used history items." = "Choose when a tapped item moves to the top. “History Only” keeps Favorites in your chosen order while still surfacing recently used history items.";
 "Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used." = "Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used.";
+"%@ data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko." = "%@ data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko.";
 "Credits" = "Credits";
 "Default View" = "Default View";
 "Dictation Key" = "Dictation Key";
@@ -34,8 +35,9 @@
 "Input Switcher" = "Input Switcher";
 "Invalid Response" = "Invalid Response";
 "Item Details" = "Item Details";
-"Item details show when an item was last captured, along with its text length or image dimensions." = "Item details show when an item was last captured, along with its text length or image dimensions.";
+"Item details show when an item was last captured, along with its text length or image dimensions and file size." = "Item details show when an item was last captured, along with its text length or image dimensions and file size.";
 "Kayoko" = "Kayoko";
+"Kayoko entered maintenance mode before the import failed. Restart SpringBoard now to continue using Kayoko." = "Kayoko entered maintenance mode before the import failed. Restart SpringBoard now to continue using Kayoko.";
 "Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.\n\nMade with ♥ by OwnGoal Studio" = "Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.\n\nMade with ♥ by OwnGoal Studio";
 "Made with ♥ by OwnGoal Studio" = "Made with ♥ by OwnGoal Studio";
 "Maximum Amount" = "Maximum Amount";
@@ -59,6 +61,7 @@
 "Respring" = "Respring";
 "Respring Now" = "Respring Now";
 "Respringing will restart SpringBoard and close all apps. Unsaved work may be lost." = "Respringing will restart SpringBoard and close all apps. Unsaved work may be lost.";
+"Restart Required" = "Restart Required";
 "Save Images" = "Save Images";
 "Save Text" = "Save Text";
 "Server returned an invalid response. Tap the screen to retry: %@" = "Server returned an invalid response. Tap the screen to retry: %@";
@@ -67,6 +70,7 @@
 "Supports" = "Supports";
 "Swipe to Select Words" = "Swipe to Select Words";
 "The network request failed." = "The network request failed.";
+"The data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko." = "The data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko.";
 "The “Prediction Bar” method displays custom suggestions on the “More Keyboard Keyplane” (123)." = "The “Prediction Bar” method displays custom suggestions on the “More Keyboard Keyplane” (123).";
 "This option requires restarting SpringBoard to apply. Do you want to restart now?" = "This option requires restarting SpringBoard to apply. Do you want to restart now?";
 "Tools" = "Tools";

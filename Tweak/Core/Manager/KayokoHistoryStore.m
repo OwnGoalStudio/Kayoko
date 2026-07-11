@@ -18,6 +18,7 @@ static NSString *const kKayokoHistoryStoreErrorDomain = @"com.82flex.kayoko.hist
 static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imported";
 static NSString *const kKayokoHistoryStoreSearchIndexSchemaVersionKey = @"search_index_schema_version";
 static NSString *const kKayokoHistoryStoreImageDimensionsBackfillKey = @"image_dimensions_backfilled";
+static NSString *const kKayokoHistoryStoreImageByteCountsBackfillKey = @"image_byte_counts_backfilled";
 static NSInteger const kKayokoHistoryStoreSearchIndexVersion = 2;
 static NSInteger const kKayokoHistoryStoreDefaultBusyTimeoutMilliseconds = 3000;
 
@@ -38,6 +39,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, copy, readwrite) NSString *databasePath;
 @property(nonatomic, copy, readwrite) NSString *imagesPath;
+@property(nonatomic, copy, readwrite) NSString *richTextPath;
 
 #pragma mark - Database State
 
@@ -49,14 +51,29 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)ensureTagUUIDColumnWithError:(NSError **)error;
 - (BOOL)ensureNoteColumnWithError:(NSError **)error;
 - (BOOL)ensureImageDimensionColumnsWithError:(NSError **)error;
+- (BOOL)ensureRichTextColumnsWithError:(NSError **)error;
+- (BOOL)ensureImageByteCountColumnWithError:(NSError **)error;
 - (BOOL)backfillImageDimensionsIfNeededWithError:(NSError **)error;
+- (BOOL)backfillImageByteCountsIfNeededWithError:(NSError **)error;
 - (CGSize)imagePixelSizeForImageName:(NSString *)imageName;
+- (BOOL)readImageByteCount:(unsigned long long *)byteCount
+              forImageName:(NSString *)imageName
+                     error:(NSError **)error;
+- (void)cleanupUnreferencedRichTextFiles;
+- (nullable NSString *)richTextNameForHistoryKey:(NSString *)historyKey
+                                          content:(NSString *)content
+                                            error:(NSError **)error;
+- (nullable NSArray<NSString *> *)richTextNamesForHistoryKey:(NSString *)historyKey error:(NSError **)error;
+- (void)scheduleRichTextCleanupForName:(NSString *)richTextName;
+- (void)removeRichTextIfUnreferenced:(NSString *)richTextName;
+- (NSInteger)richTextReferenceCountForName:(NSString *)richTextName error:(NSError **)error;
 @end
 
 NS_ASSUME_NONNULL_END
 
 @implementation KayokoHistoryStore {
     sqlite3 *_database;
+    NSMutableSet<NSString *> *_pendingRichTextCleanupNames;
 }
 
 #pragma mark - Paths
@@ -82,6 +99,8 @@ NS_ASSUME_NONNULL_END
     if (self) {
         _databasePath = [databasePath copy];
         _imagesPath = [imagesPath copy];
+        _richTextPath = [[[databasePath stringByDeletingLastPathComponent]
+            stringByAppendingPathComponent:@"rich-text"] copy];
         _lockingMode = lockingMode;
         _busyTimeoutMilliseconds = MAX(busyTimeoutMilliseconds, 0);
     }
@@ -111,6 +130,9 @@ NS_ASSUME_NONNULL_END
                                              "image_name TEXT NOT NULL,"
                                              "image_width INTEGER NOT NULL DEFAULT 0,"
                                              "image_height INTEGER NOT NULL DEFAULT 0,"
+                                             "image_byte_count INTEGER NOT NULL DEFAULT 0,"
+                                             "rich_text_uti TEXT NULL,"
+                                             "rich_text_name TEXT NOT NULL DEFAULT '',"
                                              "has_link INTEGER NOT NULL DEFAULT 0,"
                                              "created_at REAL NOT NULL,"
                                              "updated_at REAL NOT NULL,"
@@ -175,7 +197,24 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
-    return [self backfillImageDimensionsIfNeededWithError:error];
+    if (![self ensureRichTextColumnsWithError:error]) {
+        return NO;
+    }
+
+    if (![self ensureImageByteCountColumnWithError:error]) {
+        return NO;
+    }
+
+    if (![self backfillImageDimensionsIfNeededWithError:error]) {
+        return NO;
+    }
+
+    if (![self backfillImageByteCountsIfNeededWithError:error]) {
+        return NO;
+    }
+
+    [self cleanupUnreferencedRichTextFiles];
+    return YES;
 }
 
 - (BOOL)upgradeHistorySchemaWithError:(NSError **)error {
@@ -205,6 +244,15 @@ NS_ASSUME_NONNULL_END
         }
     }
 
+    if (![fileManager fileExistsAtPath:[self richTextPath]]) {
+        if (![fileManager createDirectoryAtPath:[self richTextPath]
+                    withIntermediateDirectories:YES
+                                     attributes:nil
+                                          error:error]) {
+            return NO;
+        }
+    }
+
     return YES;
 }
 
@@ -213,6 +261,7 @@ NS_ASSUME_NONNULL_END
         sqlite3_close(_database);
         _database = NULL;
     }
+    _pendingRichTextCleanupNames = nil;
 }
 
 #pragma mark - Locking and Maintenance
@@ -280,7 +329,6 @@ NS_ASSUME_NONNULL_END
                                   forKey:kKayokoHistoryStoreSearchIndexSchemaVersionKey
                                    error:error];
     }
-
     if (success) {
         return [self commitTransactionWithError:error];
     }
@@ -365,6 +413,12 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
+    NSString *sourceRichTextName = [self richTextNameForHistoryKey:sourceHistoryKey content:content error:error];
+    if (error && *error) {
+        [self rollbackTransaction];
+        return NO;
+    }
+
     BOOL success = [self upsertItemDictionaryWithoutTransaction:dictionary
                                                    inHistoryKey:destinationHistoryKey
                                                           error:error];
@@ -382,6 +436,9 @@ NS_ASSUME_NONNULL_END
                            code:SQLITE_NOTFOUND
                         message:KayokoHistoryStoreLocalizedString(@"History item not found")];
             success = NO;
+        }
+        if (success) {
+            [self scheduleRichTextCleanupForName:sourceRichTextName];
         }
     }
 
@@ -402,8 +459,14 @@ NS_ASSUME_NONNULL_END
         return YES;
     }
 
-    NSString *imageName = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyImageName fallback:@""];
     if (![self beginTransactionWithError:error]) {
+        return NO;
+    }
+
+    NSString *imageName = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyImageName fallback:@""];
+    NSString *richTextName = [self richTextNameForHistoryKey:historyKey content:content error:error];
+    if (error && *error) {
+        [self rollbackTransaction];
         return NO;
     }
 
@@ -420,6 +483,9 @@ NS_ASSUME_NONNULL_END
     }
     if (success && shouldRemoveImage && [imageName length] > 0) {
         success = [self removeImageIfUnreferenced:imageName error:error];
+    }
+    if (success) {
+        [self scheduleRichTextCleanupForName:richTextName];
     }
 
     if (success) {
@@ -539,6 +605,11 @@ NS_ASSUME_NONNULL_END
         [self rollbackTransaction];
         return NO;
     }
+    NSArray<NSString *> *richTextNames = [self richTextNamesForHistoryKey:historyKey error:error];
+    if (!richTextNames) {
+        [self rollbackTransaction];
+        return NO;
+    }
 
     BOOL success = [self executeStatement:@"DELETE FROM history_items WHERE history_key = ?"
                                  bindings:@[ historyKey ]
@@ -549,6 +620,11 @@ NS_ASSUME_NONNULL_END
                 success = NO;
                 break;
             }
+        }
+    }
+    if (success) {
+        for (NSString *richTextName in richTextNames) {
+            [self scheduleRichTextCleanupForName:richTextName];
         }
     }
 
@@ -573,7 +649,8 @@ NS_ASSUME_NONNULL_END
     NSMutableArray<NSDictionary<NSString *, id> *> *items = [[NSMutableArray alloc] init];
     NSMutableString *sql =
         [NSMutableString stringWithString:@"SELECT bundle_identifier, content, image_name, has_link, "
-                                           "tag_uuid, note, created_at, image_width, image_height "
+                                           "tag_uuid, note, created_at, image_width, image_height, rich_text_uti, "
+                                           "rich_text_name, image_byte_count "
                                            "FROM history_items WHERE history_key = ?"];
     NSMutableArray<id> *bindings = [NSMutableArray arrayWithObject:historyKey ?: @""];
 
@@ -644,7 +721,7 @@ NS_ASSUME_NONNULL_END
 - (NSDictionary<NSString *, id> *)latestItemForHistoryKey:(NSString *)historyKey error:(NSError **)error {
     sqlite3_stmt *statement = NULL;
     const char *sql = "SELECT bundle_identifier, content, image_name, has_link, tag_uuid, note, created_at, "
-                      "image_width, image_height "
+                      "image_width, image_height, rich_text_uti, rich_text_name, image_byte_count "
                       "FROM history_items WHERE history_key = ? ORDER BY sequence DESC LIMIT 1";
 
     if (![self prepareStatement:sql statement:&statement error:error]) {
@@ -716,6 +793,101 @@ NS_ASSUME_NONNULL_END
     return NO;
 }
 
+- (BOOL)importItemDictionariesByHistoryKey:
+            (NSDictionary<NSString *, NSArray<NSDictionary<NSString *, id> *> *> *)itemsByHistoryKey
+                                     error:(NSError **)error {
+    if ([itemsByHistoryKey count] == 0) {
+        return YES;
+    }
+
+    if (![self beginTransactionWithError:error]) {
+        return NO;
+    }
+
+    NSMutableArray<NSString *> *historyKeys = [[itemsByHistoryKey allKeys] mutableCopy];
+    [historyKeys sortUsingSelector:@selector(compare:)];
+
+    BOOL success = YES;
+    for (NSString *historyKey in historyKeys) {
+        NSArray<NSDictionary<NSString *, id> *> *items = itemsByHistoryKey[historyKey];
+        for (NSDictionary<NSString *, id> *dictionary in [items reverseObjectEnumerator]) {
+            NSString *content = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyContent fallback:nil];
+            if ([content length] == 0) {
+                continue;
+            }
+
+            sqlite3_stmt *statement = NULL;
+            const char *sql = "SELECT id, rich_text_uti, rich_text_name FROM history_items "
+                              "WHERE history_key = ? AND content = ? LIMIT 1";
+            if (![self prepareStatement:sql statement:&statement error:error]) {
+                success = NO;
+                break;
+            }
+
+            sqlite3_bind_text(statement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(statement, 2, [content UTF8String], -1, SQLITE_TRANSIENT);
+            int stepResult = sqlite3_step(statement);
+            BOOL itemExists = stepResult == SQLITE_ROW;
+            sqlite3_int64 itemID = itemExists ? sqlite3_column_int64(statement, 0) : 0;
+            NSString *storedRichTextUTI = itemExists ? [self stringFromColumn:statement index:1] : nil;
+            NSString *storedRichTextName = itemExists ? [self stringFromColumn:statement index:2] : nil;
+            if (stepResult != SQLITE_ROW && stepResult != SQLITE_DONE) {
+                [self populateError:error code:stepResult message:[NSString stringWithUTF8String:sql]];
+                success = NO;
+            }
+            sqlite3_finalize(statement);
+
+            if (!success) {
+                break;
+            }
+            if (itemExists) {
+                NSString *richTextUTI =
+                    [self stringValueFromDictionary:dictionary key:kKayokoItemKeyRichTextUTI fallback:nil];
+                NSString *richTextName =
+                    [self stringValueFromDictionary:dictionary key:kKayokoItemKeyRichTextName fallback:nil];
+                BOOL hasImportedRichText = [richTextUTI length] > 0 && [richTextName length] > 0;
+                BOOL hasStoredRichText = [storedRichTextUTI length] > 0 && [storedRichTextName length] > 0;
+                if (hasImportedRichText && !hasStoredRichText) {
+                    success = [self executeStatement:
+                                        @"UPDATE history_items SET rich_text_uti = ?, rich_text_name = ? WHERE id = ?"
+                                            bindings:@[ richTextUTI, richTextName, @(itemID) ]
+                                               error:error];
+                    if (success) {
+                        [self scheduleRichTextCleanupForName:storedRichTextName];
+                    }
+                } else if (hasImportedRichText && ![richTextName isEqualToString:storedRichTextName]) {
+                    [self scheduleRichTextCleanupForName:richTextName];
+                }
+                if (!success) {
+                    break;
+                }
+                continue;
+            }
+
+            success = [self upsertItemDictionaryWithoutTransaction:dictionary inHistoryKey:historyKey error:error];
+            if (!success) {
+                break;
+            }
+        }
+        if (!success) {
+            break;
+        }
+    }
+
+    if (success) {
+        success = [self setMetadataValue:[@(kKayokoHistoryStoreSearchIndexVersion) stringValue]
+                                  forKey:kKayokoHistoryStoreSearchIndexSchemaVersionKey
+                                   error:error];
+    }
+
+    if (success) {
+        return [self commitTransactionWithError:error];
+    }
+
+    [self rollbackTransaction];
+    return NO;
+}
+
 #pragma mark - Schema Helpers
 
 - (BOOL)ensureColumnNamed:(NSString *)columnName
@@ -777,6 +949,27 @@ NS_ASSUME_NONNULL_END
                              error:error];
 }
 
+- (BOOL)ensureRichTextColumnsWithError:(NSError **)error {
+    if (![self ensureColumnNamed:@"rich_text_uti"
+                         inTable:@"history_items"
+             usingAlterStatement:@"ALTER TABLE history_items ADD COLUMN rich_text_uti TEXT NULL"
+                           error:error]) {
+        return NO;
+    }
+    return [self ensureColumnNamed:@"rich_text_name"
+                           inTable:@"history_items"
+               usingAlterStatement:@"ALTER TABLE history_items ADD COLUMN rich_text_name TEXT NOT NULL DEFAULT ''"
+                             error:error];
+}
+
+- (BOOL)ensureImageByteCountColumnWithError:(NSError **)error {
+    return [self ensureColumnNamed:@"image_byte_count"
+                           inTable:@"history_items"
+               usingAlterStatement:
+                   @"ALTER TABLE history_items ADD COLUMN image_byte_count INTEGER NOT NULL DEFAULT 0"
+                             error:error];
+}
+
 - (CGSize)imagePixelSizeForImageName:(NSString *)imageName {
     if ([imageName length] == 0) {
         return CGSizeZero;
@@ -799,6 +992,38 @@ NS_ASSUME_NONNULL_END
     }
     NSUInteger orientation = [properties[(NSString *)kCGImagePropertyOrientation] unsignedIntegerValue];
     return orientation >= 5 && orientation <= 8 ? CGSizeMake(height, width) : CGSizeMake(width, height);
+}
+
+- (BOOL)readImageByteCount:(unsigned long long *)byteCount
+              forImageName:(NSString *)imageName
+                     error:(NSError **)error {
+    if (byteCount) {
+        *byteCount = 0;
+    }
+    if ([imageName length] == 0) {
+        return YES;
+    }
+
+    NSString *imagePath = [[self imagesPath] stringByAppendingPathComponent:imageName];
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSError *attributesError = nil;
+    NSDictionary<NSFileAttributeKey, id> *attributes =
+        [fileManager attributesOfItemAtPath:imagePath error:&attributesError];
+    if (!attributes) {
+        BOOL fileDoesNotExist = [attributesError.domain isEqualToString:NSCocoaErrorDomain] &&
+            (attributesError.code == NSFileNoSuchFileError || attributesError.code == NSFileReadNoSuchFileError);
+        if (fileDoesNotExist) {
+            return YES;
+        }
+        if (error) {
+            *error = attributesError;
+        }
+        return NO;
+    }
+    if (byteCount) {
+        *byteCount = [attributes[NSFileSize] unsignedLongLongValue];
+    }
+    return YES;
 }
 
 - (BOOL)backfillImageDimensionsIfNeededWithError:(NSError **)error {
@@ -856,6 +1081,65 @@ NS_ASSUME_NONNULL_END
     }
     if (success) {
         success = [self setMetadataValue:@"1" forKey:kKayokoHistoryStoreImageDimensionsBackfillKey error:error];
+    }
+    if (success) {
+        return [self commitTransactionWithError:error];
+    }
+
+    [self rollbackTransaction];
+    return NO;
+}
+
+- (BOOL)backfillImageByteCountsIfNeededWithError:(NSError **)error {
+    if ([[self metadataValueForKey:kKayokoHistoryStoreImageByteCountsBackfillKey error:error] boolValue]) {
+        return YES;
+    }
+    if (error && *error) {
+        return NO;
+    }
+
+    sqlite3_stmt *statement = NULL;
+    const char *sql = "SELECT id, image_name FROM history_items "
+                      "WHERE image_name <> '' AND image_byte_count <= 0";
+    if (![self prepareStatement:sql statement:&statement error:error]) {
+        return NO;
+    }
+    NSMutableArray<NSDictionary<NSString *, id> *> *rows = [[NSMutableArray alloc] init];
+    int stepResult = SQLITE_OK;
+    while ((stepResult = sqlite3_step(statement)) == SQLITE_ROW) {
+        [rows addObject:@{
+            @"id" : @(sqlite3_column_int64(statement, 0)),
+            @"image_name" : [self stringFromColumn:statement index:1] ?: @""
+        }];
+    }
+    sqlite3_finalize(statement);
+    if (stepResult != SQLITE_DONE) {
+        [self populateError:error code:stepResult message:[NSString stringWithUTF8String:sql]];
+        return NO;
+    }
+
+    if (![self beginTransactionWithError:error]) {
+        return NO;
+    }
+    BOOL success = YES;
+    for (NSDictionary<NSString *, id> *row in rows) {
+        unsigned long long byteCount = 0;
+        success = [self readImageByteCount:&byteCount forImageName:row[@"image_name"] error:error];
+        if (!success) {
+            break;
+        }
+        if (byteCount == 0) {
+            continue;
+        }
+        success = [self executeStatement:@"UPDATE history_items SET image_byte_count = ? WHERE id = ?"
+                                bindings:@[ @(MIN(byteCount, (unsigned long long)LLONG_MAX)), row[@"id"] ]
+                                   error:error];
+        if (!success) {
+            break;
+        }
+    }
+    if (success) {
+        success = [self setMetadataValue:@"1" forKey:kKayokoHistoryStoreImageByteCountsBackfillKey error:error];
     }
     if (success) {
         return [self commitTransactionWithError:error];
@@ -1108,10 +1392,13 @@ NS_ASSUME_NONNULL_END
     }
 
     [self rollbackTransaction];
+    NSString *richTextName =
+        [self stringValueFromDictionary:dictionary key:kKayokoItemKeyRichTextName fallback:@""];
+    [self removeRichTextIfUnreferenced:richTextName];
     return NO;
 }
 
-#pragma mark - User Metadata
+#pragma mark - Stored Metadata
 
 - (NSDictionary<NSString *, NSString *> *)storedUserMetadataForHistoryKey:(NSString *)historyKey
                                                                   content:(NSString *)content
@@ -1121,7 +1408,8 @@ NS_ASSUME_NONNULL_END
     }
 
     sqlite3_stmt *statement = NULL;
-    const char *sql = "SELECT tag_uuid, note FROM history_items WHERE history_key = ? AND content = ? LIMIT 1";
+    const char *sql =
+        "SELECT tag_uuid, note, rich_text_name FROM history_items WHERE history_key = ? AND content = ? LIMIT 1";
     if (![self prepareStatement:sql statement:&statement error:error]) {
         return @{};
     }
@@ -1133,11 +1421,15 @@ NS_ASSUME_NONNULL_END
     if (stepResult == SQLITE_ROW) {
         NSString *tagUUID = [self stringFromColumn:statement index:0];
         NSString *note = [self stringFromColumn:statement index:1];
+        NSString *richTextName = [self stringFromColumn:statement index:2];
         if ([tagUUID length] > 0) {
             metadata[kKayokoItemKeyTagUUID] = tagUUID;
         }
         if ([note length] > 0) {
             metadata[kKayokoItemKeyNote] = note;
+        }
+        if ([richTextName length] > 0) {
+            metadata[kKayokoItemKeyRichTextName] = richTextName;
         }
     } else if (stepResult != SQLITE_DONE) {
         [self populateError:error code:stepResult message:[NSString stringWithUTF8String:sql]];
@@ -1168,6 +1460,18 @@ NS_ASSUME_NONNULL_END
     }
     imagePixelWidth = MAX(imagePixelWidth, 0);
     imagePixelHeight = MAX(imagePixelHeight, 0);
+    unsigned long long imageByteCount = 0;
+    if ([imageName length] > 0) {
+        id imageByteCountValue = dictionary[kKayokoItemKeyImageByteCount];
+        if ([imageByteCountValue isKindOfClass:[NSNumber class]] && [imageByteCountValue longLongValue] > 0) {
+            imageByteCount = [imageByteCountValue unsignedLongLongValue];
+        }
+        if (imageByteCount == 0 &&
+            ![self readImageByteCount:&imageByteCount forImageName:imageName error:error]) {
+            return NO;
+        }
+    }
+    imageByteCount = MIN(imageByteCount, (unsigned long long)LLONG_MAX);
     NSDictionary<NSString *, NSString *> *storedMetadata = [self storedUserMetadataForHistoryKey:historyKey
                                                                                          content:content
                                                                                            error:error];
@@ -1182,13 +1486,20 @@ NS_ASSUME_NONNULL_END
     if ([note length] == 0) {
         note = storedMetadata[kKayokoItemKeyNote];
     }
+    NSString *richTextUTI = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyRichTextUTI fallback:nil];
+    NSString *richTextName =
+        [self stringValueFromDictionary:dictionary key:kKayokoItemKeyRichTextName fallback:@""];
+    if ([richTextUTI length] == 0 || [richTextName length] == 0) {
+        richTextUTI = nil;
+        richTextName = @"";
+    }
+    NSString *previousRichTextName = storedMetadata[kKayokoItemKeyRichTextName];
     NSNumber *hasLink = @([[dictionary objectForKey:kKayokoItemKeyHasLink] boolValue]);
     NSNumber *sequence = @([self nextSequence]);
     NSNumber *now = @([[NSDate date] timeIntervalSince1970]);
     id capturedAtValue = dictionary[kKayokoItemKeyCapturedAt];
-    NSTimeInterval capturedAtTimestamp = [capturedAtValue isKindOfClass:[NSNumber class]]
-                                             ? [capturedAtValue doubleValue]
-                                             : [now doubleValue];
+    NSTimeInterval capturedAtTimestamp =
+        [capturedAtValue isKindOfClass:[NSNumber class]] ? [capturedAtValue doubleValue] : [now doubleValue];
     if (!isfinite(capturedAtTimestamp) || capturedAtTimestamp <= 0.0) {
         capturedAtTimestamp = [now doubleValue];
     }
@@ -1200,20 +1511,23 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
-    if (![self
-            executeStatement:
-                @"INSERT INTO history_items "
-                 "(history_key, bundle_identifier, content, image_name, image_width, image_height, has_link, "
-                 "created_at, updated_at, sequence, tag_uuid, note, search_index_version) "
-                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
-                    bindings:@[
-                        historyKey, bundleIdentifier, content, imageName, @(imagePixelWidth), @(imagePixelHeight),
-                        hasLink, capturedAt, now, sequence,
-                        [tagUUID length] > 0 ? tagUUID : (id)[NSNull null], [note length] > 0 ? note : (id)[NSNull null]
-                    ]
-                       error:error]) {
+    if (![self executeStatement:
+                   @"INSERT INTO history_items "
+                    "(history_key, bundle_identifier, content, image_name, image_width, image_height, "
+                    "image_byte_count, rich_text_uti, rich_text_name, has_link, created_at, updated_at, sequence, "
+                    "tag_uuid, note, search_index_version) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
+                       bindings:@[
+                           historyKey, bundleIdentifier, content, imageName, @(imagePixelWidth), @(imagePixelHeight),
+                           @(imageByteCount), [richTextUTI length] > 0 ? richTextUTI : (id)[NSNull null], richTextName,
+                           hasLink, capturedAt, now, sequence, [tagUUID length] > 0 ? tagUUID : (id)[NSNull null],
+                           [note length] > 0 ? note : (id)[NSNull null]
+                       ]
+                          error:error]) {
         return NO;
     }
+
+    [self scheduleRichTextCleanupForName:previousRichTextName];
 
     sqlite3_int64 itemID = sqlite3_last_insert_rowid(_database);
     return [self rebuildSearchIndexForItemID:itemID
@@ -1247,13 +1561,42 @@ NS_ASSUME_NONNULL_END
     sqlite3_bind_int64(statement, 2, (sqlite3_int64)limit);
 
     NSMutableArray<NSString *> *imageNames = [[NSMutableArray alloc] init];
-    while (sqlite3_step(statement) == SQLITE_ROW) {
+    int stepResult = SQLITE_OK;
+    while ((stepResult = sqlite3_step(statement)) == SQLITE_ROW) {
         NSString *imageName = [self stringFromColumn:statement index:0];
         if ([imageName length] > 0) {
             [imageNames addObject:imageName];
         }
     }
     sqlite3_finalize(statement);
+    if (stepResult != SQLITE_DONE) {
+        [self populateError:error code:stepResult message:[NSString stringWithUTF8String:imageSQL]];
+        return NO;
+    }
+
+    const char *richTextSQL =
+        "SELECT DISTINCT rich_text_name FROM history_items "
+        "WHERE rich_text_name <> '' AND id IN "
+        "(SELECT id FROM history_items WHERE history_key = ? ORDER BY sequence DESC LIMIT -1 OFFSET ?)";
+    if (![self prepareStatement:richTextSQL statement:&statement error:error]) {
+        return NO;
+    }
+    sqlite3_bind_text(statement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int64(statement, 2, (sqlite3_int64)limit);
+
+    NSMutableArray<NSString *> *richTextNames = [[NSMutableArray alloc] init];
+    stepResult = SQLITE_OK;
+    while ((stepResult = sqlite3_step(statement)) == SQLITE_ROW) {
+        NSString *richTextName = [self stringFromColumn:statement index:0];
+        if ([richTextName length] > 0) {
+            [richTextNames addObject:richTextName];
+        }
+    }
+    sqlite3_finalize(statement);
+    if (stepResult != SQLITE_DONE) {
+        [self populateError:error code:stepResult message:[NSString stringWithUTF8String:richTextSQL]];
+        return NO;
+    }
 
     NSString *deleteStatement =
         [NSString stringWithFormat:@"DELETE FROM history_items WHERE id IN (%@)", trimmedRowsSubquery];
@@ -1265,6 +1608,9 @@ NS_ASSUME_NONNULL_END
         if (![self removeImageIfUnreferenced:imageName error:error]) {
             return NO;
         }
+    }
+    for (NSString *richTextName in richTextNames) {
+        [self scheduleRichTextCleanupForName:richTextName];
     }
 
     return YES;
@@ -1314,6 +1660,118 @@ NS_ASSUME_NONNULL_END
     NSInteger count = 0;
     if (sqlite3_step(statement) == SQLITE_ROW) {
         count = (NSUInteger)sqlite3_column_int64(statement, 0);
+    }
+    sqlite3_finalize(statement);
+    return count;
+}
+
+#pragma mark - Rich Text Cleanup
+
+- (void)cleanupUnreferencedRichTextFiles {
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSArray<NSString *> *names = [fileManager contentsOfDirectoryAtPath:[self richTextPath] error:nil];
+    for (NSString *name in names) {
+        if ([name length] == 0 || ![name isEqualToString:[name lastPathComponent]]) {
+            continue;
+        }
+
+        NSString *filePath = [[self richTextPath] stringByAppendingPathComponent:name];
+        BOOL isDirectory = NO;
+        if (![fileManager fileExistsAtPath:filePath isDirectory:&isDirectory] || isDirectory) {
+            continue;
+        }
+        [self removeRichTextIfUnreferenced:name];
+    }
+}
+
+- (NSString *)richTextNameForHistoryKey:(NSString *)historyKey
+                                 content:(NSString *)content
+                                   error:(NSError **)error {
+    sqlite3_stmt *statement = NULL;
+    const char *sql =
+        "SELECT rich_text_name FROM history_items WHERE history_key = ? AND content = ? LIMIT 1";
+    if (![self prepareStatement:sql statement:&statement error:error]) {
+        return nil;
+    }
+
+    sqlite3_bind_text(statement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(statement, 2, [content UTF8String], -1, SQLITE_TRANSIENT);
+    NSString *richTextName = nil;
+    int stepResult = sqlite3_step(statement);
+    if (stepResult == SQLITE_ROW) {
+        richTextName = [self stringFromColumn:statement index:0];
+    } else if (stepResult != SQLITE_DONE) {
+        [self populateError:error code:stepResult message:[NSString stringWithUTF8String:sql]];
+    }
+    sqlite3_finalize(statement);
+    return richTextName;
+}
+
+- (NSArray<NSString *> *)richTextNamesForHistoryKey:(NSString *)historyKey error:(NSError **)error {
+    sqlite3_stmt *statement = NULL;
+    const char *sql =
+        "SELECT DISTINCT rich_text_name FROM history_items WHERE history_key = ? AND rich_text_name <> ''";
+    if (![self prepareStatement:sql statement:&statement error:error]) {
+        return nil;
+    }
+
+    sqlite3_bind_text(statement, 1, [historyKey UTF8String], -1, SQLITE_TRANSIENT);
+    NSMutableArray<NSString *> *richTextNames = [[NSMutableArray alloc] init];
+    int stepResult = SQLITE_OK;
+    while ((stepResult = sqlite3_step(statement)) == SQLITE_ROW) {
+        NSString *richTextName = [self stringFromColumn:statement index:0];
+        if ([richTextName length] > 0) {
+            [richTextNames addObject:richTextName];
+        }
+    }
+    if (stepResult != SQLITE_DONE) {
+        [self populateError:error code:stepResult message:[NSString stringWithUTF8String:sql]];
+        sqlite3_finalize(statement);
+        return nil;
+    }
+    sqlite3_finalize(statement);
+    return richTextNames;
+}
+
+- (void)scheduleRichTextCleanupForName:(NSString *)richTextName {
+    if ([richTextName length] == 0) {
+        return;
+    }
+    if (_pendingRichTextCleanupNames) {
+        [_pendingRichTextCleanupNames addObject:richTextName];
+        return;
+    }
+    [self removeRichTextIfUnreferenced:richTextName];
+}
+
+- (void)removeRichTextIfUnreferenced:(NSString *)richTextName {
+    NSInteger referenceCount = [self richTextReferenceCountForName:richTextName error:nil];
+    if ([richTextName length] == 0 || ![richTextName isEqualToString:[richTextName lastPathComponent]] ||
+        referenceCount != 0) {
+        return;
+    }
+
+    NSString *filePath = [[self richTextPath] stringByAppendingPathComponent:richTextName];
+    [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
+}
+
+- (NSInteger)richTextReferenceCountForName:(NSString *)richTextName error:(NSError **)error {
+    sqlite3_stmt *statement = NULL;
+    if (![self prepareStatement:"SELECT COUNT(*) FROM history_items WHERE rich_text_name = ?"
+                      statement:&statement
+                          error:error]) {
+        return -1;
+    }
+
+    sqlite3_bind_text(statement, 1, [richTextName UTF8String], -1, SQLITE_TRANSIENT);
+    NSInteger count = -1;
+    int stepResult = sqlite3_step(statement);
+    if (stepResult == SQLITE_ROW) {
+        count = (NSInteger)sqlite3_column_int64(statement, 0);
+    } else {
+        [self populateError:error
+                       code:stepResult
+                    message:@"SELECT COUNT(*) FROM history_items WHERE rich_text_name = ?"];
     }
     sqlite3_finalize(statement);
     return count;
@@ -1375,6 +1833,9 @@ NS_ASSUME_NONNULL_END
     }
     sqlite3_int64 imagePixelWidth = MAX(sqlite3_column_int64(statement, 7), 0);
     sqlite3_int64 imagePixelHeight = MAX(sqlite3_column_int64(statement, 8), 0);
+    NSString *richTextUTI = [self stringFromColumn:statement index:9];
+    NSString *richTextName = [self stringFromColumn:statement index:10];
+    sqlite3_int64 imageByteCount = MAX(sqlite3_column_int64(statement, 11), 0);
 
     NSMutableDictionary<NSString *, id> *dictionary = [@{
         kKayokoItemKeyBundleIdentifier : bundleIdentifier,
@@ -1383,13 +1844,18 @@ NS_ASSUME_NONNULL_END
         kKayokoItemKeyHasLink : @(hasLink),
         kKayokoItemKeyCapturedAt : @(capturedAtTimestamp),
         kKayokoItemKeyImagePixelWidth : @(imagePixelWidth),
-        kKayokoItemKeyImagePixelHeight : @(imagePixelHeight)
+        kKayokoItemKeyImagePixelHeight : @(imagePixelHeight),
+        kKayokoItemKeyImageByteCount : @(imageByteCount)
     } mutableCopy];
     if ([tagUUID length] > 0) {
         dictionary[kKayokoItemKeyTagUUID] = tagUUID;
     }
     if ([note length] > 0) {
         dictionary[kKayokoItemKeyNote] = note;
+    }
+    if ([richTextUTI length] > 0 && [richTextName length] > 0) {
+        dictionary[kKayokoItemKeyRichTextUTI] = richTextUTI;
+        dictionary[kKayokoItemKeyRichTextName] = richTextName;
     }
     return dictionary;
 }
@@ -1415,15 +1881,34 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Transactions
 
 - (BOOL)beginTransactionWithError:(NSError **)error {
-    return [self executeStatement:@"BEGIN IMMEDIATE TRANSACTION" error:error];
+    BOOL success = [self executeStatement:@"BEGIN IMMEDIATE TRANSACTION" error:error];
+    if (success) {
+        _pendingRichTextCleanupNames = [[NSMutableSet alloc] init];
+    }
+    return success;
 }
 
 - (BOOL)commitTransactionWithError:(NSError **)error {
-    return [self executeStatement:@"COMMIT" error:error];
+    if (![self executeStatement:@"COMMIT" error:error]) {
+        NSError *commitError = error ? *error : nil;
+        [self rollbackTransaction];
+        if (error) {
+            *error = commitError;
+        }
+        return NO;
+    }
+
+    NSSet<NSString *> *richTextCleanupNames = [_pendingRichTextCleanupNames copy];
+    _pendingRichTextCleanupNames = nil;
+    for (NSString *richTextName in richTextCleanupNames) {
+        [self removeRichTextIfUnreferenced:richTextName];
+    }
+    return YES;
 }
 
 - (void)rollbackTransaction {
     [self executeStatement:@"ROLLBACK" error:nil];
+    _pendingRichTextCleanupNames = nil;
 }
 
 #pragma mark - SQLite Execution

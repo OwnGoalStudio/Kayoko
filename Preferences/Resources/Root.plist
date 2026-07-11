@@ -229,7 +229,7 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>footerText</key>
-			<string>Item details show when an item was last captured, along with its text length or image dimensions.</string>
+			<string>Item details show when an item was last captured, along with its text length or image dimensions and file size.</string>
 			<key>label</key>
 			<string>Item Details</string>
 		</dict>

@@ -57,12 +57,22 @@ static NSInteger const kKayokoCoreHistoryStoreBusyTimeoutMilliseconds = 250;
 }
 
 - (void)ensureStorePrepared {
+    NSError *error = nil;
+    if (![self ensureStorePreparedWithError:&error]) {
+        HBLogDebug(@"Kayoko: Failed to prepare v4 history store: %@", error);
+    }
+}
+
+- (BOOL)ensureStorePreparedWithError:(NSError **)error {
+    __block BOOL success = NO;
+    __block NSError *blockError = nil;
     [self performSync:^{
-      NSError *error = nil;
-      if (![self ensureStorePreparedOnQueueWithError:&error]) {
-          HBLogDebug(@"Kayoko: Failed to prepare v4 history store: %@", error);
-      }
+      success = [self ensureStorePreparedOnQueueWithError:&blockError];
     }];
+    if (error) {
+        *error = blockError;
+    }
+    return success;
 }
 
 - (void)closeStore {

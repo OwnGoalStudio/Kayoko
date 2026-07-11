@@ -27,6 +27,7 @@ typedef void (^KayokoHistoryAppBundleIdentifiersCompletion)(NSArray<NSString *> 
 
 - (void)prepareStore;
 - (void)ensureStorePrepared;
+- (BOOL)ensureStorePreparedWithError:(NSError *_Nullable *_Nullable)error;
 - (void)closeStore;
 - (void)checkpointWriteAheadLog;
 - (BOOL)upgradeSearchIndexWithError:(NSError *_Nullable *_Nullable)error;

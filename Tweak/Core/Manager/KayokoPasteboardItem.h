@@ -9,6 +9,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+FOUNDATION_EXPORT NSString *const kKayokoContinuityBundleIdentifier;
+
 static NSString *const kKayokoItemKeyBundleIdentifier = @"bundle_identifier";
 static NSString *const kKayokoItemKeyContent = @"content";
 static NSString *const kKayokoItemKeyImageName = @"image_name";
@@ -18,6 +20,9 @@ static NSString *const kKayokoItemKeyNote = @"note";
 static NSString *const kKayokoItemKeyCapturedAt = @"captured_at";
 static NSString *const kKayokoItemKeyImagePixelWidth = @"image_width";
 static NSString *const kKayokoItemKeyImagePixelHeight = @"image_height";
+static NSString *const kKayokoItemKeyRichTextUTI = @"rich_text_uti";
+static NSString *const kKayokoItemKeyRichTextName = @"rich_text_name";
+static NSString *const kKayokoItemKeyImageByteCount = @"image_byte_count";
 
 @interface KayokoPasteboardItem : NSObject
 
@@ -30,6 +35,9 @@ static NSString *const kKayokoItemKeyImagePixelHeight = @"image_height";
 @property(nonatomic, copy) NSDate *capturedAt;
 @property(nonatomic, assign) NSUInteger imagePixelWidth;
 @property(nonatomic, assign) NSUInteger imagePixelHeight;
+@property(nonatomic, copy, nullable) NSString *richTextUTI;
+@property(nonatomic, copy) NSString *richTextName;
+@property(nonatomic, assign) unsigned long long imageByteCount;
 @property(nonatomic, assign) BOOL hasLink;
 
 - (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier
