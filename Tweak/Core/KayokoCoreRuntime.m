@@ -200,6 +200,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL playSoundEffects;
 @property(nonatomic, assign) BOOL playHapticFeedback;
 @property(nonatomic, assign) NSUInteger previewLineCount;
+@property(nonatomic, assign) KayokoItemDetailsMode itemDetailsMode;
 @property(nonatomic, assign) CGFloat heightInPoints;
 
 #pragma mark - Feedback
@@ -242,6 +243,7 @@ NS_ASSUME_NONNULL_END
     self = [super init];
     if (self) {
         _previewLineCount = 1;
+        _itemDetailsMode = kKayokoPreferenceKeyItemDetailsModeDefaultValue;
         _heightInPoints = 420;
         _activePresentationMode = KayokoPanelPresentationModePortraitDrawer;
         _pasteSuppressionState = [[KayokoPasteSuppressionState alloc] init];
@@ -558,6 +560,9 @@ NS_ASSUME_NONNULL_END
     if ([self.mainViewController previewLineCount] != self.previewLineCount) {
         [self.mainViewController setPreviewLineCount:self.previewLineCount];
     }
+    if ([self.mainViewController itemDetailsMode] != self.itemDetailsMode) {
+        [self.mainViewController setItemDetailsMode:self.itemDetailsMode];
+    }
     if ([self.mainViewController initialViewMode] != self.initialViewMode) {
         [self.mainViewController setInitialViewMode:self.initialViewMode];
     }
@@ -611,6 +616,7 @@ NS_ASSUME_NONNULL_END
         kKayokoPreferenceKeyPlaySoundEffects : @(kKayokoPreferenceKeyPlaySoundEffectsDefaultValue),
         kKayokoPreferenceKeyPlayHapticFeedback : @(kKayokoPreferenceKeyPlayHapticFeedbackDefaultValue),
         kKayokoPreferenceKeyPreviewLineCount : @(kKayokoPreferenceKeyPreviewLineCountDefaultValue),
+        kKayokoPreferenceKeyItemDetailsMode : @(kKayokoPreferenceKeyItemDetailsModeDefaultValue),
         kKayokoPreferenceKeyHeightInPoints : @(kKayokoPreferenceKeyHeightInPointsDefaultValue),
     }];
 
@@ -655,6 +661,12 @@ NS_ASSUME_NONNULL_END
     self.playSoundEffects = [[self.preferences objectForKey:kKayokoPreferenceKeyPlaySoundEffects] boolValue];
     self.playHapticFeedback = [[self.preferences objectForKey:kKayokoPreferenceKeyPlayHapticFeedback] boolValue];
     self.previewLineCount = [[self.preferences objectForKey:kKayokoPreferenceKeyPreviewLineCount] unsignedIntegerValue];
+    self.itemDetailsMode = [[self.preferences objectForKey:kKayokoPreferenceKeyItemDetailsMode] unsignedIntegerValue];
+    if (self.itemDetailsMode != kKayokoItemDetailsModeOff &&
+        self.itemDetailsMode != kKayokoItemDetailsModeImagesOnly &&
+        self.itemDetailsMode != kKayokoItemDetailsModeAll) {
+        self.itemDetailsMode = kKayokoPreferenceKeyItemDetailsModeDefaultValue;
+    }
     self.heightInPoints = [[self.preferences objectForKey:kKayokoPreferenceKeyHeightInPoints] doubleValue];
 
     KayokoPasteboardManager *pasteboardManager = [KayokoPasteboardManager sharedInstance];
@@ -1098,6 +1110,10 @@ NS_ASSUME_NONNULL_END
     [self setPackageMaintenanceMode:YES];
     [[KayokoPasteboardManager sharedInstance] enterMaintenanceModeUntilProcessExit];
     [self hideImmediately];
+}
+
+- (void)resetThumbnailMemoryCache {
+    [[KayokoPasteboardManager sharedInstance] resetThumbnailMemoryCache];
 }
 
 - (void)clearFavorites {

@@ -19,6 +19,8 @@ kayoko_updater_CFLAGS += -I../Preferences
 kayoko_updater_CFLAGS += -I../Shared/Tags
 kayoko_updater_CFLAGS += -I../Shared/Purchases
 
+kayoko_updater_FRAMEWORKS += CoreGraphics
+kayoko_updater_FRAMEWORKS += ImageIO
 kayoko_updater_FRAMEWORKS += Security
 kayoko_updater_LIBRARIES += sqlite3
 ifeq ($(THEOS_PACKAGE_SCHEME),roothide)

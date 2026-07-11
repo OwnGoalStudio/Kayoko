@@ -6,10 +6,10 @@
 #import "KayokoWordSelectionViewController.h"
 
 #import "KayokoHeaderButtonStyle.h"
+#import "KayokoHeaderView.h"
 #import "KayokoHistoryItemActionHandler.h"
 #import "KayokoPasteboardItem.h"
 #import "KayokoPasteboardManager.h"
-#import "KayokoHeaderView.h"
 #import "KayokoTag.h"
 #import "KayokoTagCatalog.h"
 #import "KayokoWordSelectionView.h"
@@ -55,9 +55,10 @@ NS_ASSUME_NONNULL_END
         _wordSelectionView = [[KayokoWordSelectionView alloc] init];
         [[_wordSelectionView headerView] setTitleText:name];
         [_wordSelectionView setHidden:YES];
-        [[[_wordSelectionView headerView] alternateTrailingButton] addTarget:self
-                                                                      action:@selector(handleSelectionOrderButtonPressed)
-                                                            forControlEvents:UIControlEventTouchUpInside];
+        [[[_wordSelectionView headerView] alternateTrailingButton]
+                   addTarget:self
+                      action:@selector(handleSelectionOrderButtonPressed)
+            forControlEvents:UIControlEventTouchUpInside];
         _actionHandler = [[KayokoHistoryItemActionHandler alloc] init];
         [self setView:_wordSelectionView];
 
@@ -112,13 +113,13 @@ NS_ASSUME_NONNULL_END
     [headerView setHidden:NO];
     [headerView setTitleText:[self name]];
     [headerView updateStyleForButton:[headerView leadingButton]
-                        withImageName:@"arrowshape.turn.up.backward"
-                             imageSize:kKayokoFavoritesButtonImageSize
-                             tintColor:[UIColor labelColor]];
+                       withImageName:@"arrowshape.turn.up.backward"
+                           imageSize:kKayokoFavoritesButtonImageSize
+                           tintColor:[UIColor labelColor]];
     [headerView updateStyleForButton:[headerView trailingButton]
-                        withImageName:(automaticallyPaste ? @"doc.on.clipboard" : @"doc.on.doc.fill")
-                             imageSize:kKayokoBackButtonImageSize
-                             tintColor:[UIColor labelColor]];
+                       withImageName:(automaticallyPaste ? @"doc.on.clipboard" : @"doc.on.doc.fill")imageSize
+                                    :kKayokoBackButtonImageSize
+                           tintColor:[UIColor labelColor]];
     [[headerView alternateTrailingButton] setHidden:NO];
     [[headerView alternateTrailingButton] setEnabled:YES];
     [[headerView alternateTrailingButton] setAlpha:1.0];
@@ -256,10 +257,10 @@ NS_ASSUME_NONNULL_END
 - (void)updateSelectionOrderButtonState {
     UIButton *selectionOrderButton = [[[self wordSelectionView] headerView] alternateTrailingButton];
     BOOL enabled = [self usesSelectionOrderForSelectedText];
-    [[[self wordSelectionView] headerView] updateStyleForButton:selectionOrderButton
-                                                  withImageName:(enabled ? @"123.rectangle.fill" : @"123.rectangle")
-                                                       imageSize:kKayokoBackButtonImageSize
-                                                      tintColor:[UIColor labelColor]];
+    [[[self wordSelectionView] headerView]
+        updateStyleForButton:selectionOrderButton
+               withImageName:(enabled ? @"123.rectangle.fill" : @"123.rectangle")imageSize:kKayokoBackButtonImageSize
+                   tintColor:[UIColor labelColor]];
     [selectionOrderButton setSelected:enabled];
     UIAccessibilityTraits traits = [selectionOrderButton accessibilityTraits] | UIAccessibilityTraitButton;
     if (enabled) {

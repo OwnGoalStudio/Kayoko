@@ -75,9 +75,8 @@ NS_ASSUME_NONNULL_END
         [self addSubview:[self headerView]];
 
         [[self headerView] setTranslatesAutoresizingMaskIntoConstraints:NO];
-        [NSLayoutConstraint activateConstraints:@[
-            [[[self headerView] heightAnchor] constraintEqualToConstant:[KayokoHeaderView preferredHeight]]
-        ]];
+        [NSLayoutConstraint activateConstraints:@[ [[[self headerView] heightAnchor]
+                                                    constraintEqualToConstant:[KayokoHeaderView preferredHeight]] ]];
 
         [self setTransitionContentView:[[UIView alloc] init]];
         [self insertSubview:[self transitionContentView] belowSubview:[self headerView]];
@@ -102,7 +101,7 @@ NS_ASSUME_NONNULL_END
         [[self scrollView] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
             [[[self scrollView] topAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor]
-                                                            constant:kKayokoHeaderContentSpacing],
+                                                          constant:kKayokoHeaderContentSpacing],
             [[[self scrollView] leadingAnchor] constraintEqualToAnchor:[[self safeAreaLayoutGuide] leadingAnchor]],
             [[[self scrollView] trailingAnchor] constraintEqualToAnchor:[[self safeAreaLayoutGuide] trailingAnchor]],
             [[[self scrollView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]

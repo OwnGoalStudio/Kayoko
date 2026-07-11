@@ -5,6 +5,8 @@
 
 #import <UIKit/UIKit.h>
 
+#import "KayokoPreferenceKeys.h"
+
 @class KayokoTableViewCellContent;
 @class KayokoPasteboardItem;
 
@@ -13,9 +15,11 @@ NS_ASSUME_NONNULL_BEGIN
 @interface KayokoTableViewCellContentProvider : NSObject
 
 - (KayokoTableViewCellContent *)cellContentForItem:(KayokoPasteboardItem *)item
-                                  previewLineCount:(NSUInteger)previewLineCount;
+                                  previewLineCount:(NSUInteger)previewLineCount
+                                   itemDetailsMode:(KayokoItemDetailsMode)itemDetailsMode;
 - (KayokoTableViewCellContent *)cellContentForItem:(KayokoPasteboardItem *)item
                                   previewLineCount:(NSUInteger)previewLineCount
+                                   itemDetailsMode:(KayokoItemDetailsMode)itemDetailsMode
                                         searchText:(nullable NSString *)searchText;
 
 - (void)loadThumbnailForItem:(KayokoPasteboardItem *)item

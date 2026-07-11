@@ -6,11 +6,11 @@
 #import "KayokoPreviewViewController.h"
 
 #import "KayokoHeaderButtonStyle.h"
+#import "KayokoHeaderView.h"
 #import "KayokoHistoryItemActionHandler.h"
 #import "KayokoPasteboardItem.h"
 #import "KayokoPasteboardManager.h"
 #import "KayokoPreviewView.h"
-#import "KayokoHeaderView.h"
 #import "KayokoTag.h"
 #import "KayokoTagCatalog.h"
 
@@ -81,13 +81,13 @@ NS_ASSUME_NONNULL_END
     [headerView setHidden:NO];
     [headerView setTitleText:[[self previewView] name]];
     [headerView updateStyleForButton:[headerView leadingButton]
-                        withImageName:@"arrowshape.turn.up.backward"
-                             imageSize:kKayokoFavoritesButtonImageSize
-                             tintColor:[UIColor labelColor]];
+                       withImageName:@"arrowshape.turn.up.backward"
+                           imageSize:kKayokoFavoritesButtonImageSize
+                           tintColor:[UIColor labelColor]];
     [headerView updateStyleForButton:[headerView trailingButton]
-                        withImageName:[self actionImageNameForItem:item]
-                             imageSize:kKayokoBackButtonImageSize
-                             tintColor:[UIColor labelColor]];
+                       withImageName:[self actionImageNameForItem:item]
+                           imageSize:kKayokoBackButtonImageSize
+                           tintColor:[UIColor labelColor]];
     [[headerView leadingButton]
         setAccessibilityLabel:[[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"Back"
                                                                                             value:nil

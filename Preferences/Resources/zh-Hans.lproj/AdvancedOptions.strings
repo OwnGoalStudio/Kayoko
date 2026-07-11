@@ -3,6 +3,7 @@
 "Are you sure you want to clear all history items? This action cannot be undone." = "你确定要清空所有历史记录吗？此操作不可撤销。";
 "Are you sure you want to deactivate Kayoko on this device? This removes Kayoko’s mirrored Havoc credentials and local authorization state." = "你确定要在此设备上反激活 Kayoko 吗？这会移除 Kayoko 镜像保存的 Havoc 凭据和本地授权状态。";
 "Are you sure you want to reset your preferences?" = "你确定要还原设置吗？";
+"Are you sure you want to reset the thumbnail cache? Thumbnails will be regenerated as needed." = "你确定要重置缩略图缓存吗？缩略图将在需要时重新生成。";
 "Are you sure you want to restore the default tags? Existing tags will be replaced. This action cannot be undone." = "你确定要还原默认标签吗？现有标签将被替换。此操作不可撤销。";
 "Auto" = "自动";
 "Automatic Paste Mode" = "自动粘贴模式";
@@ -21,6 +22,7 @@
 "OK" = "好";
 "Reset" = "还原";
 "Reset Preferences" = "还原设置";
+"Reset Thumbnail Cache" = "重置缩略图缓存";
 "Restore Tags" = "还原标签";
 "Simulated" = "模拟";
 "System" = "系统";

@@ -3,6 +3,7 @@
 "Are you sure you want to clear all history items? This action cannot be undone." = "Are you sure you want to clear all history items? This action cannot be undone.";
 "Are you sure you want to deactivate Kayoko on this device? This removes Kayoko’s mirrored Havoc credentials and local authorization state." = "Are you sure you want to deactivate Kayoko on this device? This removes Kayoko’s mirrored Havoc credentials and local authorization state.";
 "Are you sure you want to reset your preferences?" = "Are you sure you want to reset your preferences?";
+"Are you sure you want to reset the thumbnail cache? Thumbnails will be regenerated as needed." = "Are you sure you want to reset the thumbnail cache? Thumbnails will be regenerated as needed.";
 "Are you sure you want to restore the default tags? Existing tags will be replaced. This action cannot be undone." = "Are you sure you want to restore the default tags? Existing tags will be replaced. This action cannot be undone.";
 "Auto" = "Auto";
 "Automatic Paste Mode" = "Automatic Paste Mode";
@@ -21,6 +22,7 @@
 "OK" = "OK";
 "Reset" = "Reset";
 "Reset Preferences" = "Reset Preferences";
+"Reset Thumbnail Cache" = "Reset Thumbnail Cache";
 "Restore Tags" = "Restore Tags";
 "Simulated" = "Simulated";
 "System" = "System";

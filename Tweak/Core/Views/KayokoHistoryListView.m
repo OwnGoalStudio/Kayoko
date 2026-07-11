@@ -11,6 +11,7 @@
 
 static CGFloat const kKayokoHistoryListViewBaseRowHeight = 65;
 static CGFloat const kKayokoHistoryListViewAdditionalPreviewLineHeight = 18;
+static CGFloat const kKayokoHistoryListViewDetailLineHeight = 15;
 static NSUInteger const kKayokoHistoryListViewMaximumPreviewLineCount = 3;
 static CGFloat const kKayokoHistoryListViewHiddenHeaderInsetPadding = 1;
 static CGFloat const kKayokoHistoryListViewVerticalFadeHeight = 20;
@@ -29,6 +30,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL preservesTransientContentOffset;
 @property(nonatomic, assign) CGPoint transientPreservedContentOffset;
 @property(nonatomic, assign) NSUInteger transientContentOffsetPreservationIdentifier;
+- (void)updateRowHeightForCurrentDisplayOptions;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -350,6 +352,7 @@ NS_ASSUME_NONNULL_END
         [self setEdgeFadeAxis:KayokoEdgeFadeAxisVertical];
         [self setEdgeFadeWidth:kKayokoHistoryListViewVerticalFadeHeight];
         [self setEdgeFadeEnabled:YES];
+        _itemDetailsMode = kKayokoItemDetailsModeImagesOnly;
         [self setPreviewLineCount:1];
     }
 
@@ -361,9 +364,27 @@ NS_ASSUME_NONNULL_END
 - (void)setPreviewLineCount:(NSUInteger)previewLineCount {
     NSUInteger lineCount = MIN(MAX(previewLineCount, 1), kKayokoHistoryListViewMaximumPreviewLineCount);
     _previewLineCount = lineCount;
-    [self setRowHeight:kKayokoHistoryListViewBaseRowHeight +
-                       (lineCount - 1) * kKayokoHistoryListViewAdditionalPreviewLineHeight];
+    [self updateRowHeightForCurrentDisplayOptions];
     [self reloadData];
+}
+
+- (void)setItemDetailsMode:(KayokoItemDetailsMode)itemDetailsMode {
+    if (itemDetailsMode != kKayokoItemDetailsModeOff && itemDetailsMode != kKayokoItemDetailsModeImagesOnly &&
+        itemDetailsMode != kKayokoItemDetailsModeAll) {
+        itemDetailsMode = kKayokoItemDetailsModeImagesOnly;
+    }
+    _itemDetailsMode = itemDetailsMode;
+    [self updateRowHeightForCurrentDisplayOptions];
+    [self reloadData];
+}
+
+- (void)updateRowHeightForCurrentDisplayOptions {
+    CGFloat detailHeight = [self itemDetailsMode] == kKayokoItemDetailsModeAll
+                               ? kKayokoHistoryListViewDetailLineHeight
+                               : 0;
+    [self setRowHeight:kKayokoHistoryListViewBaseRowHeight +
+                       ([self previewLineCount] - 1) * kKayokoHistoryListViewAdditionalPreviewLineHeight +
+                       detailHeight];
 }
 
 @end

@@ -38,6 +38,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)handleScene:(FBScene *)scene didUpdateSettings:(UIApplicationSceneSettings *)settings;
 - (void)checkpointHistoryDatabase;
 - (void)prepareForPackageMaintenance;
+- (void)resetThumbnailMemoryCache;
 - (void)clearFavorites;
 - (void)clearHistory;
 - (void)capturePasteboardChange;

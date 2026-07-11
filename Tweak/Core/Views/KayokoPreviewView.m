@@ -45,9 +45,8 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
         [self addSubview:[self headerView]];
 
         [[self headerView] setTranslatesAutoresizingMaskIntoConstraints:NO];
-        [NSLayoutConstraint activateConstraints:@[
-            [[[self headerView] heightAnchor] constraintEqualToConstant:[KayokoHeaderView preferredHeight]]
-        ]];
+        [NSLayoutConstraint activateConstraints:@[ [[[self headerView] heightAnchor]
+                                                    constraintEqualToConstant:[KayokoHeaderView preferredHeight]] ]];
 
         [self setTransitionContentView:[[UIView alloc] init]];
         [self insertSubview:[self transitionContentView] belowSubview:[self headerView]];
@@ -78,7 +77,7 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
         [[self textView] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
             [[[self textView] topAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor]
-                                                          constant:kKayokoHeaderContentSpacing],
+                                                        constant:kKayokoHeaderContentSpacing],
             [[[self textView] leadingAnchor] constraintEqualToAnchor:[[self safeAreaLayoutGuide] leadingAnchor]],
             [[[self textView] trailingAnchor] constraintEqualToAnchor:[[self safeAreaLayoutGuide] trailingAnchor]],
             [[[self textView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
@@ -99,9 +98,10 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
         [[self imageScrollView] setTranslatesAutoresizingMaskIntoConstraints:NO];
         [NSLayoutConstraint activateConstraints:@[
             [[[self imageScrollView] topAnchor] constraintEqualToAnchor:[[self headerView] bottomAnchor]
-                                                                 constant:kKayokoHeaderContentSpacing],
+                                                               constant:kKayokoHeaderContentSpacing],
             [[[self imageScrollView] leadingAnchor] constraintEqualToAnchor:[[self safeAreaLayoutGuide] leadingAnchor]],
-            [[[self imageScrollView] trailingAnchor] constraintEqualToAnchor:[[self safeAreaLayoutGuide] trailingAnchor]],
+            [[[self imageScrollView] trailingAnchor]
+                constraintEqualToAnchor:[[self safeAreaLayoutGuide] trailingAnchor]],
             [[[self imageScrollView] bottomAnchor] constraintEqualToAnchor:[self bottomAnchor]]
         ]];
 
@@ -244,8 +244,7 @@ static CGFloat const kKayokoPreviewImageMaximumZoomMultiplier = 4.0;
 - (CGSize)imageViewportSizeForCurrentLayout {
     UIEdgeInsets safeAreaInsets = [self safeAreaInsets];
     CGFloat viewportTop = CGRectGetMaxY([[self headerView] frame]) + kKayokoHeaderContentSpacing;
-    CGFloat viewportWidth =
-        MAX(CGRectGetWidth([self bounds]) - safeAreaInsets.left - safeAreaInsets.right, 0);
+    CGFloat viewportWidth = MAX(CGRectGetWidth([self bounds]) - safeAreaInsets.left - safeAreaInsets.right, 0);
     CGFloat viewportHeight = MAX(CGRectGetHeight([self bounds]) - viewportTop, 0);
     return CGSizeMake(viewportWidth, viewportHeight);
 }

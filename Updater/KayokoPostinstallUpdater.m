@@ -15,6 +15,7 @@
 
 static NSString *const kKayokoCurrentDataDirectory = @"/var/mobile/Library/com.82flex.kayoko";
 static NSString *const kKayokoPreferencesBundlePath = @"/Library/PreferenceBundles/KayokoPreferences.bundle";
+static NSString *const kKayokoThumbnailCacheDirectoryPath = @"/var/mobile/Library/Caches/com.82flex.kayoko/thumbnails";
 static NSUInteger const kKayokoMobileUserID = 501;
 static NSUInteger const kKayokoMobileGroupID = 501;
 static useconds_t const kKayokoCoreMaintenanceGracePeriodMicroseconds = 500000;
@@ -95,6 +96,19 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
     }
 
     return YES;
+}
+
+#pragma mark - Thumbnail Cache
+
+- (BOOL)resetThumbnailCacheWithError:(NSError **)error {
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (__bridge CFStringRef)kKayokoNotificationKeyCoreResetThumbnailMemoryCache, nil,
+                                         nil, YES);
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    if (![fileManager fileExistsAtPath:kKayokoThumbnailCacheDirectoryPath]) {
+        return YES;
+    }
+    return [fileManager removeItemAtPath:kKayokoThumbnailCacheDirectoryPath error:error];
 }
 
 #pragma mark - Legacy Cleanup

@@ -588,22 +588,21 @@ NS_ASSUME_NONNULL_END
         UIView *containerView = [self containerView];
         CGRect fullscreenFrame = [self fullscreenFrame];
         [UIView animateWithDuration:kKayokoSearchFullscreenAnimationDuration
-                              delay:0
-             usingSpringWithDamping:kKayokoSearchFullscreenAnimationDamping
-              initialSpringVelocity:0
-                            options:UIViewAnimationOptionBeginFromCurrentState |
-                                    UIViewAnimationOptionAllowUserInteraction
-                         animations:^{
-                           [containerView setFrame:fullscreenFrame];
-                           [containerView setNeedsLayout];
-                           [containerView layoutIfNeeded];
-                           [self setGrabberFoldProgress:1 headerView:grabberHeaderView];
-                         }
-                         completion:^(__unused BOOL finished) {
-                           if ([self fullscreenPanHeaderView] == grabberHeaderView) {
-                               [self setFullscreenPanHeaderView:nil];
-                           }
-                         }];
+            delay:0
+            usingSpringWithDamping:kKayokoSearchFullscreenAnimationDamping
+            initialSpringVelocity:0
+            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+            animations:^{
+              [containerView setFrame:fullscreenFrame];
+              [containerView setNeedsLayout];
+              [containerView layoutIfNeeded];
+              [self setGrabberFoldProgress:1 headerView:grabberHeaderView];
+            }
+            completion:^(__unused BOOL finished) {
+              if ([self fullscreenPanHeaderView] == grabberHeaderView) {
+                  [self setFullscreenPanHeaderView:nil];
+              }
+            }];
         return;
     }
 
@@ -624,21 +623,21 @@ NS_ASSUME_NONNULL_END
     CGRect fullscreenFrame = [self fullscreenFrame];
     NSTimeInterval duration = [self fullscreenPanAnimationDurationToFrame:fullscreenFrame velocityY:velocity.y];
     [UIView animateWithDuration:duration
-                          delay:0
-         usingSpringWithDamping:kKayokoSearchFullscreenAnimationDamping
-          initialSpringVelocity:0
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-                       [containerView setFrame:fullscreenFrame];
-                       [containerView setNeedsLayout];
-                       [containerView layoutIfNeeded];
-                       [self setGrabberFoldProgress:1 headerView:grabberHeaderView];
-                     }
-                     completion:^(__unused BOOL finished) {
-                       if ([self fullscreenPanHeaderView] == grabberHeaderView) {
-                           [self setFullscreenPanHeaderView:nil];
-                       }
-                     }];
+        delay:0
+        usingSpringWithDamping:kKayokoSearchFullscreenAnimationDamping
+        initialSpringVelocity:0
+        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+        animations:^{
+          [containerView setFrame:fullscreenFrame];
+          [containerView setNeedsLayout];
+          [containerView layoutIfNeeded];
+          [self setGrabberFoldProgress:1 headerView:grabberHeaderView];
+        }
+        completion:^(__unused BOOL finished) {
+          if ([self fullscreenPanHeaderView] == grabberHeaderView) {
+              [self setFullscreenPanHeaderView:nil];
+          }
+        }];
 }
 
 #pragma mark - Bottom Insets
@@ -748,7 +747,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)updateKeyboardBottomInset:(CGFloat)keyboardBottomInset
-          withAnimationParametersFromNotification:(NSNotification *)notification {
+    withAnimationParametersFromNotification:(NSNotification *)notification {
     keyboardBottomInset = MAX(keyboardBottomInset, 0);
     if (fabs([self keyboardBottomInset] - keyboardBottomInset) <= 0.5) {
         return;

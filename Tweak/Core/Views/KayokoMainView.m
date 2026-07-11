@@ -7,8 +7,8 @@
 
 #import "KayokoMainView.h"
 
-#import "KayokoHeaderView.h"
 #import "KayokoHeaderButtonStyle.h"
+#import "KayokoHeaderView.h"
 #import "KayokoPasteboardManager.h"
 
 @interface KayokoMainView ()
@@ -68,8 +68,8 @@
         ]];
 
         NSString *historyTitle = [[KayokoPasteboardManager localizationBundle] localizedStringForKey:@"History"
-                                                                                                 value:nil
-                                                                                                 table:@"Tweak"];
+                                                                                               value:nil
+                                                                                               table:@"Tweak"];
         [self setHeaderView:[[KayokoHeaderView alloc] initWithTitle:historyTitle]];
         [self addSubview:[self headerView]];
 
@@ -96,15 +96,15 @@
 
         [[self headerView] updateStyleForButton:[[self headerView] leadingButton]
                                   withImageName:@"heart"
-                                       imageSize:kKayokoFavoritesButtonImageSize
+                                      imageSize:kKayokoFavoritesButtonImageSize
                                       tintColor:[UIColor labelColor]];
         [[self headerView] updateStyleForButton:[[self headerView] trailingButton]
                                   withImageName:@"trash"
-                                       imageSize:kKayokoClearButtonImageSize
+                                      imageSize:kKayokoClearButtonImageSize
                                       tintColor:[UIColor labelColor]];
         [[self headerView] updateStyleForButton:[[self headerView] alternateTrailingButton]
                                   withImageName:@"arrowshape.turn.up.backward"
-                                       imageSize:kKayokoBackButtonImageSize
+                                      imageSize:kKayokoBackButtonImageSize
                                       tintColor:[UIColor labelColor]];
 
         [self setContentContainerView:[[UIView alloc] init]];
@@ -366,11 +366,11 @@
               direction:(KayokoContentTransitionDirection)direction
              completion:(void (^)(void))completion {
     [self showContentView:viewToShow
-          hideContentView:viewToHide
-                    title:title
-                direction:direction
-      alongsideAnimations:nil
-               completion:completion];
+            hideContentView:viewToHide
+                      title:title
+                  direction:direction
+        alongsideAnimations:nil
+                 completion:completion];
 }
 
 - (void)showContentView:(UIView *)viewToShow
@@ -380,12 +380,12 @@
     alongsideAnimations:(void (^)(void))alongsideAnimations
              completion:(void (^)(void))completion {
     [self showContentView:viewToShow
-          hideContentView:viewToHide
-                    title:title
-             updatesTitle:YES
-                direction:direction
-      alongsideAnimations:alongsideAnimations
-               completion:completion];
+            hideContentView:viewToHide
+                      title:title
+               updatesTitle:YES
+                  direction:direction
+        alongsideAnimations:alongsideAnimations
+                 completion:completion];
 }
 
 - (void)showContentView:(UIView *)viewToShow
@@ -406,12 +406,12 @@
     }
 
     [self showContentView:viewToShow
-        transitioningView:viewToShow
-          hideContentView:viewToHide
-        transitioningView:viewToHide
-                direction:direction
-      alongsideAnimations:alongsideAnimations
-               completion:completion];
+          transitioningView:viewToShow
+            hideContentView:viewToHide
+          transitioningView:viewToHide
+                  direction:direction
+        alongsideAnimations:alongsideAnimations
+                 completion:completion];
 }
 
 - (void)showContentView:(UIView *)viewToShow

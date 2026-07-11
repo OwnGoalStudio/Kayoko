@@ -7,6 +7,8 @@
 
 #import "KayokoPasteboardItem.h"
 
+#import <math.h>
+
 @implementation KayokoPasteboardItem
 
 - (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier
@@ -18,6 +20,7 @@
         [self setBundleIdentifier:bundleIdentifier];
         [self setContent:content];
         [self setImageName:imageName];
+        [self setCapturedAt:[NSDate date]];
         [self setHasLink:[content hasPrefix:@"http://"] || [content hasPrefix:@"https://"]];
     }
 
@@ -43,15 +46,39 @@
     if ([note isKindOfClass:[NSString class]] && [note length] > 0) {
         [item setNote:note];
     }
+    id capturedAt = dictionary[kKayokoItemKeyCapturedAt];
+    if ([capturedAt isKindOfClass:[NSNumber class]]) {
+        NSTimeInterval capturedAtTimestamp = [capturedAt doubleValue];
+        if (isfinite(capturedAtTimestamp) && capturedAtTimestamp > 0.0) {
+            [item setCapturedAt:[NSDate dateWithTimeIntervalSince1970:capturedAtTimestamp]];
+        }
+    }
+    id imagePixelWidth = dictionary[kKayokoItemKeyImagePixelWidth];
+    id imagePixelHeight = dictionary[kKayokoItemKeyImagePixelHeight];
+    if ([imagePixelWidth isKindOfClass:[NSNumber class]] && [imagePixelHeight isKindOfClass:[NSNumber class]]) {
+        NSInteger width = [imagePixelWidth integerValue];
+        NSInteger height = [imagePixelHeight integerValue];
+        if (width > 0 && height > 0) {
+            [item setImagePixelWidth:(NSUInteger)width];
+            [item setImagePixelHeight:(NSUInteger)height];
+        }
+    }
     return item;
 }
 
 - (NSDictionary<NSString *, id> *)dictionaryRepresentation {
+    NSTimeInterval capturedAtTimestamp = [[self capturedAt] timeIntervalSince1970];
+    if (!isfinite(capturedAtTimestamp) || capturedAtTimestamp <= 0.0) {
+        capturedAtTimestamp = [[NSDate date] timeIntervalSince1970];
+    }
     NSMutableDictionary<NSString *, id> *dictionary = [@{
         kKayokoItemKeyBundleIdentifier : [self bundleIdentifier] ?: @"com.apple.springboard",
         kKayokoItemKeyContent : [self content] ?: @"",
         kKayokoItemKeyImageName : [self imageName] ?: @"",
-        kKayokoItemKeyHasLink : @([self hasLink])
+        kKayokoItemKeyHasLink : @([self hasLink]),
+        kKayokoItemKeyCapturedAt : @(capturedAtTimestamp),
+        kKayokoItemKeyImagePixelWidth : @([self imagePixelWidth]),
+        kKayokoItemKeyImagePixelHeight : @([self imagePixelHeight])
     } mutableCopy];
     if ([[self tagUUID] length] > 0) {
         dictionary[kKayokoItemKeyTagUUID] = [self tagUUID];

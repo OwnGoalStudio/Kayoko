@@ -39,6 +39,12 @@ typedef NS_ENUM(NSUInteger, KayokoInitialViewMode) {
     kKayokoInitialViewModePreviousSelection = 2
 };
 
+typedef NS_ENUM(NSUInteger, KayokoItemDetailsMode) {
+    kKayokoItemDetailsModeOff = 0,
+    kKayokoItemDetailsModeImagesOnly = 1,
+    kKayokoItemDetailsModeAll = 2
+};
+
 static NSString *const kKayokoPreferencesIdentifier = @"com.82flex.kayoko.preferences";
 
 static NSString *const kKayokoPreferenceKeyEnabled = @"Enabled";
@@ -58,6 +64,7 @@ static NSString *const kKayokoPreferenceKeyIgnoreRemoteReplication = @"IgnoreRem
 static NSString *const kKayokoPreferenceKeyPlaySoundEffects = @"PlaySoundEffects";
 static NSString *const kKayokoPreferenceKeyPlayHapticFeedback = @"PlayHapticFeedback";
 static NSString *const kKayokoPreferenceKeyPreviewLineCount = @"PreviewLineCount";
+static NSString *const kKayokoPreferenceKeyItemDetailsMode = @"ItemDetailsMode";
 static NSString *const kKayokoPreferenceKeyHeightInPoints = @"HeightInPoints";
 
 static BOOL const kKayokoPreferenceKeyEnabledDefaultValue = YES;
@@ -82,4 +89,6 @@ static BOOL const kKayokoPreferenceKeyIgnoreRemoteReplicationDefaultValue = NO;
 static BOOL const kKayokoPreferenceKeyPlaySoundEffectsDefaultValue = YES;
 static BOOL const kKayokoPreferenceKeyPlayHapticFeedbackDefaultValue = YES;
 static NSUInteger const kKayokoPreferenceKeyPreviewLineCountDefaultValue = 1;
+static KayokoItemDetailsMode const kKayokoPreferenceKeyItemDetailsModeDefaultValue =
+    kKayokoItemDetailsModeImagesOnly;
 static CGFloat const kKayokoPreferenceKeyHeightInPointsDefaultValue = 420;

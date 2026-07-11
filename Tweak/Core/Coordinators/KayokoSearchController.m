@@ -17,6 +17,8 @@
 #import "KayokoTagCatalog.h"
 #import "KayokoTagColorFormatter.h"
 
+static NSTimeInterval const kKayokoSearchInputDebounceInterval = 0.15;
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface KayokoSearchController () <UISearchBarDelegate, KayokoSearchPresentationControllerDelegate,
@@ -42,6 +44,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign, getter=isSearchActive) BOOL searchActive;
 @property(nonatomic, assign) BOOL isResettingSearch;
 @property(nonatomic, assign) NSUInteger searchRequestIdentifier;
+@property(nonatomic, copy, nullable) dispatch_block_t pendingTextSearchBlock;
+@property(nonatomic, strong, nullable) KayokoSearchCriteria *pendingTextSearchCriteria;
+@property(nonatomic, weak, nullable) UISearchBar *pendingTextSearchBar;
 @property(nonatomic, assign) BOOL loadingAppTokens;
 @property(nonatomic, assign) BOOL appTokensDirty;
 @property(nonatomic, assign) BOOL needsAppTokenReloadAfterCurrentLoad;
@@ -122,6 +127,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)dealloc {
+    [self cancelPendingTextSearch];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
@@ -394,6 +400,10 @@ NS_ASSUME_NONNULL_END
 
 - (void)attachToListViewController:(KayokoHistoryListViewController *)listViewController
                     hidesSearchBar:(BOOL)hidesSearchBar {
+    UISearchBar *searchBar = [self searchBarForTableView:[listViewController tableView]];
+    if ([self pendingTextSearchBar] && [self pendingTextSearchBar] != searchBar) {
+        [self cancelPendingTextSearch];
+    }
     [[self presentationController] attachToTableView:[listViewController tableView] hidesSearchBar:hidesSearchBar];
 }
 
@@ -578,12 +588,24 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Search Application
 
+- (void)cancelPendingTextSearch {
+    dispatch_block_t block = [self pendingTextSearchBlock];
+    if (block) {
+        dispatch_block_cancel(block);
+    }
+    [self setPendingTextSearchBlock:nil];
+    [self setPendingTextSearchCriteria:nil];
+    [self setPendingTextSearchBar:nil];
+}
+
 - (void)invalidatePendingSearchRequests {
+    [self cancelPendingTextSearch];
     [self setSearchRequestIdentifier:[self searchRequestIdentifier] + 1];
 }
 
 - (void)applySearchCriteria:(KayokoSearchCriteria *)criteria
        toListViewController:(KayokoHistoryListViewController *)listViewController {
+    [self cancelPendingTextSearch];
     if (![self isSearchActive]) {
         [self invalidatePendingSearchRequests];
         [listViewController clearSearch];
@@ -631,16 +653,66 @@ NS_ASSUME_NONNULL_END
     [self applySearchCriteria:criteria toListViewController:listViewController];
 }
 
+- (void)scheduleTextSearchFromSearchBar:(UISearchBar *)searchBar {
+    if ([self isResettingSearch] ||
+        [self listViewControllerForSearchBar:searchBar] != [self activeListViewController]) {
+        return;
+    }
+
+    if ([[searchBar searchTextField] markedTextRange]) {
+        [self cancelPendingTextSearch];
+        return;
+    }
+
+    KayokoHistoryListViewController *listViewController = [self listViewControllerForSearchBar:searchBar];
+    KayokoSearchCriteria *criteria = [self criteriaFromSearchBar:searchBar listViewController:listViewController];
+    [self syncSearchTokensForSearchBar:searchBar criteria:criteria];
+
+    if ([criteria isEqualToCriteria:[listViewController searchCriteria]]) {
+        [self cancelPendingTextSearch];
+        return;
+    }
+    if ([self pendingTextSearchBar] == searchBar && [[self pendingTextSearchCriteria] isEqualToCriteria:criteria]) {
+        return;
+    }
+    if ([[criteria searchText] length] == 0) {
+        [self applySearchCriteria:criteria toListViewController:listViewController];
+        return;
+    }
+
+    [self cancelPendingTextSearch];
+    [self setPendingTextSearchCriteria:criteria];
+    [self setPendingTextSearchBar:searchBar];
+    __weak typeof(self) weakSelf = self;
+    dispatch_block_t block = dispatch_block_create(0, ^{
+      __strong typeof(weakSelf) strongSelf = weakSelf;
+      if (!strongSelf || [strongSelf pendingTextSearchCriteria] != criteria ||
+          [strongSelf pendingTextSearchBar] != searchBar) {
+          return;
+      }
+
+      [strongSelf setPendingTextSearchBlock:nil];
+      [strongSelf setPendingTextSearchCriteria:nil];
+      [strongSelf setPendingTextSearchBar:nil];
+      [strongSelf applySearchCriteria:criteria toListViewController:listViewController];
+    });
+    [self setPendingTextSearchBlock:block];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kKayokoSearchInputDebounceInterval * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), block);
+}
+
 - (void)applySearchToActiveTableView {
     [self applySearchFromSearchBar:[self activeSearchBar]];
 }
 
 - (void)syncSearchBarForListViewController:(KayokoHistoryListViewController *)listViewController {
     UISearchBar *searchBar = [self searchBarForTableView:[listViewController tableView]];
+    KayokoSearchCriteria *criteria = [self pendingTextSearchBar] == searchBar ? [self pendingTextSearchCriteria]
+                                                                              : [listViewController searchCriteria];
     BOOL wasResettingSearch = [self isResettingSearch];
     [self setIsResettingSearch:YES];
-    [searchBar setText:[listViewController searchText]];
-    [self syncSearchTokensForSearchBar:searchBar criteria:[listViewController searchCriteria]];
+    [searchBar setText:[criteria searchText]];
+    [self syncSearchTokensForSearchBar:searchBar criteria:criteria];
     [self setIsResettingSearch:wasResettingSearch];
 }
 
@@ -768,6 +840,7 @@ NS_ASSUME_NONNULL_END
                      panVelocityY:(CGFloat)panVelocityY
     coordinatesVisibleSearchReset:(BOOL)coordinatesVisibleSearchReset
                        completion:(void (^)(void))completion {
+    [self cancelPendingTextSearch];
     if (![self isSearchActive] && !clearsSearch) {
         if (animations) {
             animations();
@@ -848,6 +921,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (CGRect)resetSearchStateRestoringContainerFrame:(BOOL)restoresContainerFrame {
+    [self cancelPendingTextSearch];
     BOOL hasSearch =
         [[self historyListViewController] hasActiveSearch] || [[self favoritesListViewController] hasActiveSearch];
     if (![self isSearchActive] && !hasSearch) {
@@ -863,9 +937,9 @@ NS_ASSUME_NONNULL_END
     [self clearSearchForListViewController:[self historyListViewController]];
     [self clearSearchForListViewController:[self favoritesListViewController]];
     [self applySearchToActiveTableView];
-    CGRect normalFrame = [[self presentationController]
-        resetAfterSearchStateClearedWithActiveTableView:[self activeTableView]
-                              restoresContainerFrame:restoresContainerFrame];
+    CGRect normalFrame =
+        [[self presentationController] resetAfterSearchStateClearedWithActiveTableView:[self activeTableView]
+                                                                restoresContainerFrame:restoresContainerFrame];
     [self resetSearchSessionState];
     [self setIsResettingSearch:NO];
     return normalFrame;
@@ -930,28 +1004,16 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Search Text Events
 
 - (void)handleSearchTextFieldEditingChanged:(UITextField *)textField {
-    if ([self isResettingSearch]) {
-        return;
-    }
     UISearchBar *searchBar =
         textField == [[self favoritesSearchBar] searchTextField] ? [self favoritesSearchBar] : [self historySearchBar];
-    if ([self listViewControllerForSearchBar:searchBar] != [self activeListViewController]) {
-        return;
-    }
-    [self applySearchFromSearchBar:searchBar];
+    [self scheduleTextSearchFromSearchBar:searchBar];
 }
 
 - (void)handleSearchTextFieldTextDidChangeNotification:(NSNotification *)notification {
-    if ([self isResettingSearch]) {
-        return;
-    }
     UITextField *textField = [notification object];
     UISearchBar *searchBar =
         textField == [[self favoritesSearchBar] searchTextField] ? [self favoritesSearchBar] : [self historySearchBar];
-    if ([self listViewControllerForSearchBar:searchBar] != [self activeListViewController]) {
-        return;
-    }
-    [self applySearchFromSearchBar:searchBar];
+    [self scheduleTextSearchFromSearchBar:searchBar];
 }
 
 #pragma mark - UISearchBarDelegate
@@ -971,13 +1033,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)searchBar:(UISearchBar *)searchBar textDidChange:(NSString *)searchText {
-    if ([self isResettingSearch]) {
-        return;
-    }
-    if ([self listViewControllerForSearchBar:searchBar] != [self activeListViewController]) {
-        return;
-    }
-    [self applySearchFromSearchBar:searchBar];
+    (void)searchText;
+    [self scheduleTextSearchFromSearchBar:searchBar];
 }
 
 - (void)searchBarSearchButtonClicked:(UISearchBar *)searchBar {

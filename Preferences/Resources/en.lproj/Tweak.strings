@@ -1,4 +1,6 @@
 "%@\n%@" = "%@\n%@";
+"%lu character" = "%lu character";
+"%lu characters" = "%lu characters";
 "Addresses" = "Addresses";
 "Applications" = "Applications";
 "Back" = "Back";
@@ -16,6 +18,7 @@
 "History" = "History";
 "History item not found" = "History item not found";
 "Images" = "Images";
+"Just Now" = "Just now";
 "Kayoko" = "Kayoko";
 "Kayoko history is unavailable while package maintenance is in progress. Try again after installation finishes." = "Kayoko history is unavailable while package maintenance is in progress. Try again after installation finishes.";
 "Kayoko history search index contains unprocessed items. Reinstalling Kayoko may resolve this issue." = "Kayoko history search index contains unprocessed items. Reinstalling Kayoko may resolve this issue.";

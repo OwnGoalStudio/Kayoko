@@ -7,7 +7,9 @@
 #import "KayokoPasteboardItem.h"
 #import "KayokoSearchCriteria.h"
 
+#import <ImageIO/ImageIO.h>
 #import <limits.h>
+#import <math.h>
 #import <roothide.h>
 #import <sqlite3.h>
 #import <string.h>
@@ -15,6 +17,7 @@
 static NSString *const kKayokoHistoryStoreErrorDomain = @"com.82flex.kayoko.history-store";
 static NSString *const kKayokoHistoryStoreMigrationKey = @"v4_legacy_sources_imported";
 static NSString *const kKayokoHistoryStoreSearchIndexSchemaVersionKey = @"search_index_schema_version";
+static NSString *const kKayokoHistoryStoreImageDimensionsBackfillKey = @"image_dimensions_backfilled";
 static NSInteger const kKayokoHistoryStoreSearchIndexVersion = 2;
 static NSInteger const kKayokoHistoryStoreDefaultBusyTimeoutMilliseconds = 3000;
 
@@ -45,6 +48,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)ensureTagUUIDColumnWithError:(NSError **)error;
 - (BOOL)ensureNoteColumnWithError:(NSError **)error;
+- (BOOL)ensureImageDimensionColumnsWithError:(NSError **)error;
+- (BOOL)backfillImageDimensionsIfNeededWithError:(NSError **)error;
+- (CGSize)imagePixelSizeForImageName:(NSString *)imageName;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -103,6 +109,8 @@ NS_ASSUME_NONNULL_END
                                              "bundle_identifier TEXT NOT NULL,"
                                              "content TEXT NOT NULL,"
                                              "image_name TEXT NOT NULL,"
+                                             "image_width INTEGER NOT NULL DEFAULT 0,"
+                                             "image_height INTEGER NOT NULL DEFAULT 0,"
                                              "has_link INTEGER NOT NULL DEFAULT 0,"
                                              "created_at REAL NOT NULL,"
                                              "updated_at REAL NOT NULL,"
@@ -163,7 +171,11 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
-    return YES;
+    if (![self ensureImageDimensionColumnsWithError:error]) {
+        return NO;
+    }
+
+    return [self backfillImageDimensionsIfNeededWithError:error];
 }
 
 - (BOOL)upgradeHistorySchemaWithError:(NSError **)error {
@@ -561,7 +573,7 @@ NS_ASSUME_NONNULL_END
     NSMutableArray<NSDictionary<NSString *, id> *> *items = [[NSMutableArray alloc] init];
     NSMutableString *sql =
         [NSMutableString stringWithString:@"SELECT bundle_identifier, content, image_name, has_link, "
-                                           "tag_uuid, note "
+                                           "tag_uuid, note, created_at, image_width, image_height "
                                            "FROM history_items WHERE history_key = ?"];
     NSMutableArray<id> *bindings = [NSMutableArray arrayWithObject:historyKey ?: @""];
 
@@ -631,7 +643,8 @@ NS_ASSUME_NONNULL_END
 
 - (NSDictionary<NSString *, id> *)latestItemForHistoryKey:(NSString *)historyKey error:(NSError **)error {
     sqlite3_stmt *statement = NULL;
-    const char *sql = "SELECT bundle_identifier, content, image_name, has_link, tag_uuid, note "
+    const char *sql = "SELECT bundle_identifier, content, image_name, has_link, tag_uuid, note, created_at, "
+                      "image_width, image_height "
                       "FROM history_items WHERE history_key = ? ORDER BY sequence DESC LIMIT 1";
 
     if (![self prepareStatement:sql statement:&statement error:error]) {
@@ -749,6 +762,107 @@ NS_ASSUME_NONNULL_END
                            inTable:@"history_items"
                usingAlterStatement:@"ALTER TABLE history_items ADD COLUMN note TEXT NULL"
                              error:error];
+}
+
+- (BOOL)ensureImageDimensionColumnsWithError:(NSError **)error {
+    if (![self ensureColumnNamed:@"image_width"
+                         inTable:@"history_items"
+             usingAlterStatement:@"ALTER TABLE history_items ADD COLUMN image_width INTEGER NOT NULL DEFAULT 0"
+                           error:error]) {
+        return NO;
+    }
+    return [self ensureColumnNamed:@"image_height"
+                           inTable:@"history_items"
+               usingAlterStatement:@"ALTER TABLE history_items ADD COLUMN image_height INTEGER NOT NULL DEFAULT 0"
+                             error:error];
+}
+
+- (CGSize)imagePixelSizeForImageName:(NSString *)imageName {
+    if ([imageName length] == 0) {
+        return CGSizeZero;
+    }
+
+    NSString *imagePath = [[self imagesPath] stringByAppendingPathComponent:imageName];
+    CGImageSourceRef imageSource =
+        CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:imagePath], NULL);
+    if (!imageSource) {
+        return CGSizeZero;
+    }
+    NSDictionary<NSString *, id> *properties =
+        CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(imageSource, 0, NULL));
+    CFRelease(imageSource);
+
+    CGFloat width = [properties[(NSString *)kCGImagePropertyPixelWidth] doubleValue];
+    CGFloat height = [properties[(NSString *)kCGImagePropertyPixelHeight] doubleValue];
+    if (!isfinite(width) || !isfinite(height) || width <= 0 || height <= 0) {
+        return CGSizeZero;
+    }
+    NSUInteger orientation = [properties[(NSString *)kCGImagePropertyOrientation] unsignedIntegerValue];
+    return orientation >= 5 && orientation <= 8 ? CGSizeMake(height, width) : CGSizeMake(width, height);
+}
+
+- (BOOL)backfillImageDimensionsIfNeededWithError:(NSError **)error {
+    if ([[self metadataValueForKey:kKayokoHistoryStoreImageDimensionsBackfillKey error:error] boolValue]) {
+        return YES;
+    }
+    if (error && *error) {
+        return NO;
+    }
+
+    sqlite3_stmt *statement = NULL;
+    const char *sql = "SELECT id, image_name FROM history_items "
+                      "WHERE image_name <> '' AND (image_width <= 0 OR image_height <= 0)";
+    if (![self prepareStatement:sql statement:&statement error:error]) {
+        return NO;
+    }
+    NSMutableArray<NSDictionary<NSString *, id> *> *rows = [[NSMutableArray alloc] init];
+    int stepResult = SQLITE_OK;
+    while ((stepResult = sqlite3_step(statement)) == SQLITE_ROW) {
+        [rows addObject:@{
+            @"id" : @(sqlite3_column_int64(statement, 0)),
+            @"image_name" : [self stringFromColumn:statement index:1] ?: @""
+        }];
+    }
+    sqlite3_finalize(statement);
+    if (stepResult != SQLITE_DONE) {
+        [self populateError:error code:stepResult message:[NSString stringWithUTF8String:sql]];
+        return NO;
+    }
+
+    NSMutableArray<NSDictionary<NSString *, id> *> *dimensionUpdates = [[NSMutableArray alloc] init];
+    for (NSDictionary<NSString *, id> *row in rows) {
+        CGSize pixelSize = [self imagePixelSizeForImageName:row[@"image_name"]];
+        if (pixelSize.width <= 0 || pixelSize.height <= 0) {
+            continue;
+        }
+        [dimensionUpdates addObject:@{
+            @"id" : row[@"id"],
+            @"width" : @(llround(pixelSize.width)),
+            @"height" : @(llround(pixelSize.height))
+        }];
+    }
+
+    if (![self beginTransactionWithError:error]) {
+        return NO;
+    }
+    BOOL success = YES;
+    for (NSDictionary<NSString *, id> *update in dimensionUpdates) {
+        success = [self executeStatement:@"UPDATE history_items SET image_width = ?, image_height = ? WHERE id = ?"
+                                bindings:@[ update[@"width"], update[@"height"], update[@"id"] ]
+                                   error:error];
+        if (!success) {
+            break;
+        }
+    }
+    if (success) {
+        success = [self setMetadataValue:@"1" forKey:kKayokoHistoryStoreImageDimensionsBackfillKey error:error];
+    }
+    if (success) {
+        return [self commitTransactionWithError:error];
+    }
+
+    [self rollbackTransaction];
+    return NO;
 }
 
 #pragma mark - Search Index Helpers
@@ -1000,8 +1114,8 @@ NS_ASSUME_NONNULL_END
 #pragma mark - User Metadata
 
 - (NSDictionary<NSString *, NSString *> *)storedUserMetadataForHistoryKey:(NSString *)historyKey
-                                                                   content:(NSString *)content
-                                                                     error:(NSError **)error {
+                                                                  content:(NSString *)content
+                                                                    error:(NSError **)error {
     if ([historyKey length] == 0 || [content length] == 0) {
         return @{};
     }
@@ -1045,8 +1159,18 @@ NS_ASSUME_NONNULL_END
                                                              key:kKayokoItemKeyBundleIdentifier
                                                         fallback:@"com.apple.springboard"];
     NSString *imageName = [self stringValueFromDictionary:dictionary key:kKayokoItemKeyImageName fallback:@""];
-    NSDictionary<NSString *, NSString *> *storedMetadata =
-        [self storedUserMetadataForHistoryKey:historyKey content:content error:error];
+    NSInteger imagePixelWidth = [dictionary[kKayokoItemKeyImagePixelWidth] integerValue];
+    NSInteger imagePixelHeight = [dictionary[kKayokoItemKeyImagePixelHeight] integerValue];
+    if ([imageName length] > 0 && (imagePixelWidth <= 0 || imagePixelHeight <= 0)) {
+        CGSize pixelSize = [self imagePixelSizeForImageName:imageName];
+        imagePixelWidth = (NSInteger)llround(pixelSize.width);
+        imagePixelHeight = (NSInteger)llround(pixelSize.height);
+    }
+    imagePixelWidth = MAX(imagePixelWidth, 0);
+    imagePixelHeight = MAX(imagePixelHeight, 0);
+    NSDictionary<NSString *, NSString *> *storedMetadata = [self storedUserMetadataForHistoryKey:historyKey
+                                                                                         content:content
+                                                                                           error:error];
     if (error && *error) {
         return NO;
     }
@@ -1061,6 +1185,14 @@ NS_ASSUME_NONNULL_END
     NSNumber *hasLink = @([[dictionary objectForKey:kKayokoItemKeyHasLink] boolValue]);
     NSNumber *sequence = @([self nextSequence]);
     NSNumber *now = @([[NSDate date] timeIntervalSince1970]);
+    id capturedAtValue = dictionary[kKayokoItemKeyCapturedAt];
+    NSTimeInterval capturedAtTimestamp = [capturedAtValue isKindOfClass:[NSNumber class]]
+                                             ? [capturedAtValue doubleValue]
+                                             : [now doubleValue];
+    if (!isfinite(capturedAtTimestamp) || capturedAtTimestamp <= 0.0) {
+        capturedAtTimestamp = [now doubleValue];
+    }
+    NSNumber *capturedAt = @(capturedAtTimestamp);
 
     if (![self executeStatement:@"DELETE FROM history_items WHERE history_key = ? AND content = ?"
                        bindings:@[ historyKey, content ]
@@ -1068,17 +1200,18 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
-    if (![self executeStatement:
-                   @"INSERT INTO history_items "
-                    "(history_key, bundle_identifier, content, image_name, has_link, created_at, updated_at, sequence, "
-                    "tag_uuid, note, search_index_version) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
-                       bindings:@[
-                           historyKey, bundleIdentifier, content, imageName, hasLink, now, now, sequence,
-                           [tagUUID length] > 0 ? tagUUID : (id)[NSNull null],
-                           [note length] > 0 ? note : (id)[NSNull null]
-                       ]
-                          error:error]) {
+    if (![self
+            executeStatement:
+                @"INSERT INTO history_items "
+                 "(history_key, bundle_identifier, content, image_name, image_width, image_height, has_link, "
+                 "created_at, updated_at, sequence, tag_uuid, note, search_index_version) "
+                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
+                    bindings:@[
+                        historyKey, bundleIdentifier, content, imageName, @(imagePixelWidth), @(imagePixelHeight),
+                        hasLink, capturedAt, now, sequence,
+                        [tagUUID length] > 0 ? tagUUID : (id)[NSNull null], [note length] > 0 ? note : (id)[NSNull null]
+                    ]
+                       error:error]) {
         return NO;
     }
 
@@ -1236,12 +1369,21 @@ NS_ASSUME_NONNULL_END
     BOOL hasLink = sqlite3_column_int(statement, 3) != 0;
     NSString *tagUUID = [self stringFromColumn:statement index:4];
     NSString *note = [self stringFromColumn:statement index:5];
+    NSTimeInterval capturedAtTimestamp = sqlite3_column_double(statement, 6);
+    if (!isfinite(capturedAtTimestamp) || capturedAtTimestamp <= 0.0) {
+        capturedAtTimestamp = [[NSDate date] timeIntervalSince1970];
+    }
+    sqlite3_int64 imagePixelWidth = MAX(sqlite3_column_int64(statement, 7), 0);
+    sqlite3_int64 imagePixelHeight = MAX(sqlite3_column_int64(statement, 8), 0);
 
     NSMutableDictionary<NSString *, id> *dictionary = [@{
         kKayokoItemKeyBundleIdentifier : bundleIdentifier,
         kKayokoItemKeyContent : content,
         kKayokoItemKeyImageName : imageName,
-        kKayokoItemKeyHasLink : @(hasLink)
+        kKayokoItemKeyHasLink : @(hasLink),
+        kKayokoItemKeyCapturedAt : @(capturedAtTimestamp),
+        kKayokoItemKeyImagePixelWidth : @(imagePixelWidth),
+        kKayokoItemKeyImagePixelHeight : @(imagePixelHeight)
     } mutableCopy];
     if ([tagUUID length] > 0) {
         dictionary[kKayokoItemKeyTagUUID] = tagUUID;

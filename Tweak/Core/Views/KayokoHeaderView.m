@@ -77,8 +77,9 @@ static CGFloat const kKayokoTrailingHeaderButtonCenterSpacing = 44;
             [[_trailingButton centerXAnchor] constraintEqualToAnchor:[self trailingAnchor]
                                                             constant:-kKayokoTrailingHeaderButtonCenterXInset],
             [[_alternateTrailingButton centerYAnchor] constraintEqualToAnchor:[_leadingButton centerYAnchor]],
-            [[_alternateTrailingButton centerXAnchor] constraintEqualToAnchor:[_trailingButton centerXAnchor]
-                                                                     constant:-kKayokoTrailingHeaderButtonCenterSpacing],
+            [[_alternateTrailingButton centerXAnchor]
+                constraintEqualToAnchor:[_trailingButton centerXAnchor]
+                               constant:-kKayokoTrailingHeaderButtonCenterSpacing],
             [[_titleTapControl leadingAnchor] constraintEqualToAnchor:[_titleLabel leadingAnchor]],
             [[_titleTapControl trailingAnchor] constraintEqualToAnchor:[_alternateTrailingButton leadingAnchor]
                                                               constant:-kKayokoTitleTapControlTrailingSpacing],
@@ -107,7 +108,7 @@ static CGFloat const kKayokoTrailingHeaderButtonCenterSpacing = 44;
 
 - (void)updateStyleForButton:(UIButton *)button
                withImageName:(NSString *)imageName
-                    imageSize:(NSUInteger)imageSize
+                   imageSize:(NSUInteger)imageSize
                    tintColor:(UIColor *)color {
     UIImageSymbolConfiguration *configuration =
         [UIImageSymbolConfiguration configurationWithPointSize:imageSize weight:UIImageSymbolWeightMedium];

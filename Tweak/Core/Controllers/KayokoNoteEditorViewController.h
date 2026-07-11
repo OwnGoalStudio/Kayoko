@@ -15,14 +15,13 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol KayokoNoteEditorViewControllerDelegate <NSObject>
 
 - (void)noteEditorViewController:(KayokoNoteEditorViewController *)controller
-               didRequestSaveNote:(nullable NSString *)note;
+              didRequestSaveNote:(nullable NSString *)note;
 - (void)noteEditorViewController:(KayokoNoteEditorViewController *)controller
     didUpdateKeyboardBottomInset:(CGFloat)keyboardBottomInset
                animationDuration:(NSTimeInterval)animationDuration
                          options:(UIViewAnimationOptions)options;
 
 @end
-
 
 @interface KayokoNoteEditorViewController : UIViewController
 
@@ -31,8 +30,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, readonly, nullable) KayokoPasteboardItem *item;
 
 - (void)prepareForItem:(KayokoPasteboardItem *)item
-      presentationCell:(KayokoTableViewCell *)presentationCell
-            cellHeight:(CGFloat)cellHeight
+       presentationCell:(KayokoTableViewCell *)presentationCell
+             cellHeight:(CGFloat)cellHeight
     keyboardBottomInset:(CGFloat)keyboardBottomInset;
 - (void)refreshLastValidKeyboardBottomInset;
 - (CGFloat)lastValidKeyboardBottomInset;

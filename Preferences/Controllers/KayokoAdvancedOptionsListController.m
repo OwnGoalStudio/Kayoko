@@ -16,6 +16,15 @@
 
 static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82flex.kayoko";
 
+@interface NSTask : NSObject
+- (void)setLaunchPath:(NSString *)launchPath;
+- (void)setArguments:(NSArray<NSString *> *)arguments;
+- (void)setStandardOutput:(id)standardOutput;
+- (void)setStandardError:(id)standardError;
+- (void)launch;
+- (void)waitUntilExit;
+@end
+
 @implementation KayokoAdvancedOptionsListController
 
 #pragma mark - Specifiers
@@ -152,6 +161,34 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
     [self presentViewController:restoreAlert animated:YES completion:nil];
 }
 
+- (void)resetThumbnailCachePrompt {
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    UIAlertController *alert = [UIAlertController
+        alertControllerWithTitle:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Root"]
+                         message:[bundle localizedStringForKey:
+                                             @"Are you sure you want to reset the thumbnail cache? Thumbnails will "
+                                             @"be regenerated as needed."
+                                                         value:nil
+                                                         table:@"AdvancedOptions"]
+                  preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *resetAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Reset Thumbnail Cache"
+                                                                                        value:nil
+                                                                                        table:@"AdvancedOptions"]
+                                                          style:UIAlertActionStyleDefault
+                                                        handler:^(UIAlertAction *action) {
+                                                          (void)action;
+                                                          [self resetThumbnailCache];
+                                                        }];
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[bundle localizedStringForKey:@"Cancel"
+                                                                                         value:nil
+                                                                                         table:@"AdvancedOptions"]
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
+    [alert addAction:resetAction];
+    [alert addAction:cancelAction];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
 - (void)presentClearConfirmationWithMessageKey:(NSString *)messageKey
                                 actionTitleKey:(NSString *)actionTitleKey
                               notificationName:(NSString *)notificationName {
@@ -279,6 +316,42 @@ static NSString *const kKayokoDataDirectoryPath = @"/var/mobile/Library/com.82fl
 }
 
 #pragma mark - Maintenance Actions
+
+- (void)resetThumbnailCache {
+    NSString *updaterPath = [self kayokoUpdaterPath];
+    if ([updaterPath length] == 0) {
+        NSLog(@"Kayoko: Unable to reset thumbnail cache because kayoko_updater is unavailable");
+        return;
+    }
+
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+      @try {
+          NSTask *task = [[NSTask alloc] init];
+          [task setLaunchPath:updaterPath];
+          [task setArguments:@[ @"reset-thumbnail-cache" ]];
+          [task setStandardOutput:[NSPipe pipe]];
+          [task setStandardError:[NSPipe pipe]];
+          [task launch];
+          [task waitUntilExit];
+      } @catch (NSException *exception) {
+          NSLog(@"Kayoko: Unable to launch thumbnail cache reset: %@", exception);
+      }
+    });
+}
+
+- (NSString *)kayokoUpdaterPath {
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSArray<NSString *> *candidatePaths = @[
+        jbroot(@"/usr/local/libexec/kayoko_updater"), @"/var/jb/usr/local/libexec/kayoko_updater",
+        @"/usr/local/libexec/kayoko_updater"
+    ];
+    for (NSString *path in candidatePaths) {
+        if ([fileManager isExecutableFileAtPath:path]) {
+            return path;
+        }
+    }
+    return nil;
+}
 
 - (void)resetPreferences {
     NSUserDefaults *userDefaults = [[NSUserDefaults alloc] initWithSuiteName:kKayokoPreferencesIdentifier];

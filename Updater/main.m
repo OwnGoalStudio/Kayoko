@@ -55,6 +55,25 @@ static int runPostinstall(void) {
                     [[[error localizedDescription] description] UTF8String]);
         }
         syncCredentialBestEffort();
+
+        error = nil;
+        if (![updater resetThumbnailCacheWithError:&error]) {
+            fprintf(stderr, "Kayoko: Unable to reset thumbnail cache during postinst: %s\n",
+                    [[[error localizedDescription] description] UTF8String]);
+        }
+        return 0;
+    }
+}
+
+static int runResetThumbnailCache(void) {
+    @autoreleasepool {
+        KayokoPostinstallUpdater *updater = [[KayokoPostinstallUpdater alloc] init];
+        NSError *error = nil;
+        if (![updater resetThumbnailCacheWithError:&error]) {
+            fprintf(stderr, "Kayoko: Command reset-thumbnail-cache failed: %s\n",
+                    [[[error localizedDescription] description] UTF8String]);
+            return 1;
+        }
         return 0;
     }
 }
@@ -78,7 +97,7 @@ static int runSyncCredential(void) {
 int main(int argc, char *argv[]) {
     @autoreleasepool {
         if (argc < 2) {
-            fprintf(stderr, "usage: kayoko_updater postinst|sync-credential\n");
+            fprintf(stderr, "usage: kayoko_updater postinst|reset-thumbnail-cache|sync-credential\n");
             return 64;
         }
 
@@ -88,6 +107,9 @@ int main(int argc, char *argv[]) {
         }
         if ([command isEqualToString:@"sync-credential"]) {
             return runSyncCredential();
+        }
+        if ([command isEqualToString:@"reset-thumbnail-cache"]) {
+            return runResetThumbnailCache();
         }
 
         fprintf(stderr, "Kayoko: Unknown command: %s\n", argv[1]);

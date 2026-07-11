@@ -37,6 +37,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, nullable) NSString *presentationHiddenItemContent;
 
 - (KayokoTableViewCell *)newCellForItem:(KayokoPasteboardItem *)item addsPreviewGesture:(BOOL)addsPreviewGesture;
+- (void)loadThumbnailForItem:(KayokoPasteboardItem *)item intoCell:(KayokoTableViewCell *)cell;
+- (void)refreshVisibleItemDetails;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -103,6 +105,14 @@ NS_ASSUME_NONNULL_END
     return [[self tableView] previewLineCount];
 }
 
+- (void)setItemDetailsMode:(KayokoItemDetailsMode)itemDetailsMode {
+    [[self tableView] setItemDetailsMode:itemDetailsMode];
+}
+
+- (KayokoItemDetailsMode)itemDetailsMode {
+    return [[self tableView] itemDetailsMode];
+}
+
 - (void)refreshSearchPlaceholder {
     BOOL showsNoSearchResults = [self hasActiveSearch] && ![self isBrowsingSearchTokens] && [[self items] count] > 0 &&
                                 [[self displayedItems] count] == 0;
@@ -112,6 +122,21 @@ NS_ASSUME_NONNULL_END
 - (void)reloadTableView {
     [[self tableView] reloadData];
     [self refreshSearchPlaceholder];
+}
+
+- (void)refreshVisibleItemDetails {
+    for (NSIndexPath *indexPath in [[self tableView] indexPathsForVisibleRows]) {
+        KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:[self itemDictionaryAtIndexPath:indexPath]];
+        if (!item) {
+            continue;
+        }
+        KayokoTableViewCellContent *content = [[self cellContentProvider] cellContentForItem:item
+                                                                             previewLineCount:[self previewLineCount]
+                                                                              itemDetailsMode:[self itemDetailsMode]
+                                                                                    searchText:[self searchText]];
+        KayokoTableViewCell *cell = (KayokoTableViewCell *)[[self tableView] cellForRowAtIndexPath:indexPath];
+        [cell applyDetailContent:content];
+    }
 }
 
 - (void)scrollToTopAnimated:(BOOL)animated {
@@ -149,30 +174,29 @@ NS_ASSUME_NONNULL_END
         return YES;
     }
 
-    for (NSUInteger candidateInsertedCount = 1; candidateInsertedCount <= newCount; candidateInsertedCount++) {
-        NSUInteger retainedCount = MIN(oldCount, newCount - candidateInsertedCount);
-        if (retainedCount == 0 || candidateInsertedCount + retainedCount != newCount) {
-            continue;
-        }
-
-        NSArray<NSDictionary<NSString *, id> *> *newRetainedItems =
-            [newItems subarrayWithRange:NSMakeRange(candidateInsertedCount, retainedCount)];
-        NSArray<NSDictionary<NSString *, id> *> *oldRetainedItems =
-            [oldItems subarrayWithRange:NSMakeRange(0, retainedCount)];
-        if (![newRetainedItems isEqualToArray:oldRetainedItems]) {
-            continue;
-        }
-
-        if (insertedCount) {
-            *insertedCount = candidateInsertedCount;
-        }
-        if (removedCount) {
-            *removedCount = oldCount - retainedCount;
-        }
-        return YES;
+    NSUInteger candidateInsertedCount = [newItems indexOfObject:oldItems[0]];
+    if (candidateInsertedCount == NSNotFound || candidateInsertedCount == 0) {
+        return NO;
     }
 
-    return NO;
+    NSUInteger retainedCount = MIN(oldCount, newCount - candidateInsertedCount);
+    if (retainedCount == 0 || candidateInsertedCount + retainedCount != newCount) {
+        return NO;
+    }
+
+    for (NSUInteger index = 0; index < retainedCount; index++) {
+        if (![newItems[candidateInsertedCount + index] isEqual:oldItems[index]]) {
+            return NO;
+        }
+    }
+
+    if (insertedCount) {
+        *insertedCount = candidateInsertedCount;
+    }
+    if (removedCount) {
+        *removedCount = oldCount - retainedCount;
+    }
+    return YES;
 }
 
 - (NSUInteger)normalizedLimit:(NSUInteger)limit {
@@ -229,6 +253,7 @@ NS_ASSUME_NONNULL_END
     NSArray<NSDictionary<NSString *, id> *> *oldItems = [self items] ?: @[];
     NSArray<NSDictionary<NSString *, id> *> *newItems = items ?: @[];
     if ([oldItems isEqualToArray:newItems] && [[self tableView] numberOfRowsInSection:0] == [oldItems count]) {
+        [self refreshVisibleItemDetails];
         return;
     }
 
@@ -264,6 +289,7 @@ NS_ASSUME_NONNULL_END
           }
         }
         completion:^(__unused BOOL finished) {
+          [self refreshVisibleItemDetails];
           [self refreshSearchPlaceholder];
         }];
 }
@@ -334,6 +360,7 @@ NS_ASSUME_NONNULL_END
 
     if ([oldItems isEqualToArray:newItems] &&
         [[self tableView] numberOfRowsInSection:0] == [[self displayedItems] count]) {
+        [self refreshVisibleItemDetails];
         return;
     }
 
@@ -351,6 +378,7 @@ NS_ASSUME_NONNULL_END
         [self setItems:newItems];
         [[self tableView] reloadRowsAtIndexPaths:@[ [NSIndexPath indexPathForRow:0 inSection:0] ]
                                 withRowAnimation:UITableViewRowAnimationNone];
+        [self refreshVisibleItemDetails];
         [self refreshSearchPlaceholder];
         return;
     }
@@ -370,6 +398,7 @@ NS_ASSUME_NONNULL_END
               if (restoresContentOffsetAfterMove) {
                   [[self tableView] setContentOffset:contentOffsetBeforeMove animated:NO];
               }
+              [self refreshVisibleItemDetails];
               [self refreshSearchPlaceholder];
             }];
         return;
@@ -400,6 +429,7 @@ NS_ASSUME_NONNULL_END
           if (restoresContentOffsetAfterInsertion) {
               [[self tableView] setContentOffset:contentOffsetBeforeInsertion animated:NO];
           }
+          [self refreshVisibleItemDetails];
           [self refreshSearchPlaceholder];
         }];
 }
@@ -441,6 +471,7 @@ NS_ASSUME_NONNULL_END
           if (restoresContentOffsetAfterRemoval) {
               [[self tableView] setContentOffset:contentOffsetBeforeRemoval animated:NO];
           }
+          [self refreshVisibleItemDetails];
           [self refreshSearchPlaceholder];
           if (completion) {
               completion(YES);
@@ -475,13 +506,12 @@ NS_ASSUME_NONNULL_END
           }
         }
         completion:^(__unused BOOL finished) {
+          [self refreshVisibleItemDetails];
           [self refreshSearchPlaceholder];
         }];
 }
 
-- (void)updateNote:(NSString *)note
-            forItem:(KayokoPasteboardItem *)item
-         completion:(void (^)(void))completion {
+- (void)updateNote:(NSString *)note forItem:(KayokoPasteboardItem *)item completion:(void (^)(void))completion {
     if (!item) {
         if (completion) {
             completion();
@@ -496,8 +526,8 @@ NS_ASSUME_NONNULL_END
     [[self tableView]
         performBatchUpdates:^{
           update = [[self dataStore] updateNote:note
-                         forItemMatchingDictionary:dictionary
-                                displayedItemIndex:&displayedIndex];
+                      forItemMatchingDictionary:dictionary
+                             displayedItemIndex:&displayedIndex];
           if (displayedIndex == NSNotFound) {
               return;
           }
@@ -511,6 +541,7 @@ NS_ASSUME_NONNULL_END
           }
         }
         completion:^(__unused BOOL finished) {
+          [self refreshVisibleItemDetails];
           [self refreshSearchPlaceholder];
           if (completion) {
               completion();
@@ -524,12 +555,12 @@ NS_ASSUME_NONNULL_END
     }
 
     NSUInteger displayedIndex = [[self dataStore] indexOfItemMatchingDictionary:[item dictionaryRepresentation]
-                                                                         inItems:[self displayedItems]];
+                                                                        inItems:[self displayedItems]];
     if (displayedIndex == NSNotFound) {
         return nil;
     }
-    return (KayokoTableViewCell *)[[self tableView]
-        cellForRowAtIndexPath:[NSIndexPath indexPathForRow:displayedIndex inSection:0]];
+    return (KayokoTableViewCell *)[[self tableView] cellForRowAtIndexPath:[NSIndexPath indexPathForRow:displayedIndex
+                                                                                             inSection:0]];
 }
 
 - (KayokoTableViewCell *)presentationCellForItem:(KayokoPasteboardItem *)item {
@@ -554,8 +585,8 @@ NS_ASSUME_NONNULL_END
     NSString *hiddenContent = [self presentationHiddenItemContent];
     for (NSIndexPath *indexPath in [tableView indexPathsForVisibleRows]) {
         NSDictionary<NSString *, id> *dictionary = [self itemDictionaryAtIndexPath:indexPath];
-        BOOL hidesCell = [hiddenContent length] > 0 &&
-                         [dictionary[kKayokoItemKeyContent] isEqualToString:hiddenContent];
+        BOOL hidesCell =
+            [hiddenContent length] > 0 && [dictionary[kKayokoItemKeyContent] isEqualToString:hiddenContent];
         [[tableView cellForRowAtIndexPath:indexPath] setHidden:hidesCell];
     }
 }
@@ -566,7 +597,7 @@ NS_ASSUME_NONNULL_END
     }
 
     NSUInteger displayedIndex = [[self dataStore] indexOfItemMatchingDictionary:[item dictionaryRepresentation]
-                                                                         inItems:[self displayedItems]];
+                                                                        inItems:[self displayedItems]];
     if (displayedIndex == NSNotFound) {
         return nil;
     }
@@ -596,35 +627,59 @@ NS_ASSUME_NONNULL_END
 - (KayokoTableViewCell *)newCellForItem:(KayokoPasteboardItem *)item addsPreviewGesture:(BOOL)addsPreviewGesture {
     KayokoTableViewCellContent *content = [[self cellContentProvider] cellContentForItem:item
                                                                         previewLineCount:[self previewLineCount]
+                                                                         itemDetailsMode:[self itemDetailsMode]
                                                                               searchText:[self searchText]];
 
-    KayokoTableViewCell *cell = [[KayokoTableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
-                                                                   content:content
-                                                           reuseIdentifier:@"KayokoTableViewCell"];
-
-    NSString *imageName = [[item imageName] copy];
-    if ([imageName length] > 0) {
-        __weak KayokoTableViewCell *weakCell = cell;
-        [[self cellContentProvider] loadThumbnailForItem:item
-                                              targetSize:[KayokoTableViewCell contentImageThumbnailSize]
-                                              completion:^(UIImage *_Nullable image) {
-                                                [weakCell setContentImage:image forImageName:imageName];
-                                              }];
-    }
+    KayokoTableViewCell *cell =
+        [[KayokoTableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
+                                           content:content
+                                   reuseIdentifier:[KayokoTableViewCell reuseIdentifierForContent:content]];
+    [self loadThumbnailForItem:item intoCell:cell];
 
     if (addsPreviewGesture) {
-        UILongPressGestureRecognizer *gesture = [[UILongPressGestureRecognizer alloc]
-            initWithTarget:self
-                    action:@selector(handleLongPressGestureRecognizer:)];
+        UILongPressGestureRecognizer *gesture =
+            [[UILongPressGestureRecognizer alloc] initWithTarget:self
+                                                          action:@selector(handleLongPressGestureRecognizer:)];
         [cell addGestureRecognizer:gesture];
     }
     return cell;
 }
 
+- (void)loadThumbnailForItem:(KayokoPasteboardItem *)item intoCell:(KayokoTableViewCell *)cell {
+    NSString *imageName = [[item imageName] copy];
+    if ([imageName length] == 0) {
+        return;
+    }
+
+    __weak KayokoTableViewCell *weakCell = cell;
+    [[self cellContentProvider] loadThumbnailForItem:item
+                                          targetSize:[KayokoTableViewCell contentImageThumbnailSize]
+                                          completion:^(UIImage *_Nullable image) {
+                                            [weakCell setContentImage:image forImageName:imageName];
+                                          }];
+}
+
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     NSDictionary<NSString *, id> *dictionary = [self itemDictionaryAtIndexPath:indexPath];
     KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:dictionary];
-    KayokoTableViewCell *cell = [self newCellForItem:item addsPreviewGesture:YES];
+    KayokoTableViewCellContent *content = [[self cellContentProvider] cellContentForItem:item
+                                                                        previewLineCount:[self previewLineCount]
+                                                                         itemDetailsMode:[self itemDetailsMode]
+                                                                              searchText:[self searchText]];
+    NSString *reuseIdentifier = [KayokoTableViewCell reuseIdentifierForContent:content];
+    KayokoTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:reuseIdentifier];
+    if (cell) {
+        [cell applyContent:content];
+    } else {
+        cell = [[KayokoTableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
+                                                  content:content
+                                          reuseIdentifier:reuseIdentifier];
+        UILongPressGestureRecognizer *gesture =
+            [[UILongPressGestureRecognizer alloc] initWithTarget:self
+                                                          action:@selector(handleLongPressGestureRecognizer:)];
+        [cell addGestureRecognizer:gesture];
+    }
+    [self loadThumbnailForItem:item intoCell:cell];
     [cell setHidden:[[self presentationHiddenItemContent] isEqualToString:[item content]]];
     return cell;
 }
@@ -632,13 +687,12 @@ NS_ASSUME_NONNULL_END
 #pragma mark - UITableViewDelegate
 
 - (void)tableView:(UITableView *)tableView
-    willDisplayCell:(UITableViewCell *)cell
-  forRowAtIndexPath:(NSIndexPath *)indexPath {
+      willDisplayCell:(UITableViewCell *)cell
+    forRowAtIndexPath:(NSIndexPath *)indexPath {
     (void)tableView;
     NSDictionary<NSString *, id> *dictionary = [self itemDictionaryAtIndexPath:indexPath];
     NSString *hiddenContent = [self presentationHiddenItemContent];
-    BOOL hidesCell = [hiddenContent length] > 0 &&
-                     [dictionary[kKayokoItemKeyContent] isEqualToString:hiddenContent];
+    BOOL hidesCell = [hiddenContent length] > 0 && [dictionary[kKayokoItemKeyContent] isEqualToString:hiddenContent];
     [cell setHidden:hidesCell];
 }
 
@@ -668,8 +722,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)scrollViewWillEndDragging:(UIScrollView *)scrollView
-                      withVelocity:(CGPoint)velocity
-               targetContentOffset:(inout CGPoint *)targetContentOffset {
+                     withVelocity:(CGPoint)velocity
+              targetContentOffset:(inout CGPoint *)targetContentOffset {
     (void)velocity;
     if (scrollView != [self tableView] || [self hasActiveSearch]) {
         return;
@@ -727,7 +781,8 @@ NS_ASSUME_NONNULL_END
                                   [self removeItemAtIndexPath:indexPath
                                                    completion:^(BOOL removed) {
                                                      if (removed) {
-                                                         [[self delegate] historyListViewControllerDidChangeContentState:self];
+                                                         [[self delegate]
+                                                             historyListViewControllerDidChangeContentState:self];
                                                      }
                                                      completionHandler(removed);
                                                    }];
@@ -766,15 +821,15 @@ NS_ASSUME_NONNULL_END
                                                                   didMoveItemDictionary:dictionary
                                                                      fromHistoryWithKey:sourceHistoryKey
                                                                        toHistoryWithKey:destinationHistoryKey];
-                                             [self
-                                                 removeItemAtIndexPath:indexPath
-                                                            completion:^(BOOL removed) {
-                                                              if (removed) {
-                                                                  [[self delegate]
-                                                                      historyListViewControllerDidChangeContentState:self];
-                                                              }
-                                                              completionHandler(removed);
-                                                            }];
+                                             [self removeItemAtIndexPath:indexPath
+                                                              completion:^(BOOL removed) {
+                                                                if (removed) {
+                                                                    [[self delegate]
+                                                                        historyListViewControllerDidChangeContentState:
+                                                                            self];
+                                                                }
+                                                                completionHandler(removed);
+                                                              }];
                                            }];
                           }];
     [moveAction setImage:[UIImage systemImageNamed:imageName]];
@@ -790,14 +845,13 @@ NS_ASSUME_NONNULL_END
                                     void (^completionHandler)(BOOL)) {
                             KayokoTableViewCell *sourceCell =
                                 (KayokoTableViewCell *)[[self tableView] cellForRowAtIndexPath:indexPath];
-                            KayokoTableViewCell *presentationCell =
-                                [self newCellForItem:item addsPreviewGesture:NO];
+                            KayokoTableViewCell *presentationCell = [self newCellForItem:item addsPreviewGesture:NO];
                             completionHandler(YES);
                             dispatch_async(dispatch_get_main_queue(), ^{
                               [[self delegate] historyListViewController:self
-                                                  didRequestEditNoteForItem:item
-                                                           presentationCell:presentationCell
-                                                                 sourceCell:sourceCell];
+                                               didRequestEditNoteForItem:item
+                                                        presentationCell:presentationCell
+                                                              sourceCell:sourceCell];
                             });
                           }];
     [noteAction setImage:[UIImage systemImageNamed:@"note.text"]];

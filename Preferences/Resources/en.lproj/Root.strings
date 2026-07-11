@@ -4,6 +4,7 @@
 "Activation Method" = "Activation Method";
 "Activation Methods" = "Activation Methods";
 "Advanced Options" = "Advanced Options";
+"All" = "All";
 "Always" = "Always";
 "Appearance" = "Appearance";
 "Authorization Not Found" = "Authorization Not Found";
@@ -29,8 +30,11 @@
 "Height (Points)" = "Height (Points)";
 "History" = "History";
 "History Only" = "History Only";
+"Images Only" = "Images Only";
 "Input Switcher" = "Input Switcher";
 "Invalid Response" = "Invalid Response";
+"Item Details" = "Item Details";
+"Item details show when an item was last captured, along with its text length or image dimensions." = "Item details show when an item was last captured, along with its text length or image dimensions.";
 "Kayoko" = "Kayoko";
 "Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.\n\nMade with ♥ by OwnGoal Studio" = "Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.\n\nMade with ♥ by OwnGoal Studio";
 "Made with ♥ by OwnGoal Studio" = "Made with ♥ by OwnGoal Studio";

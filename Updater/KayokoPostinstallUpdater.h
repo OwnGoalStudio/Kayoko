@@ -10,6 +10,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface KayokoPostinstallUpdater : NSObject
 
 - (BOOL)runPostinstallWithError:(NSError **)error;
+- (BOOL)resetThumbnailCacheWithError:(NSError **)error;
 - (NSArray<NSString *> *)safelyDeletableLegacyPathsWithError:(NSError **)error;
 
 @end

@@ -163,6 +163,14 @@
 			<key>action</key>
 			<string>checkDataDirectory</string>
 		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Reset Thumbnail Cache</string>
+			<key>action</key>
+			<string>resetThumbnailCachePrompt</string>
+		</dict>
 
 	</array>
 	<key>title</key>

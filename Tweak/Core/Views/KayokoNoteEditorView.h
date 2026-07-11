@@ -18,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) CGFloat previewCellHeight;
 @property(nonatomic, assign) CGFloat keyboardBottomInset;
 @property(nonatomic, assign) BOOL automaticallyPositionsPreviewCell;
+@property(nonatomic, assign) BOOL anchorsEditingContentToTop;
 @property(nonatomic, assign, readonly) CGFloat editingContentHeight;
 
 - (void)setPreviewCell:(nullable KayokoTableViewCell *)previewCell;

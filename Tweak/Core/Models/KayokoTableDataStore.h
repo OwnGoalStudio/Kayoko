@@ -36,8 +36,8 @@ typedef NS_ENUM(NSInteger, KayokoTableDataStoreDisplayedItemUpdate) {
                                forItemMatchingDictionary:(NSDictionary<NSString *, id> *)dictionary
                                       displayedItemIndex:(NSUInteger *)displayedItemIndex;
 - (KayokoTableDataStoreDisplayedItemUpdate)updateNote:(nullable NSString *)note
-                              forItemMatchingDictionary:(NSDictionary<NSString *, id> *)dictionary
-                                     displayedItemIndex:(NSUInteger *)displayedItemIndex;
+                            forItemMatchingDictionary:(NSDictionary<NSString *, id> *)dictionary
+                                   displayedItemIndex:(NSUInteger *)displayedItemIndex;
 
 @end
 

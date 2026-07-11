@@ -1,4 +1,6 @@
 "%@\n%@" = "%@\n%@";
+"%lu character" = "%lu 字";
+"%lu characters" = "%lu 字";
 "Addresses" = "地址";
 "Applications" = "应用程序";
 "Back" = "返回";
@@ -16,6 +18,7 @@
 "History" = "历史记录";
 "History item not found" = "未找到这条历史记录";
 "Images" = "图片";
+"Just Now" = "刚刚";
 "Kayoko" = "Kayoko";
 "Kayoko history is unavailable while package maintenance is in progress. Try again after installation finishes." = "Kayoko 正在进行安装维护，暂时无法使用历史记录。请在安装完成后重试。";
 "Kayoko history search index contains unprocessed items. Reinstalling Kayoko may resolve this issue." = "Kayoko 的历史搜索索引仍有未处理项目。重新安装 Kayoko 或许可以解决此问题。";

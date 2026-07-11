@@ -28,7 +28,7 @@ static CGFloat const kKayokoHeaderContentSpacing = 8;
 - (void)setTitleText:(NSString *)title;
 - (void)updateStyleForButton:(UIButton *)button
                withImageName:(NSString *)imageName
-                    imageSize:(NSUInteger)imageSize
+                   imageSize:(NSUInteger)imageSize
                    tintColor:(UIColor *)color;
 
 @end

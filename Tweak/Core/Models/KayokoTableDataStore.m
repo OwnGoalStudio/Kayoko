@@ -53,11 +53,11 @@ NS_ASSUME_NONNULL_END
         NSString *note = item[kKayokoItemKeyNote] ?: @"";
         BOOL contentMatches =
             [imageName length] == 0 && [content rangeOfString:searchText
-                                                     options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch]
-                                              .location != NSNotFound;
-        BOOL noteMatches = [note rangeOfString:searchText
-                                       options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch]
-                               .location != NSNotFound;
+                                                      options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch]
+                                               .location != NSNotFound;
+        BOOL noteMatches =
+            [note rangeOfString:searchText options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch].location !=
+            NSNotFound;
         if (!contentMatches && !noteMatches) {
             continue;
         }
@@ -143,7 +143,7 @@ NS_ASSUME_NONNULL_END
 }
 
 - (NSDictionary<NSString *, id> *)dictionaryBySettingNote:(NSString *)note
-                                              inDictionary:(NSDictionary<NSString *, id> *)dictionary {
+                                             inDictionary:(NSDictionary<NSString *, id> *)dictionary {
     NSMutableDictionary<NSString *, id> *updatedDictionary = [dictionary mutableCopy];
     if ([note length] > 0) {
         updatedDictionary[kKayokoItemKeyNote] = note;
@@ -154,8 +154,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (BOOL)dictionaryMatchesSearchText:(NSDictionary<NSString *, id> *)dictionary {
-    NSString *searchText =
-        [[[self searchCriteria] searchText] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *searchText = [[[self searchCriteria] searchText]
+        stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if ([searchText length] == 0) {
         return YES;
     }
@@ -164,12 +164,12 @@ NS_ASSUME_NONNULL_END
     NSString *content = dictionary[kKayokoItemKeyContent] ?: @"";
     NSString *note = dictionary[kKayokoItemKeyNote] ?: @"";
     BOOL contentMatches =
-        [imageName length] == 0 && [content rangeOfString:searchText
-                                                 options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch]
-                                          .location != NSNotFound;
-    BOOL noteMatches = [note rangeOfString:searchText
-                                   options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch]
-                           .location != NSNotFound;
+        [imageName length] == 0 &&
+        [content rangeOfString:searchText options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch].location !=
+            NSNotFound;
+    BOOL noteMatches =
+        [note rangeOfString:searchText options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch].location !=
+        NSNotFound;
     return contentMatches || noteMatches;
 }
 
@@ -223,8 +223,8 @@ NS_ASSUME_NONNULL_END
 }
 
 - (KayokoTableDataStoreDisplayedItemUpdate)updateNote:(NSString *)note
-                              forItemMatchingDictionary:(NSDictionary<NSString *, id> *)dictionary
-                                     displayedItemIndex:(NSUInteger *)displayedItemIndex {
+                            forItemMatchingDictionary:(NSDictionary<NSString *, id> *)dictionary
+                                   displayedItemIndex:(NSUInteger *)displayedItemIndex {
     if (displayedItemIndex) {
         *displayedItemIndex = NSNotFound;
     }
@@ -238,7 +238,7 @@ NS_ASSUME_NONNULL_END
     }
 
     NSDictionary<NSString *, id> *updatedDictionary = [self dictionaryBySettingNote:note
-                                                                        inDictionary:[self items][itemIndex]];
+                                                                       inDictionary:[self items][itemIndex]];
     NSMutableArray<NSDictionary<NSString *, id> *> *items = [[self items] mutableCopy];
     items[itemIndex] = updatedDictionary;
     [self setItems:items];

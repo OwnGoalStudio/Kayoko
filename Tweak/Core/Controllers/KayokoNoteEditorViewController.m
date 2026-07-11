@@ -43,9 +43,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy) NSString *sourceDisplayName;
 @property(nonatomic, assign, getter=isSaving) BOOL saving;
 @property(nonatomic, assign) CGFloat lastValidKeyboardBottomInset;
+@property(nonatomic, assign) BOOL preservingKeyboardInsetDuringActivation;
 
 @end
-
 
 @implementation KayokoNoteEditorViewController
 
@@ -81,7 +81,7 @@ NS_ASSUME_NONNULL_BEGIN
                                    action:@selector(handleTextFieldEditingChanged:)
                          forControlEvents:UIControlEventEditingChanged];
     [[noteEditorView saveButton] setTitle:[bundle localizedStringForKey:@"Save" value:nil table:@"Tweak"]
-                                  forState:UIControlStateNormal];
+                                 forState:UIControlStateNormal];
     [[noteEditorView saveButton] addTarget:self
                                     action:@selector(handleSaveButtonPressed)
                           forControlEvents:UIControlEventTouchUpInside];
@@ -101,8 +101,8 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (void)prepareForItem:(KayokoPasteboardItem *)item
-      presentationCell:(KayokoTableViewCell *)presentationCell
-            cellHeight:(CGFloat)cellHeight
+       presentationCell:(KayokoTableViewCell *)presentationCell
+             cellHeight:(CGFloat)cellHeight
     keyboardBottomInset:(CGFloat)keyboardBottomInset {
     [self loadViewIfNeeded];
     [self setItem:item];
@@ -110,6 +110,7 @@ NS_ASSUME_NONNULL_BEGIN
     [[[self noteEditorView] textField] setText:[item note] ?: @""];
     [[self noteEditorView] setPreviewCellHeight:cellHeight];
     [[self noteEditorView] setPreviewCell:presentationCell];
+    [[self noteEditorView] setAnchorsEditingContentToTop:keyboardBottomInset <= 0];
     [[self noteEditorView] setKeyboardBottomInset:keyboardBottomInset];
     [self setSaving:NO];
     [self updatePreview];
@@ -154,20 +155,23 @@ NS_ASSUME_NONNULL_BEGIN
     KayokoNoteEditorView *noteEditorView = [self noteEditorView];
     [noteEditorView layoutIfNeeded];
 
+    if ([self lastValidKeyboardBottomInset] > 0 && [noteEditorView keyboardBottomInset] > 0) {
+        [self setPreservingKeyboardInsetDuringActivation:YES];
+    }
+
     UIWindow *window = [noteEditorView window];
     if (window && ![window isKeyWindow]) {
         [window makeKeyWindow];
     }
 
     CGFloat keyboardBottomInset = [self lastValidKeyboardBottomInset];
-    if (keyboardBottomInset > 0 &&
-        fabs([noteEditorView keyboardBottomInset] - keyboardBottomInset) > 0.5) {
-        [[self delegate]
-            noteEditorViewController:self
-            didUpdateKeyboardBottomInset:keyboardBottomInset
-            animationDuration:0.25
-            options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState |
-                    UIViewAnimationOptionAllowUserInteraction];
+    if (keyboardBottomInset > 0 && fabs([noteEditorView keyboardBottomInset] - keyboardBottomInset) > 0.5) {
+        [[self delegate] noteEditorViewController:self
+                     didUpdateKeyboardBottomInset:keyboardBottomInset
+                                animationDuration:0.25
+                                          options:UIViewAnimationOptionCurveEaseInOut |
+                                                  UIViewAnimationOptionBeginFromCurrentState |
+                                                  UIViewAnimationOptionAllowUserInteraction];
     }
 
     UITextField *textField = [noteEditorView textField];
@@ -185,6 +189,7 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (void)resignEditing {
+    [self setPreservingKeyboardInsetDuringActivation:NO];
     [[[self noteEditorView] textField] resignFirstResponder];
 }
 
@@ -202,6 +207,7 @@ NS_ASSUME_NONNULL_BEGIN
     [self setSourceDisplayName:@""];
     [[[self noteEditorView] textField] setText:@""];
     [[self noteEditorView] setKeyboardBottomInset:0];
+    [[self noteEditorView] setAnchorsEditingContentToTop:NO];
     [[self noteEditorView] setPreviewCell:nil];
 }
 
@@ -236,9 +242,12 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (void)updateKeyboardBottomInset:(CGFloat)keyboardBottomInset
-          withAnimationParametersFromNotification:(NSNotification *)notification {
+    withAnimationParametersFromNotification:(NSNotification *)notification {
     KayokoNoteEditorView *view = [self noteEditorView];
     keyboardBottomInset = MAX(keyboardBottomInset, 0);
+    if (keyboardBottomInset > 0) {
+        [self setPreservingKeyboardInsetDuringActivation:NO];
+    }
     if (fabs([view keyboardBottomInset] - keyboardBottomInset) <= 0.5) {
         return;
     }
@@ -250,9 +259,23 @@ NS_ASSUME_NONNULL_BEGIN
                                      UIViewAnimationOptionBeginFromCurrentState |
                                      UIViewAnimationOptionAllowUserInteraction;
     [[self delegate] noteEditorViewController:self
-               didUpdateKeyboardBottomInset:keyboardBottomInset
-                          animationDuration:duration
-                                    options:options];
+                 didUpdateKeyboardBottomInset:keyboardBottomInset
+                            animationDuration:duration
+                                      options:options];
+}
+
+- (BOOL)shouldIgnoreKeyboardZeroInsetDuringActivation {
+    if (![self preservingKeyboardInsetDuringActivation] || [self lastValidKeyboardBottomInset] <= 0) {
+        return NO;
+    }
+
+    KayokoNoteEditorView *noteEditorView = [self noteEditorView];
+    if ([noteEditorView isHidden] || [noteEditorView keyboardBottomInset] <= 0) {
+        return NO;
+    }
+
+    UITextField *textField = [noteEditorView textField];
+    return [textField isFirstResponder] || [[noteEditorView window] isKeyWindow];
 }
 
 - (void)handleKeyboardWillChangeFrameNotification:(NSNotification *)notification {
@@ -273,11 +296,17 @@ NS_ASSUME_NONNULL_BEGIN
     if (![self shouldHandleKeyboardNotification:notification]) {
         return;
     }
+    if (keyboardBottomInset <= 0 && [self shouldIgnoreKeyboardZeroInsetDuringActivation]) {
+        return;
+    }
     [self updateKeyboardBottomInset:keyboardBottomInset withAnimationParametersFromNotification:notification];
 }
 
 - (void)handleKeyboardWillHideNotification:(NSNotification *)notification {
     if (![self item]) {
+        return;
+    }
+    if ([self shouldIgnoreKeyboardZeroInsetDuringActivation]) {
         return;
     }
     [self updateKeyboardBottomInset:0 withAnimationParametersFromNotification:notification];
