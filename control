@@ -6,7 +6,7 @@ Description: A smarter clipboard experience that stays close whenever you need i
 Maintainer: 82Flex <82flex@gmail.com>
 Author: 82Flex <82flex@gmail.com>
 Section: Tweaks
-Depends: firmware (>= 14.0), mobilesubstrate, preferenceloader
+Depends: firmware (>= 14.0), mobilesubstrate, preferenceloader, com.opa334.altlist
 Conflicts: codes.aurora.kayoko, dev.traurige.kayoko
 Replaces: codes.aurora.kayoko, dev.traurige.kayoko
 Homepage: https://github.com/OwnGoalStudio/Kayoko

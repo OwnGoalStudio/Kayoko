@@ -56,7 +56,7 @@
 			<key>defaults</key>
 			<string>com.82flex.kayoko.preferences</string>
 			<key>label</key>
-			<string>Activation Methods</string>
+			<string>ACTIVATION_METHODS</string>
 			<key>key</key>
 			<string>ActivationMethod</string>
 			<key>validValues</key>
@@ -439,7 +439,7 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>Supports</string>
+			<string>More</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -448,6 +448,41 @@
 			<string>Advanced Options</string>
 			<key>detail</key>
 			<string>KayokoAdvancedOptionsListController</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>default</key>
+			<array/>
+			<key>defaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>detail</key>
+			<string>ATLApplicationListMultiSelectionController</string>
+			<key>key</key>
+			<string>ApplicationBlacklist</string>
+			<key>label</key>
+			<string>Application Blacklist</string>
+			<key>sections</key>
+			<array>
+				<dict>
+					<key>sectionType</key>
+					<string>User</string>
+				</dict>
+				<dict>
+					<key>sectionType</key>
+					<string>System</string>
+				</dict>
+			</array>
+			<key>showIdentifiersAsSubtitle</key>
+			<true/>
+			<key>defaultApplicationSwitchValue</key>
+			<false/>
+			<key>useSearchBar</key>
+			<true/>
+			<key>includeIdentifiersInSearch</key>
+			<true/>
+			<key>PostNotification</key>
+			<string>com.82flex.kayoko.preferences.reload</string>
 		</dict>
 		<dict>
 			<key>cell</key>

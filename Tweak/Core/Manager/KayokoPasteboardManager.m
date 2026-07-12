@@ -225,6 +225,7 @@ NS_ASSUME_NONNULL_END
         }
         _thumbnailCache = [[KayokoThumbnailCache alloc] init];
         _automaticPromotionMode = kKayokoPreferenceKeyAutomaticPromotionModeDefaultValue;
+        _applicationBlacklist = [NSSet set];
         _pendingPasteboardWrite = [[KayokoPasteboardPendingWrite alloc] init];
         __weak typeof(self) weakSelf = self;
         _historyRepository =
@@ -493,8 +494,14 @@ NS_ASSUME_NONNULL_END
     [self resolvePendingPasteboardWriteForToken:[_pendingPasteboardWrite token] didExpire:NO];
 }
 
-- (BOOL)shouldIgnoreCurrentPasteboardChange {
+- (BOOL)shouldIgnoreCurrentPasteboardChangeFromSourceBundleIdentifier:(NSString *)sourceBundleIdentifier {
     if ([self ignoreRemoteReplication] && [self pasteboardContainsType:kKayokoRemoteClipboardPasteboardType]) {
+        return YES;
+    }
+
+    if ([[self applicationBlacklist] containsObject:sourceBundleIdentifier]) {
+        HBLogDebug(@"Kayoko: ignored pasteboard change from blacklisted source app bundleIdentifier=%@",
+                   sourceBundleIdentifier);
         return YES;
     }
 
@@ -542,7 +549,7 @@ NS_ASSUME_NONNULL_END
 
     _lastChangeCount = currentChangeCount;
 
-    if ([self shouldIgnoreCurrentPasteboardChange]) {
+    if ([self shouldIgnoreCurrentPasteboardChangeFromSourceBundleIdentifier:sourceBundleIdentifier]) {
         return @[];
     }
 

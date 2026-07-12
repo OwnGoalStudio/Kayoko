@@ -19,6 +19,7 @@ KayokoPreferences_FRAMEWORKS += CoreGraphics
 KayokoPreferences_FRAMEWORKS += QuartzCore
 KayokoPreferences_FRAMEWORKS += Security
 KayokoPreferences_FRAMEWORKS += UIKit
+KayokoPreferences_EXTRA_FRAMEWORKS += AltList
 KayokoPreferences_PRIVATE_FRAMEWORKS += FrontBoardServices
 KayokoPreferences_PRIVATE_FRAMEWORKS += Preferences
 KayokoPreferences_PRIVATE_FRAMEWORKS += SpringBoardServices

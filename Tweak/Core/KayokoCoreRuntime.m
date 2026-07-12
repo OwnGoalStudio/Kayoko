@@ -623,6 +623,7 @@ NS_ASSUME_NONNULL_END
         kKayokoPreferenceKeyDismissOnOutsideTouch : @(kKayokoPreferenceKeyDismissOnOutsideTouchDefaultValue),
         kKayokoPreferenceKeyDisablePasteTips : @(kKayokoPreferenceKeyDisablePasteTipsDefaultValue),
         kKayokoPreferenceKeyIgnoreRemoteReplication : @(kKayokoPreferenceKeyIgnoreRemoteReplicationDefaultValue),
+        kKayokoPreferenceKeyApplicationBlacklist : @[],
         kKayokoPreferenceKeyPlaySoundEffects : @(kKayokoPreferenceKeyPlaySoundEffectsDefaultValue),
         kKayokoPreferenceKeyPlayHapticFeedback : @(kKayokoPreferenceKeyPlayHapticFeedbackDefaultValue),
         kKayokoPreferenceKeyPreviewLineCount : @(kKayokoPreferenceKeyPreviewLineCountDefaultValue),
@@ -675,6 +676,8 @@ NS_ASSUME_NONNULL_END
     self.dismissOnOutsideTouch = [[self.preferences objectForKey:kKayokoPreferenceKeyDismissOnOutsideTouch] boolValue];
     BOOL ignoreRemoteReplication =
         [[self.preferences objectForKey:kKayokoPreferenceKeyIgnoreRemoteReplication] boolValue];
+    NSSet<NSString *> *applicationBlacklist =
+        [NSSet setWithArray:[self.preferences arrayForKey:kKayokoPreferenceKeyApplicationBlacklist] ?: @[]];
     self.playSoundEffects = [[self.preferences objectForKey:kKayokoPreferenceKeyPlaySoundEffects] boolValue];
     self.playHapticFeedback = [[self.preferences objectForKey:kKayokoPreferenceKeyPlayHapticFeedback] boolValue];
     self.previewLineCount = [[self.preferences objectForKey:kKayokoPreferenceKeyPreviewLineCount] unsignedIntegerValue];
@@ -706,6 +709,9 @@ NS_ASSUME_NONNULL_END
     }
     if ([pasteboardManager ignoreRemoteReplication] != ignoreRemoteReplication) {
         [pasteboardManager setIgnoreRemoteReplication:ignoreRemoteReplication];
+    }
+    if (![[pasteboardManager applicationBlacklist] isEqualToSet:applicationBlacklist]) {
+        [pasteboardManager setApplicationBlacklist:applicationBlacklist];
     }
 
     [self applyPreferencesToView];

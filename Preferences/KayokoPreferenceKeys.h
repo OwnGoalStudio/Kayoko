@@ -69,6 +69,7 @@ static NSString *const kKayokoPreferenceKeyClearButtonMode = @"ClearButtonMode";
 static NSString *const kKayokoPreferenceKeyDismissOnOutsideTouch = @"DismissOnOutsideTouch";
 static NSString *const kKayokoPreferenceKeyDisablePasteTips = @"DisablePasteTips";
 static NSString *const kKayokoPreferenceKeyIgnoreRemoteReplication = @"IgnoreRemoteReplication";
+static NSString *const kKayokoPreferenceKeyApplicationBlacklist = @"ApplicationBlacklist";
 static NSString *const kKayokoPreferenceKeyPlaySoundEffects = @"PlaySoundEffects";
 static NSString *const kKayokoPreferenceKeyPlayHapticFeedback = @"PlayHapticFeedback";
 static NSString *const kKayokoPreferenceKeyPreviewLineCount = @"PreviewLineCount";

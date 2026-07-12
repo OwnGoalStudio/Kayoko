@@ -1,6 +1,7 @@
 "%@ and %@" = "%@ and %@";
 "%@ and %d others" = "%@ and %d others";
 "%@ data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko." = "%@ data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko.";
+"ACTIVATION_METHODS" = "Activation";
 "Acknowledgments & Licenses" = "Acknowledgments & Licenses";
 "Activation Method" = "Activation Method";
 "Activation Methods" = "Activation Methods";
@@ -8,6 +9,7 @@
 "All" = "All";
 "Always" = "Always";
 "Appearance" = "Appearance";
+"Application Blacklist" = "Application Blacklist";
 "Authorization Not Found" = "Authorization Not Found";
 "Auto Promote" = "Auto Promote";
 "Automatically Paste" = "Automatically Paste";
@@ -41,6 +43,7 @@
 "Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.\n\nMade with ♥ by OwnGoal Studio" = "Kayoko’s ongoing maintenance is made possible by user support. The original GPLv3 license allows paid distribution; this Havoc build follows that same open-source commitment and does not add copy-protection (DRM). If Kayoko makes everyday typing easier for you, your purchase helps support future maintenance.\n\nMade with ♥ by OwnGoal Studio";
 "Made with ♥ by OwnGoal Studio" = "Made with ♥ by OwnGoal Studio";
 "Maximum Amount" = "Maximum Amount";
+"More" = "More";
 "Network Request Failed" = "Network Request Failed";
 "Not Now" = "Not Now";
 "Off" = "Off";
@@ -67,7 +70,6 @@
 "Server returned an invalid response. Tap the screen to retry: %@" = "Server returned an invalid response. Tap the screen to retry: %@";
 "Show Kayoko" = "Show Kayoko";
 "Single Line" = "Single Line";
-"Supports" = "Supports";
 "Swipe to Select Words" = "Swipe to Select Words";
 "The data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko." = "The data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko.";
 "The network request failed." = "The network request failed.";
