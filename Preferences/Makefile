@@ -19,6 +19,18 @@ KayokoPreferences_FRAMEWORKS += CoreGraphics
 KayokoPreferences_FRAMEWORKS += QuartzCore
 KayokoPreferences_FRAMEWORKS += Security
 KayokoPreferences_FRAMEWORKS += UIKit
+
+ifeq ($(THEOS_PACKAGE_SCHEME),rootless)
+KayokoPreferences_CFLAGS += -FFrameworks/_rootless
+KayokoPreferences_LDFLAGS += -FFrameworks/_rootless
+else ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
+KayokoPreferences_CFLAGS += -FFrameworks/_roothide
+KayokoPreferences_LDFLAGS += -FFrameworks/_roothide
+else
+KayokoPreferences_CFLAGS += -FFrameworks
+KayokoPreferences_LDFLAGS += -FFrameworks
+endif
+
 KayokoPreferences_EXTRA_FRAMEWORKS += AltList
 KayokoPreferences_PRIVATE_FRAMEWORKS += FrontBoardServices
 KayokoPreferences_PRIVATE_FRAMEWORKS += Preferences
