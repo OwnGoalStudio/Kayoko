@@ -158,8 +158,8 @@ static NSInteger const kKayokoUpdaterHistoryStoreBusyTimeoutMilliseconds = 10000
     }
 
     NSString *sourceDirectoryPath = jbroot(kKayokoCopyLogDataDirectory);
-    KayokoCopyLogImporter *importer =
-        [[KayokoCopyLogImporter alloc] initWithSourceDirectoryPath:sourceDirectoryPath historyStore:store];
+    KayokoCopyLogImporter *importer = [[KayokoCopyLogImporter alloc] initWithSourceDirectoryPath:sourceDirectoryPath
+                                                                                    historyStore:store];
     BOOL imported = [importer runWithSkippedItemCount:skippedItemCount error:error];
     [store closeDatabase];
     if (!imported) {

@@ -26,8 +26,7 @@ static NSString *const kKayokoImportFileStagerErrorDomain = @"com.82flex.kayoko.
 - (instancetype)initWithBaseDirectoryPath:(NSString *)baseDirectoryPath prefix:(NSString *)prefix {
     self = [super init];
     if (self) {
-        NSString *directoryName =
-            [NSString stringWithFormat:@".%@-%@", prefix, [[NSUUID UUID] UUIDString]];
+        NSString *directoryName = [NSString stringWithFormat:@".%@-%@", prefix, [[NSUUID UUID] UUIDString]];
         _stagingPath = [baseDirectoryPath stringByAppendingPathComponent:directoryName];
         _stagedFiles = [[NSMutableArray alloc] init];
         _movedTargetPaths = [[NSMutableArray alloc] init];
@@ -36,8 +35,8 @@ static NSString *const kKayokoImportFileStagerErrorDomain = @"com.82flex.kayoko.
 }
 
 - (BOOL)addDataByName:(NSDictionary<NSString *, NSData *> *)dataByName
-       targetDirectory:(NSString *)targetDirectory
-                 error:(NSError **)error {
+      targetDirectory:(NSString *)targetDirectory
+                error:(NSError **)error {
     if ([dataByName count] == 0) {
         return YES;
     }
@@ -111,8 +110,8 @@ static NSString *const kKayokoImportFileStagerErrorDomain = @"com.82flex.kayoko.
     }
 
     NSError *stagingError = nil;
-    if ([fileManager fileExistsAtPath:self.stagingPath] &&
-        ![fileManager removeItemAtPath:self.stagingPath error:&stagingError]) {
+    if ([fileManager fileExistsAtPath:self.stagingPath] && ![fileManager removeItemAtPath:self.stagingPath
+                                                                                    error:&stagingError]) {
         NSError *rollbackError = nil;
         if (![self rollbackWithError:&rollbackError] && error) {
             *error = rollbackError;
@@ -130,8 +129,8 @@ static NSString *const kKayokoImportFileStagerErrorDomain = @"com.82flex.kayoko.
     NSMutableArray<NSString *> *remainingTargetPaths = [[NSMutableArray alloc] init];
     for (NSString *targetPath in self.movedTargetPaths) {
         NSError *removeError = nil;
-        if ([fileManager fileExistsAtPath:targetPath] &&
-            ![fileManager removeItemAtPath:targetPath error:&removeError]) {
+        if ([fileManager fileExistsAtPath:targetPath] && ![fileManager removeItemAtPath:targetPath
+                                                                                  error:&removeError]) {
             firstError = firstError ?: removeError;
             [remainingTargetPaths addObject:targetPath];
         }
@@ -139,8 +138,8 @@ static NSString *const kKayokoImportFileStagerErrorDomain = @"com.82flex.kayoko.
     self.movedTargetPaths = remainingTargetPaths;
 
     NSError *stagingError = nil;
-    if ([fileManager fileExistsAtPath:self.stagingPath] &&
-        ![fileManager removeItemAtPath:self.stagingPath error:&stagingError]) {
+    if ([fileManager fileExistsAtPath:self.stagingPath] && ![fileManager removeItemAtPath:self.stagingPath
+                                                                                    error:&stagingError]) {
         firstError = firstError ?: stagingError;
     }
     if (error) {

@@ -26,9 +26,6 @@
 "CopyVault contains unsupported content: %@" = "CopyVault 包含不支持的内容：%@";
 "CopyVault data directory was not found." = "找不到 CopyVault 数据目录。";
 "CopyVault data is invalid: %@" = "CopyVault 数据无效：%@";
-"database is busy" = "Kayoko 的数据库仍被占用。请重启 SpringBoard 后重试。";
-"database is locked" = "Kayoko 的数据库仍被占用。请重启 SpringBoard 后重试。";
-"database table is locked" = "Kayoko 的数据库仍被占用。请重启 SpringBoard 后重试。";
 "Dates" = "日期";
 "Favorites" = "收藏夹";
 "Flights" = "航班";
@@ -75,6 +72,9 @@
 "Unable to read CopyVault data: %@" = "无法读取 CopyVault 数据：%@";
 "conflicting image %@" = "图片 %@ 存在冲突";
 "conflicting rich text %@" = "富文本 %@ 存在冲突";
+"database is busy" = "Kayoko 的数据库仍被占用。请重启 SpringBoard 后重试。";
+"database is locked" = "Kayoko 的数据库仍被占用。请重启 SpringBoard 后重试。";
+"database table is locked" = "Kayoko 的数据库仍被占用。请重启 SpringBoard 后重试。";
 "image %@ already contains different data" = "图片 %@ 已存在，但内容不同";
 "invalid %@ timestamp" = "%@ 的时间戳无效";
 "invalid item path %@" = "条目路径 %@ 无效";

@@ -177,8 +177,8 @@ NS_ASSUME_NONNULL_END
     static NSString *kayokoHistoryRichTextPath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-      kayokoHistoryRichTextPath = [[[self historyDatabasePath] stringByDeletingLastPathComponent]
-          stringByAppendingPathComponent:@"rich-text"];
+      kayokoHistoryRichTextPath =
+          [[[self historyDatabasePath] stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"rich-text"];
     });
     return kayokoHistoryRichTextPath;
 }
@@ -606,10 +606,9 @@ NS_ASSUME_NONNULL_END
                 continue;
             }
 
-            KayokoPasteboardItem *item =
-                [[KayokoPasteboardItem alloc] initWithBundleIdentifier:sourceBundleIdentifier
-                                                            andContent:plainText
-                                                        withImageNamed:nil];
+            KayokoPasteboardItem *item = [[KayokoPasteboardItem alloc] initWithBundleIdentifier:sourceBundleIdentifier
+                                                                                     andContent:plainText
+                                                                                 withImageNamed:nil];
             if (richTextRepresentation) {
                 NSError *prepareError = nil;
                 if (![_historyRepository ensureStorePreparedWithError:&prepareError]) {
@@ -1159,12 +1158,10 @@ NS_ASSUME_NONNULL_END
                 richTextValue = [[NSString alloc] initWithData:[representation data] encoding:NSUTF8StringEncoding];
             }
             if (richTextValue) {
-                [_pasteboard setItems:@[
-                    @{
-                        @"public.utf8-plain-text" : [item content],
-                        richTextUTI : richTextValue,
-                    }
-                ]];
+                [_pasteboard setItems:@[ @{
+                                 @"public.utf8-plain-text" : [item content],
+                                 richTextUTI : richTextValue,
+                             } ]];
                 return YES;
             }
         }

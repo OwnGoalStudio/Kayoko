@@ -11,8 +11,8 @@
 
 #import <CommonCrypto/CommonDigest.h>
 #import <ImageIO/ImageIO.h>
-#import <sys/stat.h>
 #import <math.h>
+#import <sys/stat.h>
 
 static NSString *const kKayokoCopyLogImporterErrorDomain = @"com.82flex.kayoko.copylog-importer";
 static NSString *const kKayokoCopyLogSnippetsSection = @"Snippets";
@@ -91,13 +91,15 @@ static NSString *const kKayokoCopyLogRemoteClipboardType = @"com.apple.is-remote
         return NO;
     }
 
-    NSArray<KayokoCopyLogSourceRecord *> *favoriteRecords =
-        [self recordsForSection:kKayokoCopyLogFavoritesSection historyKey:kKayokoCopyLogFavoritesKey error:error];
+    NSArray<KayokoCopyLogSourceRecord *> *favoriteRecords = [self recordsForSection:kKayokoCopyLogFavoritesSection
+                                                                         historyKey:kKayokoCopyLogFavoritesKey
+                                                                              error:error];
     if (!favoriteRecords) {
         return NO;
     }
-    NSArray<KayokoCopyLogSourceRecord *> *snippetRecords =
-        [self recordsForSection:kKayokoCopyLogSnippetsSection historyKey:kKayokoCopyLogHistoryKey error:error];
+    NSArray<KayokoCopyLogSourceRecord *> *snippetRecords = [self recordsForSection:kKayokoCopyLogSnippetsSection
+                                                                        historyKey:kKayokoCopyLogHistoryKey
+                                                                             error:error];
     if (!snippetRecords) {
         return NO;
     }
@@ -113,11 +115,11 @@ static NSString *const kKayokoCopyLogRemoteClipboardType = @"com.apple.is-remote
             [records addObject:record];
         }
     }
-    [records sortUsingComparator:^NSComparisonResult(KayokoCopyLogSourceRecord *left,
-                                                     KayokoCopyLogSourceRecord *right) {
-      NSComparisonResult dateResult = [right.capturedAt compare:left.capturedAt];
-      return dateResult == NSOrderedSame ? [right.name compare:left.name] : dateResult;
-    }];
+    [records
+        sortUsingComparator:^NSComparisonResult(KayokoCopyLogSourceRecord *left, KayokoCopyLogSourceRecord *right) {
+          NSComparisonResult dateResult = [right.capturedAt compare:left.capturedAt];
+          return dateResult == NSOrderedSame ? [right.name compare:left.name] : dateResult;
+        }];
 
     NSMutableDictionary<NSString *, NSMutableDictionary<NSString *, NSDictionary<NSString *, id> *> *>
         *existingItemsByHistoryKey = [[NSMutableDictionary alloc] init];
@@ -137,16 +139,14 @@ static NSString *const kKayokoCopyLogRemoteClipboardType = @"com.apple.is-remote
         existingItemsByHistoryKey[historyKey] = itemsByContent;
     }
 
-    NSMutableDictionary<NSString *, NSMutableArray<NSDictionary<NSString *, id> *> *> *itemsByHistoryKey =
-        [@{
-          kKayokoCopyLogHistoryKey : [[NSMutableArray alloc] init],
-          kKayokoCopyLogFavoritesKey : [[NSMutableArray alloc] init]
-        } mutableCopy];
-    NSMutableDictionary<NSString *, NSMutableSet<NSString *> *> *seenContentsByHistoryKey =
-        [@{
-          kKayokoCopyLogHistoryKey : [[NSMutableSet alloc] init],
-          kKayokoCopyLogFavoritesKey : [[NSMutableSet alloc] init]
-        } mutableCopy];
+    NSMutableDictionary<NSString *, NSMutableArray<NSDictionary<NSString *, id> *> *> *itemsByHistoryKey = [@{
+        kKayokoCopyLogHistoryKey : [[NSMutableArray alloc] init],
+        kKayokoCopyLogFavoritesKey : [[NSMutableArray alloc] init]
+    } mutableCopy];
+    NSMutableDictionary<NSString *, NSMutableSet<NSString *> *> *seenContentsByHistoryKey = [@{
+        kKayokoCopyLogHistoryKey : [[NSMutableSet alloc] init],
+        kKayokoCopyLogFavoritesKey : [[NSMutableSet alloc] init]
+    } mutableCopy];
     NSMutableDictionary<NSString *, NSData *> *imageDataByName = [[NSMutableDictionary alloc] init];
     NSMutableDictionary<NSString *, NSData *> *richTextDataByName = [[NSMutableDictionary alloc] init];
 
@@ -158,7 +158,7 @@ static NSString *const kKayokoCopyLogRemoteClipboardType = @"com.apple.is-remote
 
         NSString *bundleIdentifier = [self stringValue:propertyList[@"bundleID"]];
         BOOL recordIsRemote = [bundleIdentifier isEqualToString:kKayokoCopyLogRemoteClipboardType] ||
-            propertyList[kKayokoCopyLogRemoteClipboardType] != nil;
+                              propertyList[kKayokoCopyLogRemoteClipboardType] != nil;
         if ([bundleIdentifier length] == 0) {
             bundleIdentifier = @"com.apple.springboard";
         }
@@ -167,17 +167,19 @@ static NSString *const kKayokoCopyLogRemoteClipboardType = @"com.apple.is-remote
         NSArray<NSDictionary<NSString *, id> *> *sourceItems = nil;
         if (itemsValue) {
             if (![itemsValue isKindOfClass:[NSArray class]] || [(NSArray *)itemsValue count] == 0) {
-                [self populateInvalidDataError:error detail:[NSString stringWithFormat:@"%@ has no items", record.name]];
+                [self populateInvalidDataError:error
+                                        detail:[NSString stringWithFormat:@"%@ has no items", record.name]];
                 return NO;
             }
             sourceItems = itemsValue;
         } else {
             NSString *legacySnippet = [self stringValue:propertyList[@"snippet"]];
             if ([legacySnippet length] == 0) {
-                [self populateInvalidDataError:error detail:[NSString stringWithFormat:@"%@ has no items", record.name]];
+                [self populateInvalidDataError:error
+                                        detail:[NSString stringWithFormat:@"%@ has no items", record.name]];
                 return NO;
             }
-            sourceItems = @[ @{ @"public.plain-text" : legacySnippet } ];
+            sourceItems = @[ @{@"public.plain-text" : legacySnippet} ];
         }
 
         for (id sourceItemValue in sourceItems) {
@@ -188,10 +190,9 @@ static NSString *const kKayokoCopyLogRemoteClipboardType = @"com.apple.is-remote
             }
 
             NSDictionary<NSString *, id> *sourceItem = sourceItemValue;
-            NSString *itemBundleIdentifier =
-                recordIsRemote || sourceItem[kKayokoCopyLogRemoteClipboardType] != nil
-                    ? kKayokoContinuityBundleIdentifier
-                    : bundleIdentifier;
+            NSString *itemBundleIdentifier = recordIsRemote || sourceItem[kKayokoCopyLogRemoteClipboardType] != nil
+                                                 ? kKayokoContinuityBundleIdentifier
+                                                 : bundleIdentifier;
             KayokoCopyLogPreparedItem *preparedItem = [self preparedItemForSourceItem:sourceItem
                                                                            historyKey:record.historyKey
                                                                      bundleIdentifier:itemBundleIdentifier
@@ -212,7 +213,7 @@ static NSString *const kKayokoCopyLogRemoteClipboardType = @"com.apple.is-remote
             NSDictionary<NSString *, id> *existingItem = existingItemsByHistoryKey[record.historyKey][content];
             BOOL alreadyExists = existingItem != nil;
             BOOL canFillRichText = [preparedItem.richTextName length] > 0 &&
-                [[self stringValue:existingItem[kKayokoItemKeyRichTextName]] length] == 0;
+                                   [[self stringValue:existingItem[kKayokoItemKeyRichTextName]] length] == 0;
             if (!alreadyExists || canFillRichText) {
                 [itemsByHistoryKey[record.historyKey] addObject:preparedItem.dictionary];
             }
@@ -242,12 +243,10 @@ static NSString *const kKayokoCopyLogRemoteClipboardType = @"com.apple.is-remote
     }
 
     NSString *dataDirectoryPath = [self.historyStore.databasePath stringByDeletingLastPathComponent];
-    KayokoImportFileStager *fileStager =
-        [[KayokoImportFileStager alloc] initWithBaseDirectoryPath:dataDirectoryPath prefix:@"copylog-import"];
+    KayokoImportFileStager *fileStager = [[KayokoImportFileStager alloc] initWithBaseDirectoryPath:dataDirectoryPath
+                                                                                            prefix:@"copylog-import"];
     if (![fileStager addDataByName:imageDataByName targetDirectory:self.historyStore.imagesPath error:error] ||
-        ![fileStager addDataByName:richTextDataByName
-                  targetDirectory:self.historyStore.richTextPath
-                            error:error]) {
+        ![fileStager addDataByName:richTextDataByName targetDirectory:self.historyStore.richTextPath error:error]) {
         NSError *rollbackError = nil;
         if (![fileStager rollbackWithError:&rollbackError] && error) {
             *error = rollbackError;
@@ -274,8 +273,8 @@ static NSString *const kKayokoCopyLogRemoteClipboardType = @"com.apple.is-remote
 #pragma mark - Source Records
 
 - (NSArray<KayokoCopyLogSourceRecord *> *)recordsForSection:(NSString *)section
-                                                  historyKey:(NSString *)historyKey
-                                                       error:(NSError **)error {
+                                                 historyKey:(NSString *)historyKey
+                                                      error:(NSError **)error {
     NSString *sectionPath = [self.sourceDirectoryPath stringByAppendingPathComponent:section];
     NSFileManager *fileManager = [NSFileManager defaultManager];
     BOOL isDirectory = NO;
@@ -341,10 +340,10 @@ static NSString *const kKayokoCopyLogRemoteClipboardType = @"com.apple.is-remote
 #pragma mark - Payload Selection
 
 - (KayokoCopyLogPreparedItem *)preparedItemForSourceItem:(NSDictionary<NSString *, id> *)sourceItem
-                                               historyKey:(NSString *)historyKey
-                                         bundleIdentifier:(NSString *)bundleIdentifier
-                                               capturedAt:(NSDate *)capturedAt
-                                                     note:(NSString *)note {
+                                              historyKey:(NSString *)historyKey
+                                        bundleIdentifier:(NSString *)bundleIdentifier
+                                              capturedAt:(NSDate *)capturedAt
+                                                    note:(NSString *)note {
     KayokoCopyLogImagePayload *imagePayload = [self imagePayloadFromSourceItem:sourceItem];
     NSString *text = imagePayload ? nil : [self textFromSourceItem:sourceItem];
     KayokoRichTextRepresentation *richText =
@@ -367,9 +366,8 @@ static NSString *const kKayokoCopyLogRemoteClipboardType = @"com.apple.is-remote
     }
 
     if (imagePayload) {
-        NSString *imageName = [NSString stringWithFormat:@"copylog-%@.%@",
-                                                         [self SHA256StringForData:imagePayload.data],
-                                                         imagePayload.extension];
+        NSString *imageName = [NSString
+            stringWithFormat:@"copylog-%@.%@", [self SHA256StringForData:imagePayload.data], imagePayload.extension];
         dictionary[kKayokoItemKeyContent] = imageName;
         dictionary[kKayokoItemKeyImageName] = imageName;
         dictionary[kKayokoItemKeyImagePixelWidth] = @(imagePayload.pixelWidth);
@@ -398,9 +396,8 @@ static NSString *const kKayokoCopyLogRemoteClipboardType = @"com.apple.is-remote
 }
 
 - (KayokoCopyLogImagePayload *)imagePayloadFromSourceItem:(NSDictionary<NSString *, id> *)sourceItem {
-    NSArray<NSString *> *keys = @[
-        @"copylog.image", @"public.png", @"public.jpeg", @"public.jpg", @"com.apple.uikit.image"
-    ];
+    NSArray<NSString *> *keys =
+        @[ @"copylog.image", @"public.png", @"public.jpeg", @"public.jpg", @"com.apple.uikit.image" ];
     for (NSString *key in keys) {
         id value = sourceItem[key];
         if (![value isKindOfClass:[NSData class]] || [value length] == 0) {
@@ -432,8 +429,7 @@ static NSString *const kKayokoCopyLogRemoteClipboardType = @"com.apple.is-remote
         (NSString *)kCGImageSourceShouldCacheImmediately : @YES
     };
     CGImageRef decodedImage = CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)decodeOptions);
-    NSDictionary<NSString *, id> *properties =
-        CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(source, 0, NULL));
+    NSDictionary<NSString *, id> *properties = CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(source, 0, NULL));
     CFRelease(source);
     NSUInteger width = [properties[(NSString *)kCGImagePropertyPixelWidth] unsignedIntegerValue];
     NSUInteger height = [properties[(NSString *)kCGImagePropertyPixelHeight] unsignedIntegerValue];
@@ -460,9 +456,8 @@ static NSString *const kKayokoCopyLogRemoteClipboardType = @"com.apple.is-remote
 }
 
 - (NSString *)textFromSourceItem:(NSDictionary<NSString *, id> *)sourceItem {
-    NSArray<NSString *> *types = @[
-        @"public.utf8-plain-text", @"public.plain-text", @"public.text", @"public.url", @"public.file-url"
-    ];
+    NSArray<NSString *> *types =
+        @[ @"public.utf8-plain-text", @"public.plain-text", @"public.text", @"public.url", @"public.file-url" ];
     for (NSString *type in types) {
         id value = sourceItem[type];
         if ([value isKindOfClass:[NSString class]] && [value length] > 0) {

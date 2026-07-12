@@ -135,8 +135,8 @@ static int runSyncCredential(void) {
 int main(int argc, char *argv[]) {
     @autoreleasepool {
         if (argc < 2) {
-            fprintf(stderr,
-                    "usage: kayoko_updater postinst|import-copylog|import-copyvault|reset-thumbnail-cache|sync-credential\n");
+            fprintf(stderr, "usage: kayoko_updater "
+                            "postinst|import-copylog|import-copyvault|reset-thumbnail-cache|sync-credential\n");
             return 64;
         }
 

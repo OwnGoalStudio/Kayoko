@@ -114,6 +114,7 @@ NS_ASSUME_NONNULL_END
     if (self) {
         _authorizationPassed = YES;
         _itemDetailsMode = kKayokoPreferenceKeyItemDetailsModeDefaultValue;
+        _clearButtonMode = kKayokoPreferenceKeyClearButtonModeDefaultValue;
         _kayokoSupportedInterfaceOrientations = UIInterfaceOrientationMaskAll;
         _presentationMode = KayokoPanelPresentationModePortraitDrawer;
         _externalHideCoordinator = [[KayokoExternalHideCoordinator alloc] init];
@@ -184,6 +185,9 @@ NS_ASSUME_NONNULL_END
         _previewViewController = [[KayokoPreviewViewController alloc] init];
         [_previewViewController setTagAssignmentHandler:^(KayokoPasteboardItem *item, NSString *historyKey) {
           [weakSelf handleTagAssignmentForItem:item historyKey:historyKey];
+        }];
+        [_previewViewController setHapticFeedbackHandler:^(UIImpactFeedbackStyle style) {
+          [[weakSelf panelPresentationController] triggerHapticFeedbackWithStyle:style];
         }];
         [self addChildViewController:_previewViewController];
         KayokoHeaderView *previewHeaderView = [[_previewViewController previewView] headerView];
@@ -311,6 +315,15 @@ NS_ASSUME_NONNULL_END
     _itemDetailsMode = itemDetailsMode;
     [[self historyListViewController] setItemDetailsMode:itemDetailsMode];
     [[self favoritesListViewController] setItemDetailsMode:itemDetailsMode];
+}
+
+- (void)setClearButtonMode:(KayokoClearButtonMode)clearButtonMode {
+    if (clearButtonMode != kKayokoClearButtonModeOff && clearButtonMode != kKayokoClearButtonModeHistoryOnly &&
+        clearButtonMode != kKayokoClearButtonModeAlways) {
+        clearButtonMode = kKayokoPreferenceKeyClearButtonModeDefaultValue;
+    }
+    _clearButtonMode = clearButtonMode;
+    [self updateClearButtonState];
 }
 
 - (void)setShouldPlayFeedback:(BOOL)shouldPlayFeedback {
@@ -723,9 +736,25 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - History Content
 
+- (void)prepareHistoryListForDisplayIfNeededForHistoryKey:(NSString *)historyKey contentView:(UIView *)contentView {
+    KayokoHistoryListViewController *listViewController = [self listViewControllerForHistoryKey:historyKey];
+    if (contentView != [listViewController tableView] || [[self searchController] isSearchActive] ||
+        [listViewController hasActiveSearch]) {
+        return;
+    }
+
+    if (![[self historyController] consumeScrollToTopBeforeNextDisplayForHistoryKey:historyKey]) {
+        return;
+    }
+
+    [[listViewController tableView] scrollToFirstItemKeepingSearchHeaderHiddenWithoutAnimation];
+}
+
 - (void)setHistoryContentVisibleForKey:(NSString *)historyKey {
     [[self historyController] setActiveHistoryKey:historyKey];
     UIView *contentView = [self contentViewForHistoryKey:historyKey];
+    KayokoHistoryListView *tableView = [[self listViewControllerForHistoryKey:historyKey] tableView];
+    BOOL preparesListBeforeDisplay = [self isHidden] || [tableView isHidden];
     BOOL showsAuthorizationRequired = contentView == [self authorizationRequiredView];
     [[[self historyListViewController] tableView]
         setHidden:contentView != [[self historyListViewController] tableView]];
@@ -740,22 +769,24 @@ NS_ASSUME_NONNULL_END
     if (showsAuthorizationRequired) {
         [[self searchController] resetSearchState];
         [self showAuthorizationRequiredHeaderIcon];
-        [[[[self mainView] headerView] trailingButton] setHidden:YES];
         [[[[self mainView] headerView] alternateTrailingButton] setHidden:YES];
         [[[[self mainView] headerView] titleTapControl] setEnabled:NO];
         [[self mainView] setTitleText:[self titleForContentView:contentView]];
-        [[self mainView] setClearButtonEnabledForItemCount:0];
+        [self updateClearButtonState];
         return;
     }
 
     [self restoreHistoryHeaderIconForHistoryKey:historyKey];
-    [[[[self mainView] headerView] trailingButton] setHidden:NO];
     [[[[self mainView] headerView] alternateTrailingButton] setHidden:YES];
     [[[[self mainView] headerView] titleTapControl] setEnabled:YES];
     [[self searchController] attachToListViewController:[self listViewControllerForHistoryKey:historyKey]
                                          hidesSearchBar:![[self searchController] isSearchActive]];
     [[self searchController] refreshForListViewController:[self activeListViewController]];
+    if (preparesListBeforeDisplay) {
+        [self prepareHistoryListForDisplayIfNeededForHistoryKey:historyKey contentView:contentView];
+    }
     [[self mainView] setTitleText:[self titleForContentView:contentView]];
+    [self updateClearButtonState];
 }
 
 - (void)markHistoryKeyLoaded:(NSString *)historyKey {
@@ -777,7 +808,7 @@ NS_ASSUME_NONNULL_END
         if ([[self searchController] isSearchActive] || [activeListViewController hasActiveSearch]) {
             [[self searchController] refreshForListViewController:activeListViewController];
         }
-        [[self mainView] setClearButtonEnabledForItemCount:[[[self activeListViewController] items] count]];
+        [self updateClearButtonState];
         if ([self activeHistoryContentView] != [self contentViewForHistoryKey:[self effectiveActiveHistoryKey]]) {
             [self updateContentState];
         }
@@ -832,10 +863,9 @@ NS_ASSUME_NONNULL_END
 
 - (void)finishHidingClearConfirmationForHistoryKey:(NSString *)historyKey {
     [self setClearConfirmationHistoryKey:nil];
-    [[[[self mainView] headerView] trailingButton] setHidden:NO];
-    [[self mainView]
-        setClearButtonEnabledForItemCount:[[[self listViewControllerForHistoryKey:historyKey] items] count]];
+    [self updateClearButtonState];
     UIView *contentView = [self contentViewForHistoryKey:historyKey];
+    [self prepareHistoryListForDisplayIfNeededForHistoryKey:historyKey contentView:contentView];
     [[self mainView] showContentView:contentView
                      hideContentView:[[self clearConfirmationViewController] confirmationView]
                                title:[self titleForContentView:contentView]
@@ -853,8 +883,7 @@ NS_ASSUME_NONNULL_END
         [self markHistoryKeyLoaded:historyKey];
         if ([[self effectiveActiveHistoryKey] isEqualToString:historyKey]) {
             [self setClearConfirmationHistoryKey:nil];
-            [[[[self mainView] headerView] trailingButton] setHidden:NO];
-            [[self mainView] setClearButtonEnabledForItemCount:0];
+            [self updateClearButtonState];
             if ([self
                     cancelSearchForEmptyActiveHistoryIfNeededHidingView:[[self clearConfirmationViewController]
                                                                             confirmationView]
@@ -877,7 +906,6 @@ NS_ASSUME_NONNULL_END
     [[[self clearConfirmationViewController] confirmationView] setAlpha:1];
     [[[self clearConfirmationViewController] confirmationView] setTransform:CGAffineTransformIdentity];
     [self setHistoryContentVisibleForKey:[self clearConfirmationHistoryKey]];
-    [[[[self mainView] headerView] trailingButton] setHidden:NO];
     [self setClearConfirmationHistoryKey:nil];
     [self updateClearButtonState];
 }
@@ -889,16 +917,15 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Content State
 
 - (void)updateClearButtonState {
-    if ([self isAuthorizationRequired]) {
-        [[self mainView] setClearButtonEnabledForItemCount:0];
-        return;
-    }
-
-    if ([self storageError]) {
-        [[self mainView] setClearButtonEnabledForItemCount:0];
-        return;
-    }
-    [[self mainView] setClearButtonEnabledForItemCount:[[[self activeListViewController] items] count]];
+    BOOL modeAllowsClearButton = [self clearButtonMode] == kKayokoClearButtonModeAlways ||
+                                 ([self clearButtonMode] == kKayokoClearButtonModeHistoryOnly &&
+                                  [[self effectiveActiveHistoryKey] isEqualToString:kKayokoHistoryKeyHistory]);
+    BOOL hidesClearButton =
+        [self isAuthorizationRequired] || [self isShowingClearConfirmation] || !modeAllowsClearButton;
+    [[[[self mainView] headerView] trailingButton] setHidden:hidesClearButton];
+    NSUInteger itemCount =
+        hidesClearButton || [self storageError] ? 0 : [[[self activeListViewController] items] count];
+    [[self mainView] setClearButtonEnabledForItemCount:itemCount];
 }
 
 - (void)showStorageError:(NSError *)error {
@@ -909,7 +936,7 @@ NS_ASSUME_NONNULL_END
     [self setStorageError:error];
     [[self storageErrorView] updateWithStorageError:error];
     [[self storageErrorView] setKeyboardBottomInset:[[self searchController] keyboardBottomInset]];
-    [[self mainView] setClearButtonEnabledForItemCount:0];
+    [self updateClearButtonState];
 
     if ([self isHidden]) {
         return;
@@ -1243,7 +1270,7 @@ NS_ASSUME_NONNULL_END
         return NO;
     }
 
-    [[self mainView] setClearButtonEnabledForItemCount:0];
+    [self updateClearButtonState];
     UIView *viewToShow = [self contentViewForHistoryKey:[self effectiveActiveHistoryKey]];
     if (viewToShow == viewToHide) {
         [[self searchController] cancelSearchWithCompletion:completion];
@@ -1284,6 +1311,8 @@ NS_ASSUME_NONNULL_END
         UIView *viewToShow = [self contentViewForHistoryKey:[self effectiveActiveHistoryKey]];
 
         if (viewToShow != viewToHide) {
+            [self prepareHistoryListForDisplayIfNeededForHistoryKey:[self effectiveActiveHistoryKey]
+                                                        contentView:viewToShow];
             [[self mainView] showContentView:viewToShow
                              hideContentView:viewToHide
                                        title:[self titleForContentView:viewToShow]
@@ -1343,6 +1372,7 @@ NS_ASSUME_NONNULL_END
                                                         hidesSearchBar:YES];
                                         [[self searchController]
                                             refreshForListViewController:[self activeListViewController]];
+                                        [self updateClearButtonState];
                                         [[self mainView] applyPreparedContentTransitionToView:viewToShow
                                                                               hideContentView:viewToHide
                                                                                     direction:direction];
@@ -1362,11 +1392,10 @@ NS_ASSUME_NONNULL_END
                                   attachToListViewController:[self listViewControllerForHistoryKey:targetKey]
                                               hidesSearchBar:![[self searchController] isSearchActive]];
                               [[self searchController] refreshForListViewController:[self activeListViewController]];
-                              [[self mainView]
-                                  setClearButtonEnabledForItemCount:[[[self listViewControllerForHistoryKey:targetKey]
-                                                                        items] count]];
+                              [self updateClearButtonState];
 
                               UIView *viewToShow = [self contentViewForHistoryKey:targetKey];
+                              [self prepareHistoryListForDisplayIfNeededForHistoryKey:targetKey contentView:viewToShow];
                               if (viewToShow != viewToHide) {
                                   [[self mainView] showContentView:viewToShow
                                                    hideContentView:viewToHide
@@ -1991,8 +2020,6 @@ NS_ASSUME_NONNULL_END
                               }
                               [self setHistoryContentVisibleForKey:historyKey];
                               [[self searchController] refreshForListViewController:[self activeListViewController]];
-                              [[self mainView]
-                                  setClearButtonEnabledForItemCount:[[[self activeListViewController] items] count]];
                             }];
 }
 
@@ -2053,8 +2080,6 @@ NS_ASSUME_NONNULL_END
                               [self setHistoryContentVisibleForKey:historyKey];
                               [[self searchController] attachToListViewController:[self activeListViewController]
                                                                    hidesSearchBar:YES];
-                              [[self mainView]
-                                  setClearButtonEnabledForItemCount:[[[self activeListViewController] items] count]];
                               [[self panelPresentationController] showPanelWithCompletion:^{
                                 [self executePendingExternalHideRequestIfReady];
                               }];
@@ -2100,6 +2125,9 @@ NS_ASSUME_NONNULL_END
     [self setDismissingPanel:NO];
     if (wasShowingTransientContent) {
         [self refreshSearchAfterEndingTransientContentIfNeeded];
+    }
+    if ([self alwaysScrollToTop]) {
+        [[self historyController] markAllHistoryKeysForScrollToTopBeforeNextDisplay];
     }
     if (completion) {
         completion();

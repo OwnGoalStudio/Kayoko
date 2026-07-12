@@ -113,14 +113,6 @@ NS_ASSUME_NONNULL_END
                                }];
 }
 
-#pragma mark - Feedback
-
-- (void)triggerLightFeedback {
-    UIImpactFeedbackGenerator *feedbackGenerator =
-        [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
-    [feedbackGenerator impactOccurred];
-}
-
 #pragma mark - Actions
 
 - (void)assignTagUUID:(NSString *)tagUUID {
@@ -149,7 +141,9 @@ NS_ASSUME_NONNULL_END
                                 [[strongSelf previewView] setSelectedTagUUID:previousTagUUID];
                                 return;
                             }
-                            [strongSelf triggerLightFeedback];
+                            if ([strongSelf hapticFeedbackHandler]) {
+                                [strongSelf hapticFeedbackHandler](UIImpactFeedbackStyleLight);
+                            }
                             if ([strongSelf tagAssignmentHandler]) {
                                 [strongSelf tagAssignmentHandler](item, historyKey);
                             }

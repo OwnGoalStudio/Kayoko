@@ -15,6 +15,20 @@ static CGFloat const kKayokoTableViewCellContentImageSingleLineHeight = 40;
 static CGFloat const kKayokoTableViewCellContentImageAdditionalLineHeight = 15;
 static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
 
+@interface KayokoTableViewCellPreviewLabel : UILabel
+@end
+
+@implementation KayokoTableViewCellPreviewLabel
+
+- (void)drawTextInRect:(CGRect)rect {
+    CGRect textRect = [self textRectForBounds:rect limitedToNumberOfLines:[self numberOfLines]];
+    textRect.origin = rect.origin;
+    textRect.size.width = rect.size.width;
+    [super drawTextInRect:textRect];
+}
+
+@end
+
 @interface KayokoTableViewCell ()
 @property(nonatomic, copy, nullable) NSString *representedImageName;
 @end
@@ -144,18 +158,20 @@ static NSUInteger const kKayokoTableViewCellMaximumPreviewLineCount = 3;
         }
 
         if (hasContentText) {
-            [self setContentLabel:[[UILabel alloc] init]];
+            [self setContentLabel:[[KayokoTableViewCellPreviewLabel alloc] init]];
             [[self contentLabel] setFont:[UIFont systemFontOfSize:14]];
             [[self contentLabel] setTextColor:[[UIColor labelColor] colorWithAlphaComponent:0.8]];
             [[self contentLabel] setLineBreakMode:NSLineBreakByTruncatingTail];
             [[self contentLabel] setNumberOfLines:lineCount];
             [self addSubview:[self contentLabel]];
             [[self contentLabel] setTranslatesAutoresizingMaskIntoConstraints:NO];
+            CGFloat previewLabelHeight = ceil([[[self contentLabel] font] lineHeight] * lineCount);
             [NSLayoutConstraint activateConstraints:@[
                 [[[self contentLabel] topAnchor] constraintEqualToAnchor:[[self headerLabel] bottomAnchor] constant:2],
                 [[[self contentLabel] leadingAnchor] constraintEqualToAnchor:[[self headerLabel] leadingAnchor]],
                 [[[self contentLabel] trailingAnchor] constraintEqualToAnchor:textTrailingAnchor
-                                                                     constant:textTrailingConstant]
+                                                                     constant:textTrailingConstant],
+                [[[self contentLabel] heightAnchor] constraintEqualToConstant:previewLabelHeight]
             ]];
         }
 

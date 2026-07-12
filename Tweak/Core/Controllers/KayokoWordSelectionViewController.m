@@ -224,6 +224,7 @@ NS_ASSUME_NONNULL_END
 
 - (void)handleSelectionOrderButtonPressed {
     [self setUsesSelectionOrderForSelectedText:![self usesSelectionOrderForSelectedText]];
+    [[self delegate] wordSelectionViewController:self triggerHapticFeedbackWithStyle:UIImpactFeedbackStyleLight];
 }
 
 #pragma mark - State

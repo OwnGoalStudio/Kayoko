@@ -196,6 +196,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) KayokoAutomaticPasteMode automaticPasteMode;
 @property(nonatomic, assign) KayokoAutomaticPromotionMode automaticPromotionMode;
 @property(nonatomic, assign) KayokoInitialViewMode initialViewMode;
+@property(nonatomic, assign) BOOL alwaysScrollToTop;
+@property(nonatomic, assign) KayokoClearButtonMode clearButtonMode;
 @property(nonatomic, assign) BOOL dismissOnOutsideTouch;
 @property(nonatomic, assign) BOOL playSoundEffects;
 @property(nonatomic, assign) BOOL playHapticFeedback;
@@ -566,6 +568,12 @@ NS_ASSUME_NONNULL_END
     if ([self.mainViewController initialViewMode] != self.initialViewMode) {
         [self.mainViewController setInitialViewMode:self.initialViewMode];
     }
+    if ([self.mainViewController alwaysScrollToTop] != self.alwaysScrollToTop) {
+        [self.mainViewController setAlwaysScrollToTop:self.alwaysScrollToTop];
+    }
+    if ([self.mainViewController clearButtonMode] != self.clearButtonMode) {
+        [self.mainViewController setClearButtonMode:self.clearButtonMode];
+    }
     if ([self.mainViewController shouldPlayFeedback] != self.playHapticFeedback) {
         [self.mainViewController setShouldPlayFeedback:self.playHapticFeedback];
     }
@@ -610,6 +618,8 @@ NS_ASSUME_NONNULL_END
         kKayokoPreferenceKeyAutomaticPasteMode : @(kKayokoPreferenceKeyAutomaticPasteModeDefaultValue),
         kKayokoPreferenceKeyAutomaticPromotionMode : @(kKayokoPreferenceKeyAutomaticPromotionModeDefaultValue),
         kKayokoPreferenceKeyInitialViewMode : @(kKayokoPreferenceKeyInitialViewModeDefaultValue),
+        kKayokoPreferenceKeyAlwaysScrollToTop : @(kKayokoPreferenceKeyAlwaysScrollToTopDefaultValue),
+        kKayokoPreferenceKeyClearButtonMode : @(kKayokoPreferenceKeyClearButtonModeDefaultValue),
         kKayokoPreferenceKeyDismissOnOutsideTouch : @(kKayokoPreferenceKeyDismissOnOutsideTouchDefaultValue),
         kKayokoPreferenceKeyDisablePasteTips : @(kKayokoPreferenceKeyDisablePasteTipsDefaultValue),
         kKayokoPreferenceKeyIgnoreRemoteReplication : @(kKayokoPreferenceKeyIgnoreRemoteReplicationDefaultValue),
@@ -654,6 +664,13 @@ NS_ASSUME_NONNULL_END
         self.initialViewMode != kKayokoInitialViewModeFavorites &&
         self.initialViewMode != kKayokoInitialViewModePreviousSelection) {
         self.initialViewMode = kKayokoPreferenceKeyInitialViewModeDefaultValue;
+    }
+    self.alwaysScrollToTop = [[self.preferences objectForKey:kKayokoPreferenceKeyAlwaysScrollToTop] boolValue];
+    self.clearButtonMode = [[self.preferences objectForKey:kKayokoPreferenceKeyClearButtonMode] unsignedIntegerValue];
+    if (self.clearButtonMode != kKayokoClearButtonModeOff &&
+        self.clearButtonMode != kKayokoClearButtonModeHistoryOnly &&
+        self.clearButtonMode != kKayokoClearButtonModeAlways) {
+        self.clearButtonMode = kKayokoPreferenceKeyClearButtonModeDefaultValue;
     }
     self.dismissOnOutsideTouch = [[self.preferences objectForKey:kKayokoPreferenceKeyDismissOnOutsideTouch] boolValue];
     BOOL ignoreRemoteReplication =

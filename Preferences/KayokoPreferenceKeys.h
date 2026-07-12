@@ -39,6 +39,12 @@ typedef NS_ENUM(NSUInteger, KayokoInitialViewMode) {
     kKayokoInitialViewModePreviousSelection = 2
 };
 
+typedef NS_ENUM(NSUInteger, KayokoClearButtonMode) {
+    kKayokoClearButtonModeOff = 0,
+    kKayokoClearButtonModeHistoryOnly = 1,
+    kKayokoClearButtonModeAlways = 2
+};
+
 typedef NS_ENUM(NSUInteger, KayokoItemDetailsMode) {
     kKayokoItemDetailsModeOff = 0,
     kKayokoItemDetailsModeImagesOnly = 1,
@@ -58,6 +64,8 @@ static NSString *const kKayokoPreferenceKeyAutomaticallyPaste = @"AutomaticallyP
 static NSString *const kKayokoPreferenceKeyAutomaticPasteMode = @"AutomaticPasteMode";
 static NSString *const kKayokoPreferenceKeyAutomaticPromotionMode = @"AutomaticPromotionMode";
 static NSString *const kKayokoPreferenceKeyInitialViewMode = @"InitialViewMode";
+static NSString *const kKayokoPreferenceKeyAlwaysScrollToTop = @"AlwaysScrollToTop";
+static NSString *const kKayokoPreferenceKeyClearButtonMode = @"ClearButtonMode";
 static NSString *const kKayokoPreferenceKeyDismissOnOutsideTouch = @"DismissOnOutsideTouch";
 static NSString *const kKayokoPreferenceKeyDisablePasteTips = @"DisablePasteTips";
 static NSString *const kKayokoPreferenceKeyIgnoreRemoteReplication = @"IgnoreRemoteReplication";
@@ -83,6 +91,8 @@ static KayokoAutomaticPromotionMode const kKayokoPreferenceKeyAutomaticPromotion
     kKayokoAutomaticPromotionModeHistoryOnly;
 static KayokoInitialViewMode const kKayokoPreferenceKeyInitialViewModeDefaultValue =
     kKayokoInitialViewModePreviousSelection;
+static BOOL const kKayokoPreferenceKeyAlwaysScrollToTopDefaultValue = NO;
+static KayokoClearButtonMode const kKayokoPreferenceKeyClearButtonModeDefaultValue = kKayokoClearButtonModeHistoryOnly;
 static BOOL const kKayokoPreferenceKeyDismissOnOutsideTouchDefaultValue = YES;
 static BOOL const kKayokoPreferenceKeyDisablePasteTipsDefaultValue = NO;
 static BOOL const kKayokoPreferenceKeyIgnoreRemoteReplicationDefaultValue = NO;

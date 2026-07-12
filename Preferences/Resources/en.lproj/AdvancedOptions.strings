@@ -1,4 +1,8 @@
+"%lu unsupported item was not imported." = "%lu unsupported item was not imported.";
+"%lu unsupported items were not imported." = "%lu unsupported items were not imported.";
 "Advanced Options" = "Advanced Options";
+"Always" = "Always";
+"Always Scroll to Top" = "Always Scroll to Top";
 "Are you sure you want to clear all favorite items? This action cannot be undone." = "Are you sure you want to clear all favorite items? This action cannot be undone.";
 "Are you sure you want to clear all history items? This action cannot be undone." = "Are you sure you want to clear all history items? This action cannot be undone.";
 "Are you sure you want to deactivate Kayoko on this device? This removes Kayoko’s mirrored Havoc credentials and local authorization state." = "Are you sure you want to deactivate Kayoko on this device? This removes Kayoko’s mirrored Havoc credentials and local authorization state.";
@@ -9,6 +13,7 @@
 "Automatic Paste Mode" = "Automatic Paste Mode";
 "Cancel" = "Cancel";
 "Check Data Directory" = "Check Data Directory";
+"Choose where the Clear button appears. “History Only” shows it only in History, while “Always” also shows it in Favorites." = "Choose where the Clear button appears. “History Only” shows it only in History, while “Always” also shows it in Favorites.";
 "Classic" = "Classic";
 "Clear Favorites" = "Clear Favorites";
 "Clear History" = "Clear History";
@@ -17,6 +22,7 @@
 "Data Unavailable" = "Data Unavailable";
 "Deactivate" = "Deactivate";
 "Gesture Recognizer" = "Gesture Recognizer";
+"History Only" = "History Only";
 "Ignore Universal Clipboard" = "Ignore Universal Clipboard";
 "Ignore clipboard events received through iOS Continuity’s Universal Clipboard, so Kayoko does not save content copied from nearby Apple devices." = "Ignore clipboard events received through iOS Continuity’s Universal Clipboard, so Kayoko does not save content copied from nearby Apple devices.";
 "Import" = "Import";
@@ -29,10 +35,12 @@
 "Kayoko will merge CopyVault history and archived items with your current data. Existing Kayoko items will be kept. SpringBoard must restart when the import finishes." = "Kayoko will merge CopyVault history and archived items with your current data. Existing Kayoko items will be kept. SpringBoard must restart when the import finishes.";
 "Maintenance" = "Maintenance";
 "OK" = "OK";
+"Off" = "Off";
 "Reset" = "Reset";
 "Reset Preferences" = "Reset Preferences";
 "Reset Thumbnail Cache" = "Reset Thumbnail Cache";
 "Restore Tags" = "Restore Tags";
+"Show Clear Button" = "Show Clear Button";
 "Simulated" = "Simulated";
 "System" = "System";
 "Tap the screen to close." = "Tap the screen to close.";
@@ -45,7 +53,6 @@
 "Unable to Import" = "Unable to Import";
 "Unable to Open Filza" = "Unable to Open Filza";
 "Unable to Restore Tags" = "Unable to Restore Tags";
-"%lu unsupported item was not imported." = "%lu unsupported item was not imported.";
-"%lu unsupported items were not imported." = "%lu unsupported items were not imported.";
+"When off, History and Favorites usually keep your last browsing position. When on, both lists return to the first item the next time they appear after Kayoko is closed. If new content is added or an item moves to the top while a list is not shown, that list also starts from the first item the next time it appears." = "When off, History and Favorites usually keep your last browsing position. When on, both lists return to the first item the next time they appear after Kayoko is closed. If new content is added or an item moves to the top while a list is not shown, that list also starts from the first item the next time it appears.";
 "“Classic” uses the original in-app keyboard gesture recognizer. “System” listens from SpringBoard, so one-finger swipe up can still work when app-side hooks are unavailable." = "“Classic” uses the original in-app keyboard gesture recognizer. “System” listens from SpringBoard, so one-finger swipe up can still work when app-side hooks are unavailable.";
 "“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed." = "“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed.";

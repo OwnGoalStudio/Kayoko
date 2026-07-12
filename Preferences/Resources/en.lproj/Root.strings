@@ -1,5 +1,6 @@
 "%@ and %@" = "%@ and %@";
 "%@ and %d others" = "%@ and %d others";
+"%@ data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko." = "%@ data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko.";
 "Acknowledgments & Licenses" = "Acknowledgments & Licenses";
 "Activation Method" = "Activation Method";
 "Activation Methods" = "Activation Methods";
@@ -17,7 +18,6 @@
 "Choose how much text each clipboard item shows in the list. More lines make items easier to identify, but show fewer items at once." = "Choose how much text each clipboard item shows in the list. More lines make items easier to identify, but show fewer items at once.";
 "Choose when a tapped item moves to the top. “History Only” keeps Favorites in your chosen order while still surfacing recently used history items." = "Choose when a tapped item moves to the top. “History Only” keeps Favorites in your chosen order while still surfacing recently used history items.";
 "Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used." = "Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used.";
-"%@ data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko." = "%@ data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko.";
 "Credits" = "Credits";
 "Default View" = "Default View";
 "Dictation Key" = "Dictation Key";
@@ -69,8 +69,8 @@
 "Single Line" = "Single Line";
 "Supports" = "Supports";
 "Swipe to Select Words" = "Swipe to Select Words";
-"The network request failed." = "The network request failed.";
 "The data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko." = "The data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko.";
+"The network request failed." = "The network request failed.";
 "The “Prediction Bar” method displays custom suggestions on the “More Keyboard Keyplane” (123)." = "The “Prediction Bar” method displays custom suggestions on the “More Keyboard Keyplane” (123).";
 "This option requires restarting SpringBoard to apply. Do you want to restart now?" = "This option requires restarting SpringBoard to apply. Do you want to restart now?";
 "Tools" = "Tools";

@@ -1,5 +1,6 @@
 "%@ and %@" = "%@和%@";
 "%@ and %d others" = "%@和其他 %d 个";
+"%@ data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko." = "%@ 数据已成功导入。你需要立即重启 SpringBoard，才能完成导入并继续使用 Kayoko。";
 "Acknowledgments & Licenses" = "致谢与许可";
 "Activation Method" = "激活方法";
 "Activation Methods" = "激活方法";
@@ -17,7 +18,6 @@
 "Choose how much text each clipboard item shows in the list. More lines make items easier to identify, but show fewer items at once." = "选择列表中每个剪贴板条目显示多少文字。行数越多越容易辨认内容，但同屏可见的条目会更少。";
 "Choose when a tapped item moves to the top. “History Only” keeps Favorites in your chosen order while still surfacing recently used history items." = "选择点选条目后何时将它移到顶部。“仅历史记录” 会保留收藏夹的现有顺序，同时让最近使用的历史记录浮到前面。";
 "Choose which list Kayoko opens when it is shown. “Previous” keeps the list you last used." = "选择唤醒 Kayoko 时打开哪个列表。“先前的选择” 会保留上次使用的列表。";
-"%@ data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko." = "%@ 数据已成功导入。你需要立即重启 SpringBoard，才能完成导入并继续使用 Kayoko。";
 "Credits" = "致谢";
 "Default View" = "默认界面";
 "Dictation Key" = "听写键";
@@ -69,8 +69,8 @@
 "Single Line" = "单行";
 "Supports" = "支持";
 "Swipe to Select Words" = "滑动选词";
-"The network request failed." = "网络请求失败。";
 "The data was imported successfully. Restart SpringBoard now to finish the import and continue using Kayoko." = "数据已成功导入。你需要立即重启 SpringBoard，才能完成导入并继续使用 Kayoko。";
+"The network request failed." = "网络请求失败。";
 "The “Prediction Bar” method displays custom suggestions on the “More Keyboard Keyplane” (123)." = "“预测栏” 方法在 “更多键盘 (123)” 上显示自定义建议。";
 "This option requires restarting SpringBoard to apply. Do you want to restart now?" = "此选项需要重新启动 SpringBoard 才能生效。你现在要重新启动吗？";
 "Tools" = "工具";

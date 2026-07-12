@@ -17,8 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
                                    tagStore:(KayokoTagStore *)tagStore NS_DESIGNATED_INITIALIZER;
 - (instancetype)init NS_UNAVAILABLE;
 
-- (BOOL)runWithSkippedItemCount:(NSUInteger *_Nullable)skippedItemCount
-                          error:(NSError *_Nullable *_Nullable)error;
+- (BOOL)runWithSkippedItemCount:(NSUInteger *_Nullable)skippedItemCount error:(NSError *_Nullable *_Nullable)error;
 
 @end
 

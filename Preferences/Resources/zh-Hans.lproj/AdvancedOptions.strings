@@ -1,4 +1,8 @@
+"%lu unsupported item was not imported." = "未导入 %lu 个不受支持的条目。";
+"%lu unsupported items were not imported." = "未导入 %lu 个不受支持的条目。";
 "Advanced Options" = "高级选项";
+"Always" = "总是";
+"Always Scroll to Top" = "总是滚动到顶部";
 "Are you sure you want to clear all favorite items? This action cannot be undone." = "你确定要清空所有收藏内容吗？此操作不可撤销。";
 "Are you sure you want to clear all history items? This action cannot be undone." = "你确定要清空所有历史记录吗？此操作不可撤销。";
 "Are you sure you want to deactivate Kayoko on this device? This removes Kayoko’s mirrored Havoc credentials and local authorization state." = "你确定要在此设备上反激活 Kayoko 吗？这会移除 Kayoko 镜像保存的 Havoc 凭据和本地授权状态。";
@@ -9,6 +13,7 @@
 "Automatic Paste Mode" = "自动粘贴模式";
 "Cancel" = "取消";
 "Check Data Directory" = "检查数据目录";
+"Choose where the Clear button appears. “History Only” shows it only in History, while “Always” also shows it in Favorites." = "选择在哪些列表中显示「清空」按钮。「仅历史记录」只在「历史记录」中显示，「总是」还会在「收藏夹」中显示。";
 "Classic" = "经典";
 "Clear Favorites" = "清空收藏夹";
 "Clear History" = "清空历史记录";
@@ -17,6 +22,7 @@
 "Data Unavailable" = "数据不可用";
 "Deactivate" = "反激活";
 "Gesture Recognizer" = "手势识别器";
+"History Only" = "仅历史记录";
 "Ignore Universal Clipboard" = "忽略通用剪贴板";
 "Ignore clipboard events received through iOS Continuity’s Universal Clipboard, so Kayoko does not save content copied from nearby Apple devices." = "忽略通过 iOS「连续互通」功能的「通用剪贴板」传来的剪贴板事件，避免 Kayoko 保存附近 Apple 设备拷贝的内容。";
 "Import" = "导入";
@@ -29,10 +35,12 @@
 "Kayoko will merge CopyVault history and archived items with your current data. Existing Kayoko items will be kept. SpringBoard must restart when the import finishes." = "Kayoko 会将 CopyVault 的历史记录和归档内容合并到现有数据中，并保留已有的 Kayoko 条目。导入完成后需要注销。";
 "Maintenance" = "维护";
 "OK" = "好";
+"Off" = "关闭";
 "Reset" = "还原";
 "Reset Preferences" = "还原设置";
 "Reset Thumbnail Cache" = "重置缩略图缓存";
 "Restore Tags" = "还原标签";
+"Show Clear Button" = "显示清空按钮";
 "Simulated" = "模拟";
 "System" = "系统";
 "Tap the screen to close." = "轻点屏幕以关闭。";
@@ -45,7 +53,6 @@
 "Unable to Import" = "导入失败";
 "Unable to Open Filza" = "无法打开 Filza";
 "Unable to Restore Tags" = "还原标签失败";
-"%lu unsupported item was not imported." = "有 %lu 个不受支持的条目未导入。";
-"%lu unsupported items were not imported." = "有 %lu 个不受支持的条目未导入。";
+"When off, History and Favorites usually keep your last browsing position. When on, both lists return to the first item the next time they appear after Kayoko is closed. If new content is added or an item moves to the top while a list is not shown, that list also starts from the first item the next time it appears." = "关闭时，「历史记录」和「收藏夹」通常会保留上次浏览的位置。开启后，每次关闭 Kayoko，两个列表都会在下次显示时回到第一条。如果列表未显示时有新内容加入或条目被移到顶部，该列表也会在下次显示时从第一条开始。";
 "“Classic” uses the original in-app keyboard gesture recognizer. “System” listens from SpringBoard, so one-finger swipe up can still work when app-side hooks are unavailable." = "“经典” 使用原有的 App 内键盘手势识别。“系统” 会改由 SpringBoard 侧监听，因此在 App 侧注入不可用时仍可使用单指上划。";
 "“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed." = "“模拟” 模式会通过硬件组合键模拟粘贴快捷键。“自动” 模式会在当前 App 可配合时使用 “经典”，需要时再退回 “模拟”。";

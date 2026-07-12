@@ -302,6 +302,28 @@ NS_ASSUME_NONNULL_END
     }];
 }
 
+- (void)scrollToFirstItemKeepingSearchHeaderHiddenWithoutAnimation {
+    [self endTransientContentOffsetPreservationIfNeeded];
+
+    [UIView performWithoutAnimation:^{
+      CGFloat hiddenHeaderOffsetY = [self hiddenHeaderOffsetY];
+      if (hiddenHeaderOffsetY <= 0) {
+          return;
+      }
+
+      UIEdgeInsets contentInset = [self contentInset];
+      contentInset.bottom =
+          MAX(contentInset.bottom,
+              [self minimumBottomInsetForMaintainingHiddenHeaderWithAdditionalContentHeightReduction:0]);
+      [self setContentInset:contentInset];
+      [self layoutIfNeeded];
+
+      CGPoint contentOffset = [self contentOffset];
+      contentOffset.y = hiddenHeaderOffsetY;
+      [self setContentOffset:contentOffset animated:NO];
+    }];
+}
+
 #pragma mark - Content Offset
 
 - (void)setContentOffset:(CGPoint)contentOffset {

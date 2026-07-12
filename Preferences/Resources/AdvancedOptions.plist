@@ -32,6 +32,62 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
+			<string></string>
+			<key>footerText</key>
+			<string>When off, History and Favorites usually keep your last browsing position. When on, both lists return to the first item the next time they appear after Kayoko is closed. If new content is added or an item moves to the top while a list is not shown, that list also starts from the first item the next time it appears.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<false/>
+			<key>defaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>key</key>
+			<string>AlwaysScrollToTop</string>
+			<key>label</key>
+			<string>Always Scroll to Top</string>
+			<key>PostNotification</key>
+			<string>com.82flex.kayoko.preferences.reload</string>
+		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Show Clear Button</string>
+			<key>footerText</key>
+			<string>Choose where the Clear button appears. “History Only” shows it only in History, while “Always” also shows it in Favorites.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSegmentCell</string>
+			<key>default</key>
+			<integer>1</integer>
+			<key>defaults</key>
+			<string>com.82flex.kayoko.preferences</string>
+			<key>key</key>
+			<string>ClearButtonMode</string>
+			<key>validValues</key>
+			<array>
+				<integer>0</integer>
+				<integer>1</integer>
+				<integer>2</integer>
+			</array>
+			<key>validTitles</key>
+			<array>
+				<string>Off</string>
+				<string>History Only</string>
+				<string>Always</string>
+			</array>
+			<key>PostNotification</key>
+			<string>com.82flex.kayoko.preferences.reload</string>
+		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
 			<string>Automatic Paste Mode</string>
 			<key>footerText</key>
 			<string>“Simulated” mode sends the hardware Command-V shortcut to trigger paste. “Auto” mode uses “Classic” when the current app is ready, and falls back to “Simulated” when needed.</string>

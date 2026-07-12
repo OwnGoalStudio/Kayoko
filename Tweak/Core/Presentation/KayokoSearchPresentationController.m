@@ -271,7 +271,7 @@ NS_ASSUME_NONNULL_END
     [self applyBottomInsetToTableView:tableView];
 
     CGPoint contentOffset = [tableView contentOffset];
-    contentOffset.y = [self hiddenSearchHeaderOffsetForTableView:tableView];
+    contentOffset.y = MAX(contentOffset.y, [self hiddenSearchHeaderOffsetForTableView:tableView]);
     [self setContentOffset:contentOffset forTableView:tableView animated:animated];
 }
 

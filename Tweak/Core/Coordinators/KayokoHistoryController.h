@@ -37,6 +37,8 @@ NS_ASSUME_NONNULL_BEGIN
     (nullable NSString *)clearConfirmationHistoryKey;
 
 - (void)markHistoryKeyLoaded:(NSString *)historyKey;
+- (void)markAllHistoryKeysForScrollToTopBeforeNextDisplay;
+- (BOOL)consumeScrollToTopBeforeNextDisplayForHistoryKey:(NSString *)historyKey;
 - (void)handleHistoryChanged;
 - (void)preloadHistoryWithCompletion:(nullable void (^)(void))completion;
 - (void)reloadTableViewForHistoryKey:(NSString *)historyKey

@@ -10,12 +10,12 @@ NS_ASSUME_NONNULL_BEGIN
 @interface KayokoImportFileStager : NSObject
 
 - (instancetype)initWithBaseDirectoryPath:(NSString *)baseDirectoryPath
-                                    prefix:(NSString *)prefix NS_DESIGNATED_INITIALIZER;
+                                   prefix:(NSString *)prefix NS_DESIGNATED_INITIALIZER;
 - (instancetype)init NS_UNAVAILABLE;
 
 - (BOOL)addDataByName:(NSDictionary<NSString *, NSData *> *)dataByName
-       targetDirectory:(NSString *)targetDirectory
-                 error:(NSError *_Nullable *_Nullable)error;
+      targetDirectory:(NSString *)targetDirectory
+                error:(NSError *_Nullable *_Nullable)error;
 - (BOOL)commitWithError:(NSError *_Nullable *_Nullable)error;
 - (BOOL)rollbackWithError:(NSError *_Nullable *_Nullable)error;
 

@@ -14,6 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface KayokoHistoryController ()
 @property(nonatomic, strong) NSMutableSet<NSString *> *loadedHistoryKeys;
 @property(nonatomic, strong) NSMutableSet<NSString *> *dirtyHistoryKeys;
+@property(nonatomic, strong) NSMutableSet<NSString *> *historyKeysNeedingScrollToTopBeforeNextDisplay;
 @property(nonatomic, assign) NSUInteger pendingLocalHistoryChangeNotificationCount;
 @property(nonatomic, weak) KayokoHistoryListViewController *historyListViewController;
 @property(nonatomic, weak) KayokoHistoryListViewController *favoritesListViewController;
@@ -32,6 +33,7 @@ NS_ASSUME_NONNULL_END
         _activeHistoryKey = kKayokoHistoryKeyHistory;
         _loadedHistoryKeys = [[NSMutableSet alloc] init];
         _dirtyHistoryKeys = [NSMutableSet setWithObjects:kKayokoHistoryKeyHistory, kKayokoHistoryKeyFavorites, nil];
+        _historyKeysNeedingScrollToTopBeforeNextDisplay = [[NSMutableSet alloc] init];
         _historyListViewController = historyListViewController;
         _favoritesListViewController = favoritesListViewController;
 
@@ -97,6 +99,27 @@ NS_ASSUME_NONNULL_END
     [self markHistoryKeyDirty:kKayokoHistoryKeyFavorites];
 }
 
+- (void)markHistoryKeyForScrollToTopBeforeNextDisplay:(NSString *)historyKey {
+    if ([historyKey length] == 0) {
+        return;
+    }
+    [[self historyKeysNeedingScrollToTopBeforeNextDisplay] addObject:historyKey];
+}
+
+- (void)markAllHistoryKeysForScrollToTopBeforeNextDisplay {
+    [self markHistoryKeyForScrollToTopBeforeNextDisplay:kKayokoHistoryKeyHistory];
+    [self markHistoryKeyForScrollToTopBeforeNextDisplay:kKayokoHistoryKeyFavorites];
+}
+
+- (BOOL)consumeScrollToTopBeforeNextDisplayForHistoryKey:(NSString *)historyKey {
+    if (![[self historyKeysNeedingScrollToTopBeforeNextDisplay] containsObject:historyKey]) {
+        return NO;
+    }
+
+    [[self historyKeysNeedingScrollToTopBeforeNextDisplay] removeObject:historyKey];
+    return YES;
+}
+
 - (NSUInteger)limitForHistoryKey:(NSString *)historyKey {
     if ([historyKey isEqualToString:kKayokoHistoryKeyFavorites]) {
         return NSUIntegerMax;
@@ -123,6 +146,10 @@ NS_ASSUME_NONNULL_END
                             itemDictionary:(NSDictionary<NSString *, id> *)dictionary
                                      limit:(NSUInteger)limit {
     KayokoHistoryListViewController *listViewController = [self listViewControllerForHistoryKey:historyKey];
+    if ([changeType isEqualToString:kKayokoPasteboardManagerHistoryChangeTypeUpsertTop] &&
+        (![[self delegate] historyControllerIsPanelVisible:self] || [[listViewController tableView] isHidden])) {
+        [self markHistoryKeyForScrollToTopBeforeNextDisplay:historyKey];
+    }
     if ([[self delegate] historyControllerShouldSuppressVisibleUpdates:self]) {
         [self markHistoryKeyDirty:historyKey];
         return;
@@ -269,9 +296,14 @@ NS_ASSUME_NONNULL_END
         return;
     }
 
+    KayokoHistoryListViewController *destinationListViewController =
+        [self listViewControllerForHistoryKey:destinationHistoryKey];
+    if (![[self delegate] historyControllerIsPanelVisible:self] ||
+        [[destinationListViewController tableView] isHidden]) {
+        [self markHistoryKeyForScrollToTopBeforeNextDisplay:destinationHistoryKey];
+    }
+
     if ([self hasLoadedHistoryKey:destinationHistoryKey]) {
-        KayokoHistoryListViewController *destinationListViewController =
-            [self listViewControllerForHistoryKey:destinationHistoryKey];
         if ([self shouldDeferEmptyInactiveUpsertForHistoryKey:destinationHistoryKey
                                            listViewController:destinationListViewController]) {
             [self markHistoryKeyDirty:destinationHistoryKey];

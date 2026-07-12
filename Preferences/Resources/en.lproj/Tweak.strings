@@ -26,9 +26,6 @@
 "CopyVault contains unsupported content: %@" = "CopyVault contains unsupported content: %@";
 "CopyVault data directory was not found." = "CopyVault data directory was not found.";
 "CopyVault data is invalid: %@" = "CopyVault data is invalid: %@";
-"database is busy" = "Kayoko’s database is still in use. Restart SpringBoard and try again.";
-"database is locked" = "Kayoko’s database is still in use. Restart SpringBoard and try again.";
-"database table is locked" = "Kayoko’s database is still in use. Restart SpringBoard and try again.";
 "Dates" = "Dates";
 "Favorites" = "Favorites";
 "Flights" = "Flights";
@@ -75,6 +72,9 @@
 "Unable to read CopyVault data: %@" = "Unable to read CopyVault data: %@";
 "conflicting image %@" = "conflicting image %@";
 "conflicting rich text %@" = "conflicting rich text %@";
+"database is busy" = "Kayoko’s database is still in use. Restart SpringBoard and try again.";
+"database is locked" = "Kayoko’s database is still in use. Restart SpringBoard and try again.";
+"database table is locked" = "Kayoko’s database is still in use. Restart SpringBoard and try again.";
 "image %@ already contains different data" = "image %@ already contains different data";
 "invalid %@ timestamp" = "invalid %@ timestamp";
 "invalid item path %@" = "invalid item path %@";
