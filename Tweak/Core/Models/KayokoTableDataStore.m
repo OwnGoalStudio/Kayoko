@@ -131,6 +131,36 @@ NS_ASSUME_NONNULL_END
     return NSNotFound;
 }
 
+- (BOOL)removeItemMatchingDictionary:(NSDictionary<NSString *, id> *)dictionary
+                  displayedItemIndex:(NSUInteger *_Nullable)displayedItemIndex {
+    if (displayedItemIndex) {
+        *displayedItemIndex = NSNotFound;
+    }
+    if (!dictionary) {
+        return NO;
+    }
+
+    NSUInteger itemIndex = [self indexOfItemMatchingDictionary:dictionary inItems:[self items]];
+    if (itemIndex == NSNotFound) {
+        return NO;
+    }
+
+    NSUInteger displayedIndex = [self indexOfItemMatchingDictionary:dictionary inItems:[self displayedItems]];
+    NSMutableArray<NSDictionary<NSString *, id> *> *items = [[self items] mutableCopy];
+    [items removeObjectAtIndex:itemIndex];
+    _items = [items copy];
+
+    if (displayedIndex != NSNotFound) {
+        NSMutableArray<NSDictionary<NSString *, id> *> *displayedItems = [[self displayedItems] mutableCopy];
+        [displayedItems removeObjectAtIndex:displayedIndex];
+        [self setDisplayedItems:displayedItems];
+        if (displayedItemIndex) {
+            *displayedItemIndex = displayedIndex;
+        }
+    }
+    return YES;
+}
+
 - (NSDictionary<NSString *, id> *)dictionaryBySettingTagUUID:(NSString *)tagUUID
                                                 inDictionary:(NSDictionary<NSString *, id> *)dictionary {
     NSMutableDictionary<NSString *, id> *updatedDictionary = [dictionary mutableCopy];

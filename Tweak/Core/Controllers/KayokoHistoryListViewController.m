@@ -39,6 +39,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (KayokoTableViewCell *)newCellForItem:(KayokoPasteboardItem *)item addsPreviewGesture:(BOOL)addsPreviewGesture;
 - (void)loadThumbnailForItem:(KayokoPasteboardItem *)item intoCell:(KayokoTableViewCell *)cell;
 - (void)refreshVisibleItemDetails;
+- (void)removeItemDictionary:(NSDictionary<NSString *, id> *)dictionary
+                  completion:(nullable void (^)(BOOL success))completion;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -436,37 +438,74 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)removeItemDictionary:(NSDictionary<NSString *, id> *)dictionary {
-    NSArray<NSDictionary<NSString *, id> *> *oldItems = [self items] ?: @[];
-    NSUInteger existingIndex = [[self dataStore] indexOfItemMatchingDictionary:dictionary inItems:oldItems];
-    if (existingIndex == NSNotFound) {
-        return;
-    }
-
-    [self removeItemAtIndexPath:[NSIndexPath indexPathForRow:existingIndex inSection:0] completion:nil];
+    [self removeItemDictionary:dictionary completion:nil];
 }
 
 - (void)removeItemAtIndexPath:(NSIndexPath *)indexPath completion:(void (^)(BOOL success))completion {
     NSDictionary<NSString *, id> *dictionary = [self itemDictionaryAtIndexPath:indexPath];
-    NSUInteger existingIndex = [[self dataStore] indexOfItemMatchingDictionary:dictionary inItems:[self items] ?: @[]];
-    if (!dictionary || existingIndex == NSNotFound) {
+    if (!dictionary) {
         if (completion) {
             completion(NO);
         }
         return;
     }
 
+    [self removeItemDictionary:dictionary completion:completion];
+}
+
+- (void)removeItemDictionary:(NSDictionary<NSString *, id> *)dictionary completion:(void (^)(BOOL success))completion {
+    if (!dictionary) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
+
+    NSUInteger itemIndex = [[self dataStore] indexOfItemMatchingDictionary:dictionary inItems:[self items] ?: @[]];
+    if (itemIndex == NSNotFound) {
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
+
+    NSUInteger displayedIndex = [[self dataStore] indexOfItemMatchingDictionary:dictionary
+                                                                        inItems:[self displayedItems] ?: @[]];
+    BOOL canAnimateRemoval =
+        displayedIndex != NSNotFound && [[self tableView] numberOfRowsInSection:0] == [[self displayedItems] count];
+    if (!canAnimateRemoval) {
+        BOOL removed = [[self dataStore] removeItemMatchingDictionary:dictionary displayedItemIndex:nil];
+        if (displayedIndex != NSNotFound) {
+            [self reloadTableView];
+        } else {
+            [self refreshSearchPlaceholder];
+        }
+        if (completion) {
+            completion(removed);
+        }
+        return;
+    }
+
+    NSIndexPath *displayedIndexPath = [NSIndexPath indexPathForRow:displayedIndex inSection:0];
+
     CGPoint contentOffsetBeforeRemoval = [[self tableView] contentOffset];
     BOOL restoresContentOffsetAfterRemoval =
-        [self shouldRestoreContentOffsetAfterTopRowRemovalAtIndexPath:indexPath fromOffset:contentOffsetBeforeRemoval];
+        [self shouldRestoreContentOffsetAfterTopRowRemovalAtIndexPath:displayedIndexPath
+                                                           fromOffset:contentOffsetBeforeRemoval];
 
-    [[self tableView] prepareHiddenHeaderInsetsForRemovingRowAtIndexPath:indexPath];
+    [[self tableView] prepareHiddenHeaderInsetsForRemovingRowAtIndexPath:displayedIndexPath];
 
+    __block BOOL removed = NO;
     [[self tableView]
         performBatchUpdates:^{
-          NSMutableArray<NSDictionary<NSString *, id> *> *items = [[self items] mutableCopy];
-          [items removeObjectAtIndex:existingIndex];
-          [self setItems:items];
-          [[self tableView] deleteRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationAutomatic];
+          NSUInteger removedDisplayedIndex = NSNotFound;
+          removed = [[self dataStore] removeItemMatchingDictionary:dictionary
+                                                displayedItemIndex:&removedDisplayedIndex];
+          if (removed && removedDisplayedIndex != NSNotFound) {
+              NSIndexPath *removedIndexPath = [NSIndexPath indexPathForRow:removedDisplayedIndex inSection:0];
+              [[self tableView] deleteRowsAtIndexPaths:@[ removedIndexPath ]
+                                      withRowAnimation:UITableViewRowAnimationAutomatic];
+          }
         }
         completion:^(__unused BOOL finished) {
           if (restoresContentOffsetAfterRemoval) {
@@ -475,7 +514,7 @@ NS_ASSUME_NONNULL_END
           [self refreshVisibleItemDetails];
           [self refreshSearchPlaceholder];
           if (completion) {
-              completion(YES);
+              completion(removed);
           }
         }];
 }
@@ -739,7 +778,7 @@ NS_ASSUME_NONNULL_END
     NSDictionary<NSString *, id> *dictionary = [self itemDictionaryAtIndexPath:indexPath];
     KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:dictionary];
 
-    UIContextualAction *moveAction = [self moveActionForItem:item dictionary:dictionary indexPath:indexPath];
+    UIContextualAction *moveAction = [self moveActionForItem:item dictionary:dictionary];
     if (moveAction) {
         [actions addObject:moveAction];
     }
@@ -764,7 +803,8 @@ NS_ASSUME_NONNULL_END
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
     trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
-    KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:[self itemDictionaryAtIndexPath:indexPath]];
+    NSDictionary<NSString *, id> *dictionary = [self itemDictionaryAtIndexPath:indexPath];
+    KayokoPasteboardItem *item = [KayokoPasteboardItem itemFromDictionary:dictionary];
 
     UIContextualAction *deleteAction = [UIContextualAction
         contextualActionWithStyle:UIContextualActionStyleDestructive
@@ -779,14 +819,14 @@ NS_ASSUME_NONNULL_END
                                       completionHandler(NO);
                                       return;
                                   }
-                                  [self removeItemAtIndexPath:indexPath
-                                                   completion:^(BOOL removed) {
-                                                     if (removed) {
-                                                         [[self delegate]
-                                                             historyListViewControllerDidChangeContentState:self];
-                                                     }
-                                                     completionHandler(removed);
-                                                   }];
+                                  [self removeItemDictionary:dictionary
+                                                  completion:^(BOOL removed) {
+                                                    if (removed) {
+                                                        [[self delegate]
+                                                            historyListViewControllerDidChangeContentState:self];
+                                                    }
+                                                    completionHandler(removed);
+                                                  }];
                                 }];
                           }];
     [deleteAction setImage:[UIImage systemImageNamed:@"trash.fill"]];
@@ -797,8 +837,7 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Swipe Actions
 
 - (UIContextualAction *)moveActionForItem:(KayokoPasteboardItem *)item
-                               dictionary:(NSDictionary<NSString *, id> *)dictionary
-                                indexPath:(NSIndexPath *)indexPath {
+                               dictionary:(NSDictionary<NSString *, id> *)dictionary {
     NSString *sourceHistoryKey = [self historyKey];
     BOOL sourceIsFavorites = [sourceHistoryKey isEqualToString:kKayokoHistoryKeyFavorites];
     NSString *destinationHistoryKey = sourceIsFavorites ? kKayokoHistoryKeyHistory : kKayokoHistoryKeyFavorites;
@@ -822,15 +861,15 @@ NS_ASSUME_NONNULL_END
                                                                   didMoveItemDictionary:dictionary
                                                                      fromHistoryWithKey:sourceHistoryKey
                                                                        toHistoryWithKey:destinationHistoryKey];
-                                             [self removeItemAtIndexPath:indexPath
-                                                              completion:^(BOOL removed) {
-                                                                if (removed) {
-                                                                    [[self delegate]
-                                                                        historyListViewControllerDidChangeContentState:
-                                                                            self];
-                                                                }
-                                                                completionHandler(removed);
-                                                              }];
+                                             [self removeItemDictionary:dictionary
+                                                             completion:^(BOOL removed) {
+                                                               if (removed) {
+                                                                   [[self delegate]
+                                                                       historyListViewControllerDidChangeContentState:
+                                                                           self];
+                                                               }
+                                                               completionHandler(removed);
+                                                             }];
                                            }];
                           }];
     [moveAction setImage:[UIImage systemImageNamed:imageName]];
