@@ -9,4 +9,4 @@ Section: Tweaks
 Depends: firmware (>= 14.0), mobilesubstrate, preferenceloader, com.opa334.altlist
 Conflicts: codes.aurora.kayoko, dev.traurige.kayoko
 Replaces: codes.aurora.kayoko, dev.traurige.kayoko
-Homepage: https://github.com/OwnGoalStudio/Kayoko
+Homepage: https://github.com/owngoal-dev/Kayoko
